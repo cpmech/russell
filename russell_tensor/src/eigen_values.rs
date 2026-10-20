@@ -84,12 +84,7 @@ impl EigenValuesT2 {
     /// Returns `true` if spherical, `false` otherwise.
     ///
     /// In the spherical case, `ll := [λ, λ, λ]` where `λ = λ1 = λ2 = λ3 = trace(A)`.
-    pub fn calculate_mx(
-        &mut self,
-        ll: &mut [f64; 3],
-        aa: &Tensor2<6>,
-        method: EigenValMethod,
-    ) -> Result<bool, StrError> {
+    pub fn calculate_mx(&mut self, ll: &mut [f64; 3], aa: &Tensor2<6>, method: EigenValMethod) -> Result<bool, StrError> {
         // detect a (numerically) spherical tensor, i.e., J2 at the rounding level
         let ii1 = aa.invariant_ii1();
         let jj2 = aa.invariant_jj2();
@@ -210,8 +205,7 @@ impl EigenValuesT2 {
                 let hz1 = s12 * (s02 * s02 - s01 * s01) + s01 * s02 * d23;
                 let hz2 = s02 * (s01 * s01 - s12 * s12) + s12 * s01 * d31;
                 let hz3 = s01 * (s12 * s12 - s02 * s02) + s02 * s12 * d12;
-                let delta =
-                    (hx * hx + hy1 * hy1 + hy2 * hy2 + hy3 * hy3 + 15.0 * (hz1 * hz1 + hz2 * hz2 + hz3 * hz3)).max(0.0);
+                let delta = (hx * hx + hy1 * hy1 + hy2 * hy2 + hy3 * hy3 + 15.0 * (hz1 * hz1 + hz2 * hz2 + hz3 * hz3)).max(0.0);
                 // mixed tangent angle (Equation 11)
                 let sqrt_jj2 = f64::sqrt(jj2);
                 let numerator = f64::sqrt(delta);

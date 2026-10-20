@@ -261,12 +261,8 @@ impl ComplexCscMatrix {
                     if f64::abs(aij.re) > tol || f64::abs(aij.im) < tol {
                         match self.symmetric {
                             Sym::No => writeln!(&mut buffer, "{} {} {:?} {:?}", i + 1, j + 1, aij.re, aij.im).unwrap(),
-                            Sym::YesLower => {
-                                writeln!(&mut buffer, "{} {} {:?} {:?}", i + 1, j + 1, aij.re, aij.im).unwrap()
-                            }
-                            Sym::YesUpper => {
-                                writeln!(&mut buffer, "{} {} {:?} {:?}", j + 1, i + 1, aij.re, aij.im).unwrap()
-                            }
+                            Sym::YesLower => writeln!(&mut buffer, "{} {} {:?} {:?}", i + 1, j + 1, aij.re, aij.im).unwrap(),
+                            Sym::YesUpper => writeln!(&mut buffer, "{} {} {:?} {:?}", j + 1, i + 1, aij.re, aij.im).unwrap(),
                             Sym::YesFull => {
                                 if i >= j {
                                     // consider the lower-triangle only

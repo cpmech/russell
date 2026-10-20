@@ -135,21 +135,13 @@ mod tests {
     #[test]
     #[should_panic(expected = "Inf found in the first vector (real)")]
     fn panics_on_inf_real_3() {
-        complex_array_approx_eq(
-            &[Complex64::new(f64::NEG_INFINITY, 0.0)],
-            &[Complex64::new(2.5, 0.0)],
-            1e-1,
-        );
+        complex_array_approx_eq(&[Complex64::new(f64::NEG_INFINITY, 0.0)], &[Complex64::new(2.5, 0.0)], 1e-1);
     }
 
     #[test]
     #[should_panic(expected = "Inf found in the second vector (real)")]
     fn panics_on_inf_real_4() {
-        complex_array_approx_eq(
-            &[Complex64::new(2.5, 0.0)],
-            &[Complex64::new(f64::NEG_INFINITY, 0.0)],
-            1e-1,
-        );
+        complex_array_approx_eq(&[Complex64::new(2.5, 0.0)], &[Complex64::new(f64::NEG_INFINITY, 0.0)], 1e-1);
     }
 
     #[test]
@@ -179,32 +171,20 @@ mod tests {
     #[test]
     #[should_panic(expected = "Inf found in the first vector (imag)")]
     fn panics_on_inf_imag_3() {
-        complex_array_approx_eq(
-            &[Complex64::new(0.0, f64::NEG_INFINITY)],
-            &[Complex64::new(2.5, 0.0)],
-            1e-1,
-        );
+        complex_array_approx_eq(&[Complex64::new(0.0, f64::NEG_INFINITY)], &[Complex64::new(2.5, 0.0)], 1e-1);
     }
 
     #[test]
     #[should_panic(expected = "Inf found in the second vector (imag)")]
     fn panics_on_inf_imag_4() {
-        complex_array_approx_eq(
-            &[Complex64::new(2.5, 0.0)],
-            &[Complex64::new(0.0, f64::NEG_INFINITY)],
-            1e-1,
-        );
+        complex_array_approx_eq(&[Complex64::new(2.5, 0.0)], &[Complex64::new(0.0, f64::NEG_INFINITY)], 1e-1);
     }
 
     #[test]
     #[should_panic(expected = "vector dimensions differ. 2 != 3")]
     fn complex_array_approx_eq_works_1() {
         let u = &[Complex64::new(1.0, 0.0), Complex64::new(2.0, 0.0)];
-        let v = &[
-            Complex64::new(2.5, 0.0),
-            Complex64::new(1.0, 0.0),
-            Complex64::new(1.0, 2.0),
-        ];
+        let v = &[Complex64::new(2.5, 0.0), Complex64::new(1.0, 0.0), Complex64::new(1.0, 2.0)];
         complex_array_approx_eq(u, v, 1e-15);
     }
 

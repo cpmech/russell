@@ -66,10 +66,7 @@ where
                 panic!("small_mat_approx_eq found Inf");
             }
             if diff > tol {
-                panic!(
-                    "matrices are not approximately equal. @ ({},{}) diff = {:?}",
-                    i, j, diff
-                );
+                panic!("matrices are not approximately equal. @ ({},{}) diff = {:?}", i, j, diff);
             }
         }
     }

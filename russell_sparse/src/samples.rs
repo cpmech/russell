@@ -455,10 +455,7 @@ impl Samples {
     /// ```text
     /// let x_correct = &[3.0, 3.0, 15];
     /// ```
-    pub fn unsymmetric_3x3(
-        shuffle_coo_entries: bool,
-        duplicate_coo_entries: bool,
-    ) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+    pub fn unsymmetric_3x3(shuffle_coo_entries: bool, duplicate_coo_entries: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let sym = Sym::No;
         let nrow = 3;
         let ncol = 3;
@@ -788,10 +785,7 @@ impl Samples {
     /// │ 0  0  0  0  9 │
     /// └               ┘
     /// ```
-    pub fn block_unsymmetric_5x5(
-        shuffle_coo_entries: bool,
-        duplicate_coo_entries: bool,
-    ) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+    pub fn block_unsymmetric_5x5(shuffle_coo_entries: bool, duplicate_coo_entries: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let sym = Sym::No;
         let nrow = 5;
         let ncol = 5;
@@ -990,8 +984,7 @@ impl Samples {
     /// ```text
     /// x_correct = ComplexVector::from(&[-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0]);
     /// ```
-    pub fn mkl_complex_positive_definite_5x5_lower() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, Complex64)
-    {
+    pub fn mkl_complex_positive_definite_5x5_lower() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, Complex64) {
         let sym = Sym::YesLower;
         let nrow = 5;
         let ncol = 5;
@@ -1145,10 +1138,7 @@ impl Samples {
     /// ```text
     /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
     /// ```
-    pub fn mkl_symmetric_5x5_lower(
-        shuffle_coo_entries: bool,
-        duplicate_coo_entries: bool,
-    ) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+    pub fn mkl_symmetric_5x5_lower(shuffle_coo_entries: bool, duplicate_coo_entries: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let sym = Sym::YesLower;
         let nrow = 5;
         let ncol = 5;
@@ -1269,10 +1259,7 @@ impl Samples {
     /// ```text
     /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
     /// ```
-    pub fn mkl_symmetric_5x5_upper(
-        shuffle_coo_entries: bool,
-        duplicate_coo_entries: bool,
-    ) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+    pub fn mkl_symmetric_5x5_upper(shuffle_coo_entries: bool, duplicate_coo_entries: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let sym = Sym::YesUpper;
         let nrow = 5;
         let ncol = 5;
@@ -1457,10 +1444,7 @@ impl Samples {
     /// │ 10 20 │
     /// └       ┘
     /// ```
-    pub fn rectangular_1x2(
-        shuffle_coo_entries: bool,
-        duplicate_coo_entries: bool,
-    ) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+    pub fn rectangular_1x2(shuffle_coo_entries: bool, duplicate_coo_entries: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let sym = Sym::No;
         let nrow = 1;
         let ncol = 2;

@@ -159,15 +159,7 @@ fn test_arc_one_eq_with_fold_2() {
     }
 }
 
-fn do_plot(
-    index: usize,
-    lambda_ana: impl Fn(f64) -> f64,
-    uu: &[f64],
-    ll: &[f64],
-    hh: &[f64],
-    duds: &[f64],
-    dlds: &[f64],
-) {
+fn do_plot(index: usize, lambda_ana: impl Fn(f64) -> f64, uu: &[f64], ll: &[f64], hh: &[f64], duds: &[f64], dlds: &[f64]) {
     let mut curve_ana = Curve::new();
     curve_ana.set_label("analytical");
     let uu_ana = linspace(0.0, 3.0, 101);
@@ -175,17 +167,11 @@ fn do_plot(
     curve_ana.draw(&uu_ana, &ll_ana);
 
     let mut curve_num = Curve::new();
-    curve_num
-        .set_label("numerical")
-        .set_line_style("None")
-        .set_marker_style("o");
+    curve_num.set_label("numerical").set_line_style("None").set_marker_style("o");
     curve_num.draw(&uu, &ll);
 
     let mut arrows = Canvas::new();
-    arrows
-        .set_arrow_scale(10.0)
-        .set_edge_color("None")
-        .set_face_color("black");
+    arrows.set_arrow_scale(10.0).set_edge_color("None").set_face_color("black");
     for i in 0..uu.len() {
         let xf = uu[i] + hh[i] * duds[i];
         let yf = ll[i] + hh[i] * dlds[i];

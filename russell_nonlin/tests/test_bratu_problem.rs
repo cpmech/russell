@@ -1,12 +1,8 @@
 use plotpy::{Curve, Plot, Text, linspace};
-use russell_lab::{
-    InterpChebyshev, MinSolver, find_index_abs_max, find_valleys_and_peaks, mat_approx_eq, num_jacobian, read_table,
-};
+use russell_lab::{InterpChebyshev, MinSolver, find_index_abs_max, find_valleys_and_peaks, mat_approx_eq, num_jacobian, read_table};
 use russell_lab::{Norm, Vector};
 use russell_nonlin::{Config, DeltaLambda, IniDir, Method, Output, Solver, Status, Stop, StrError, System};
-use russell_pde::{
-    EssentialBcs1d, EssentialBcs2d, Fdm1d, Fdm2d, Grid1d, Grid2d, NaturalBcs1d, NaturalBcs2d, Spc1d, Spc2d,
-};
+use russell_pde::{EssentialBcs1d, EssentialBcs2d, Fdm1d, Fdm2d, Grid1d, Grid2d, NaturalBcs1d, NaturalBcs2d, Spc1d, Spc2d};
 use russell_sparse::{CooMatrix, Genie};
 use std::collections::HashMap;
 
@@ -413,12 +409,7 @@ fn test_bratu_2d_fdm_fix_step() -> Result<(), StrError> {
 }
 
 // Runs the test
-fn run_test(
-    combo: Combo,
-    alpha0_lam_crit_tol: f64,
-    alpha02_1st_lam_crit_tol: f64,
-    alpha02_2nd_lam_crit_tol: f64,
-) -> Result<(), StrError> {
+fn run_test(combo: Combo, alpha0_lam_crit_tol: f64, alpha02_1st_lam_crit_tol: f64, alpha02_2nd_lam_crit_tol: f64) -> Result<(), StrError> {
     // Filename/path stem
     let stem = combo.stem();
     let caption = combo.title(false);
@@ -772,13 +763,7 @@ fn do_plot<'a>(
 }
 
 /// Finds the critical point (peak or valley) with higher accuracy using the interpolant and Brent's method.
-fn find_critical_point(
-    xx: &[f64],
-    yy: &[f64],
-    index_crit: usize,
-    interp: &InterpChebyshev,
-    maximization: bool,
-) -> Result<(f64, f64), StrError> {
+fn find_critical_point(xx: &[f64], yy: &[f64], index_crit: usize, interp: &InterpChebyshev, maximization: bool) -> Result<(f64, f64), StrError> {
     // Check that we have enough points around the critical point
     let npoint = xx.len();
     if index_crit <= DELTA_INDEX || index_crit >= npoint - DELTA_INDEX {
@@ -809,9 +794,7 @@ fn find_critical_point(
         let yy_pts = xx_pts.get_mapped(|u| objective(u, prm).unwrap());
         curve.draw(xx_pts.as_data(), yy_pts.as_data());
         let mut plot = Plot::new();
-        plot.add(&curve)
-            .grid_and_labels("x", "objective")
-            .save("/tmp/russell_nonlin/temp.svg")?;
+        plot.add(&curve).grid_and_labels("x", "objective").save("/tmp/russell_nonlin/temp.svg")?;
     }
 
     // Done

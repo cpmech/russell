@@ -70,12 +70,7 @@ fn main() {
         };
         let t = best_of(reps, || mat_mat_mul(&mut c, 1.0, &a, &b, 0.0).unwrap());
         let gflops = 2.0 * (n * n * n) as f64 / t / 1e9;
-        println!(
-            "{:<10} {n:>4}x{n:<4} {:>9.2} ms {:>7.1} GFLOP/s",
-            "dgemm",
-            t * 1e3,
-            gflops
-        );
+        println!("{:<10} {n:>4}x{n:<4} {:>9.2} ms {:>7.1} GFLOP/s", "dgemm", t * 1e3, gflops);
     }
     for n in [128, 512] {
         let a = filled(n, 0.0);

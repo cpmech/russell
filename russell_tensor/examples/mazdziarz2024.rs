@@ -64,8 +64,5 @@ fn main() -> Result<(), StrError> {
 }
 
 fn print(label: &str, vrh: &VoigtReussHill) {
-    println!(
-        "{}: Kh = {:.2}, Gh = {:.2}, Au = {:.2}",
-        label, vrh.kk_h, vrh.gg_h, vrh.aa_u
-    );
+    println!("{}: Kh = {:.2}, Gh = {:.2}, Au = {:.2}", label, vrh.kk_h, vrh.gg_h, vrh.aa_u);
 }

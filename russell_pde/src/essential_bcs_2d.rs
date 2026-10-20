@@ -412,16 +412,10 @@ mod tests {
         let mut nbcs = NaturalBcs2d::new();
 
         // 1. Missing BCs
-        assert_eq!(
-            ebcs.validate(&nbcs).err(),
-            Some("Xmin side is missing either EBC or NBC")
-        );
+        assert_eq!(ebcs.validate(&nbcs).err(), Some("Xmin side is missing either EBC or NBC"));
 
         ebcs.set(Side::Xmin, |_, _| 0.0);
-        assert_eq!(
-            ebcs.validate(&nbcs).err(),
-            Some("Xmax side is missing either EBC or NBC")
-        );
+        assert_eq!(ebcs.validate(&nbcs).err(), Some("Xmax side is missing either EBC or NBC"));
 
         // 2. Valid configuration (mixed)
         nbcs.set(Side::Xmax, |_, _| 0.0);
@@ -431,20 +425,14 @@ mod tests {
 
         // 3. Both EBC and NBC on same side
         ebcs.set(Side::Xmax, |_, _| 0.0);
-        assert_eq!(
-            ebcs.validate(&nbcs).err(),
-            Some("Xmax side must not have both EBC and NBC")
-        );
+        assert_eq!(ebcs.validate(&nbcs).err(), Some("Xmax side must not have both EBC and NBC"));
 
         // 4. Periodic with NBC
         let mut ebcs = EssentialBcs2d::new();
         let mut nbcs = NaturalBcs2d::new();
         ebcs.set_periodic(true, false);
         nbcs.set(Side::Xmin, |_, _| 0.0);
-        assert_eq!(
-            ebcs.validate(&nbcs).err(),
-            Some("Periodic X does not allow NBC on Xmin or Xmax")
-        );
+        assert_eq!(ebcs.validate(&nbcs).err(), Some("Periodic X does not allow NBC on Xmin or Xmax"));
 
         // 5. Periodic without NBC (Valid)
         let mut nbcs = NaturalBcs2d::new();

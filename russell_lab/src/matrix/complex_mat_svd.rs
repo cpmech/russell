@@ -96,12 +96,7 @@ unsafe extern "C" {
 ///     Ok(())
 /// }
 /// ```
-pub fn complex_mat_svd(
-    s: &mut Vector,
-    u: &mut ComplexMatrix,
-    vh: &mut ComplexMatrix,
-    a: &mut ComplexMatrix,
-) -> Result<(), StrError> {
+pub fn complex_mat_svd(s: &mut Vector, u: &mut ComplexMatrix, vh: &mut ComplexMatrix, a: &mut ComplexMatrix) -> Result<(), StrError> {
     let (m, n) = a.dims();
     if m == 0 || n == 0 {
         return Err("matrix dimensions must be greater than zero");
@@ -134,15 +129,7 @@ pub fn complex_mat_svd(
         // are the ones the `info` branches further down report, so a native
         // failure is indistinguishable to the caller from an accelerated one.
         use algebra_linear::lapack::LapackError;
-        algebra_linear::lapack::zsvd::zgesvd(
-            a.as_mut_data(),
-            m,
-            n,
-            s.as_mut_data(),
-            u.as_mut_data(),
-            vh.as_mut_data(),
-        )
-        .map_err(|e| match e {
+        algebra_linear::lapack::zsvd::zgesvd(a.as_mut_data(), m, n, s.as_mut_data(), u.as_mut_data(), vh.as_mut_data()).map_err(|e| match e {
             LapackError::Convergence => "LAPACK ERROR (zgesvd): Algorithm did not converge",
             _ => "LAPACK ERROR (zgesvd): An argument had an illegal value",
         })?;
@@ -200,10 +187,7 @@ mod tests {
         let mut u_3x2 = ComplexMatrix::new(3, 2);
         let mut vt_3x3 = ComplexMatrix::new(3, 3);
         let mut vt_2x3 = ComplexMatrix::new(2, 3);
-        assert_eq!(
-            complex_mat_svd(&mut s_3, &mut u, &mut vt, &mut a),
-            Err("[s] must be a min(m,n) vector")
-        );
+        assert_eq!(complex_mat_svd(&mut s_3, &mut u, &mut vt, &mut a), Err("[s] must be a min(m,n) vector"));
         assert_eq!(
             complex_mat_svd(&mut s, &mut u_2x2, &mut vt, &mut a),
             Err("[u] must be an m-by-m square matrix")

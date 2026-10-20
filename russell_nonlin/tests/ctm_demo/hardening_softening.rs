@@ -44,15 +44,7 @@ impl HardeningSoftening {
         let c1 = b * lr;
         let c2 = 1.0; // exp(β yr0) = exp(0) since yr0 = 0
         let c3 = f64::exp(b * y0r) - c2;
-        Ok(HardeningSoftening {
-            li,
-            lr,
-            a,
-            b,
-            c1,
-            c2,
-            c3,
-        })
+        Ok(HardeningSoftening { li, lr, a, b, c1, c2, c3 })
     }
 
     /// Calculates the reference curve ordinate, yr(x)
@@ -152,14 +144,7 @@ mod tests {
 
     #[test]
     fn test_model_derivatives_1() {
-        let model = HardeningSoftening::new(HashMap::from([
-            ("li", 10.0),
-            ("lr", 3.0),
-            ("y0r", 1.0),
-            ("a", 30.0),
-            ("b", 30.0),
-        ]))
-        .unwrap();
+        let model = HardeningSoftening::new(HashMap::from([("li", 10.0), ("lr", 3.0), ("y0r", 1.0), ("a", 30.0), ("b", 30.0)])).unwrap();
 
         let yr = model.yr(0.0);
         let dyr_dx = model.dyr_dx(0.0);
@@ -188,14 +173,7 @@ mod tests {
 
     #[test]
     fn test_model_derivatives_2() {
-        let model = HardeningSoftening::new(HashMap::from([
-            ("li", 10.0),
-            ("lr", 3.0),
-            ("y0r", 1.0),
-            ("a", 3.0),
-            ("b", 3.0),
-        ]))
-        .unwrap();
+        let model = HardeningSoftening::new(HashMap::from([("li", 10.0), ("lr", 3.0), ("y0r", 1.0), ("a", 3.0), ("b", 3.0)])).unwrap();
 
         let args = &mut 0;
         let x_at = 0.0;

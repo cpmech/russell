@@ -39,10 +39,7 @@ where
     let diff = f64::abs(dfdx - dfdx_num);
     assert!(diff.is_finite());
     if diff > tol {
-        panic!(
-            "derivative is not approximately equal to numerical value. diff = {:?}",
-            diff
-        );
+        panic!("derivative is not approximately equal to numerical value. diff = {:?}", diff);
     }
 }
 

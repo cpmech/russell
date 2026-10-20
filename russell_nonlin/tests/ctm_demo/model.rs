@@ -95,13 +95,7 @@ impl<'a> Model<'a> {
     }
 
     /// Approximates the consistent tangent modulus @ the update point (x1, y1), given the previous point (x0, y0)
-    pub fn numerical_consistent_tangent_modulus(
-        &mut self,
-        x0: f64,
-        y0: f64,
-        ddx: f64,
-        use_ode_solution: bool,
-    ) -> Result<f64, StrError> {
+    pub fn numerical_consistent_tangent_modulus(&mut self, x0: f64, y0: f64, ddx: f64, use_ode_solution: bool) -> Result<f64, StrError> {
         let mut xa = x0;
         let mut ya = y0;
         let mut xb = x0;
@@ -216,17 +210,13 @@ mod tests {
         let nd = 5;
 
         // Perform the backward Euler update
-        let (xx, yy, yy_ode, _, ctm_list, num_ctm_list, num_ctm_ode_list) =
-            model.simulate(x_ini, y_ini, ddx, nd).unwrap();
+        let (xx, yy, yy_ode, _, ctm_list, num_ctm_list, num_ctm_ode_list) = model.simulate(x_ini, y_ini, ddx, nd).unwrap();
 
         // Generate the plot
         if SAVE_FIGURE {
             // Fine y(x) curve
             let xx_fine = linspace(0.0, 0.5, 101);
-            let yy_fine = xx_fine
-                .iter()
-                .map(|&x| Dahlquist::analytical_y(lambda, x))
-                .collect::<Vec<_>>();
+            let yy_fine = xx_fine.iter().map(|&x| Dahlquist::analytical_y(lambda, x)).collect::<Vec<_>>();
             let mut curve_fine = Curve::new();
             curve_fine.set_label("Analytical Solution").draw(&xx_fine, &yy_fine);
 
@@ -333,9 +323,9 @@ mod tests {
 
     // Mathematica reference values
     const MATHEMATICA_XX: [f64; 51] = [
-        0., 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18,
-        0.19, 0.2, 0.21, 0.22, 0.23, 0.24, 0.25, 0.26, 0.27, 0.28, 0.29, 0.3, 0.31, 0.32, 0.33, 0.34, 0.35, 0.36, 0.37,
-        0.38, 0.39, 0.4, 0.41, 0.42, 0.43, 0.44, 0.45, 0.46, 0.47, 0.48, 0.49, 0.5,
+        0., 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18, 0.19, 0.2, 0.21, 0.22, 0.23,
+        0.24, 0.25, 0.26, 0.27, 0.28, 0.29, 0.3, 0.31, 0.32, 0.33, 0.34, 0.35, 0.36, 0.37, 0.38, 0.39, 0.4, 0.41, 0.42, 0.43, 0.44, 0.45, 0.46, 0.47,
+        0.48, 0.49, 0.5,
     ];
 
     // Mathematica reference values
@@ -358,15 +348,12 @@ mod tests {
         .unwrap();
 
         // Perform the backward Euler update
-        let (xx, yy, yy_ode, com_list, ctm_list, num_ctm_list, num_ctm_ode_list) =
-            model.simulate(x_ini, y_ini, ddx, nd).unwrap();
+        let (xx, yy, yy_ode, com_list, ctm_list, num_ctm_list, num_ctm_ode_list) = model.simulate(x_ini, y_ini, ddx, nd).unwrap();
 
         // Generate the plot
         if SAVE_FIGURE {
             let mut curve_ref = Curve::new();
-            curve_ref
-                .set_label("Mathematica")
-                .draw(&MATHEMATICA_XX, &MATHEMATICA_YY);
+            curve_ref.set_label("Mathematica").draw(&MATHEMATICA_XX, &MATHEMATICA_YY);
 
             // ODE solution
             let mut curve_ode = Curve::new();
@@ -448,11 +435,7 @@ mod tests {
         // Compare the consistent tangent moduli
         for i in 0..nd + 1 {
             // println!("i = {}, x = {}, ctm = {}, num_ctm = {}", i, xx[i], ctm_list[i], num_ctm_list[i]);
-            let tol = if ddx > 0.0 {
-                if i < 26 { 0.001 } else { 0.03 }
-            } else {
-                0.002
-            };
+            let tol = if ddx > 0.0 { if i < 26 { 0.001 } else { 0.03 } } else { 0.002 };
             approx_eq(ctm_list[i], num_ctm_list[i], tol);
         }
     }
@@ -493,8 +476,7 @@ mod tests {
         let nd = 10;
 
         // Perform the backward Euler update
-        let (xx, yy, yy_ode, com_list, ctm_list, num_ctm_list, num_ctm_ode_list) =
-            model.simulate(x_ini, y_ini, ddx, nd).unwrap();
+        let (xx, yy, yy_ode, com_list, ctm_list, num_ctm_list, num_ctm_ode_list) = model.simulate(x_ini, y_ini, ddx, nd).unwrap();
 
         // Generate the plot
         if SAVE_FIGURE {

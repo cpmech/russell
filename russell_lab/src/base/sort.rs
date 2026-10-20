@@ -498,10 +498,7 @@ mod tests {
         ];
         let yy = xx.iter().map(|_| 0.0).collect::<Vec<f64>>();
         let indices = argsort2_f64(&yy, &xx);
-        assert_eq!(
-            indices,
-            vec![5, 9, 4, 7, 1, 8, 18, 19, 6, 15, 3, 13, 17, 20, 10, 16, 14, 2, 12, 0, 11]
-        );
+        assert_eq!(indices, vec![5, 9, 4, 7, 1, 8, 18, 19, 6, 15, 3, 13, 17, 20, 10, 16, 14, 2, 12, 0, 11]);
     }
 
     #[test]

@@ -563,14 +563,7 @@ impl InterpChebyshev {
 }
 
 /// Computes the data vector (function evaluations at Chebyshev-Gauss-Lobatto points)
-fn chebyshev_data_vector<F, A>(
-    work_uu_rev: &mut [f64],
-    nn: usize,
-    xa: f64,
-    xb: f64,
-    args: &mut A,
-    f: &mut F,
-) -> Result<(), StrError>
+fn chebyshev_data_vector<F, A>(work_uu_rev: &mut [f64], nn: usize, xa: f64, xb: f64, args: &mut A, f: &mut F) -> Result<(), StrError>
 where
     F: FnMut(f64, &mut A) -> Result<f64, StrError>,
 {
@@ -633,10 +626,7 @@ mod tests {
 
     #[test]
     fn new_captures_errors() {
-        assert_eq!(
-            InterpChebyshev::new(2, 0.0, 0.0).err(),
-            Some("xb must be greater than xa + ϵ")
-        );
+        assert_eq!(InterpChebyshev::new(2, 0.0, 0.0).err(), Some("xb must be greater than xa + ϵ"));
     }
 
     #[test]
@@ -692,15 +682,9 @@ mod tests {
     fn set_data_captures_errors() {
         let mut interp = InterpChebyshev::new(1, 0.0, 1.0).unwrap();
         let uu = Vector::new(0);
-        assert_eq!(
-            interp.set_data(uu.as_data()).err(),
-            Some("the number of points (uu.len()) must be ≥ 1")
-        );
+        assert_eq!(interp.set_data(uu.as_data()).err(), Some("the number of points (uu.len()) must be ≥ 1"));
         let uu = Vector::new(5);
-        assert_eq!(
-            interp.set_data(uu.as_data()).err(),
-            Some("nn (=uu.len()-1) must be ≤ nn_max")
-        );
+        assert_eq!(interp.set_data(uu.as_data()).err(), Some("nn (=uu.len()-1) must be ≤ nn_max"));
     }
 
     #[test]
@@ -782,10 +766,7 @@ mod tests {
         let nn_max = 2;
         let (xa, xb) = (-4.0, 4.0);
         let interp = InterpChebyshev::new(nn_max, xa, xb).unwrap();
-        assert_eq!(
-            interp.eval_using_trig(0.0).err(),
-            Some("the data or function must be set first")
-        );
+        assert_eq!(interp.eval_using_trig(0.0).err(), Some("the data or function must be set first"));
     }
 
     #[test]
@@ -798,24 +779,21 @@ mod tests {
         let args = &mut 0;
         assert_eq!(interp.adapt_function(tol, args, f).err(), Some("stop"));
         interp.nn_max = 0; // WRONG
-        assert_eq!(
-            interp.adapt_function(tol, args, f).err(),
-            Some("adaptive interpolation did not converge")
-        );
+        assert_eq!(interp.adapt_function(tol, args, f).err(), Some("adaptive interpolation did not converge"));
     }
 
     #[test]
     fn adapt_function_and_eval_work() {
         let functions = [
-            |_: f64, _: &mut NoArgs| Ok(2.0),                     // 0
-            |x: f64, _: &mut NoArgs| Ok(x - 0.5),                 // 1
-            |x: f64, _: &mut NoArgs| Ok(x * x - 1.0),             // 2
-            |x: f64, _: &mut NoArgs| Ok(x * x * x - 0.5),         // 3
-            |x: f64, _: &mut NoArgs| Ok(x * x * x * x - 0.5),     // 4
-            |x: f64, _: &mut NoArgs| Ok(x * x * x * x * x - 0.5), // 5
+            |_: f64, _: &mut NoArgs| Ok(2.0),                                                                            // 0
+            |x: f64, _: &mut NoArgs| Ok(x - 0.5),                                                                        // 1
+            |x: f64, _: &mut NoArgs| Ok(x * x - 1.0),                                                                    // 2
+            |x: f64, _: &mut NoArgs| Ok(x * x * x - 0.5),                                                                // 3
+            |x: f64, _: &mut NoArgs| Ok(x * x * x * x - 0.5),                                                            // 4
+            |x: f64, _: &mut NoArgs| Ok(x * x * x * x * x - 0.5),                                                        // 5
             |x: f64, _: &mut NoArgs| Ok(f64::cos(16.0 * (x + 0.2)) * (1.0 + x) * f64::exp(x * x) / (1.0 + 9.0 * x * x)), // 6
-            |x: f64, _: &mut NoArgs| Ok(0.092834 * f64::sin(77.0001 + 19.87 * x)), // 7
-            |x: f64, _: &mut NoArgs| Ok(f64::ln(2.0 * f64::cos(x / 2.0))),         // 8
+            |x: f64, _: &mut NoArgs| Ok(0.092834 * f64::sin(77.0001 + 19.87 * x)),                                       // 7
+            |x: f64, _: &mut NoArgs| Ok(f64::ln(2.0 * f64::cos(x / 2.0))),                                               // 8
         ];
         let ranges = [
             (-1.0, 1.0),               // 0
@@ -924,10 +902,7 @@ mod tests {
     fn adapt_data_captures_errors() {
         let uu = [];
         let mut interp = InterpChebyshev::new(1, 0.0, 1.0).unwrap();
-        assert_eq!(
-            interp.adapt_data(1e-7, &uu).err(),
-            Some("the number of points (uu.len()) must be ≥ 1")
-        );
+        assert_eq!(interp.adapt_data(1e-7, &uu).err(), Some("the number of points (uu.len()) must be ≥ 1"));
         let uu = [1.0, 2.0, 3.0, 4.0, 5.0];
         assert_eq!(interp.adapt_data(1e-7, &uu).err(), Some("nn must be ≤ nn_max"));
     }
@@ -1397,10 +1372,7 @@ mod tests {
     fn get_xy_data_captures_errors() {
         let (xa, xb) = (0.0, 1.0);
         let interp = InterpChebyshev::new(2, xa, xb).unwrap();
-        assert_eq!(
-            interp.get_xy_data().err(),
-            Some("the data or function must be set first")
-        );
+        assert_eq!(interp.get_xy_data().err(), Some("the data or function must be set first"));
     }
 
     #[test]

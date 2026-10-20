@@ -14,9 +14,7 @@ fn main() -> Result<(), StrError> {
     let ncol = 5;
     let row_indices = vec![0, /*dup*/ 0, 1, 0, 2, 4, 1, 2, 3, 4, 2, 1, 4];
     let col_indices = vec![0, /*dup*/ 0, 0, 1, 1, 1, 2, 2, 2, 2, 3, 4, 4];
-    let values = vec![
-        1.0, /*dup*/ 1.0, 3.0, 3.0, -1.0, 4.0, 4.0, -3.0, 1.0, 2.0, 2.0, 6.0, 1.0,
-    ];
+    let values = vec![1.0, /*dup*/ 1.0, 3.0, 3.0, -1.0, 4.0, 4.0, -3.0, 1.0, 2.0, 2.0, 6.0, 1.0];
     let coo = CooMatrix::from(nrow, ncol, row_indices, col_indices, values, Sym::No)?;
 
     // convert to dense

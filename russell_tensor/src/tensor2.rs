@@ -86,9 +86,8 @@ impl<'de, const N: usize> Deserialize<'de> for Tensor2<N> {
         D: serde::Deserializer<'de>,
     {
         let data = Vec::<f64>::deserialize(deserializer)?;
-        let vec = <[f64; N]>::try_from(data).map_err(|data: Vec<f64>| {
-            serde::de::Error::invalid_length(data.len(), &"Tensor2 must have N components")
-        })?;
+        let vec =
+            <[f64; N]>::try_from(data).map_err(|data: Vec<f64>| serde::de::Error::invalid_length(data.len(), &"Tensor2 must have N components"))?;
         Ok(Tensor2 { vec })
     }
 }
@@ -1071,13 +1070,11 @@ impl<const N: usize> Tensor2<N> {
         match N {
             4 => a[0] * a[1] * a[2] - (a[2] * a[3] * a[3]) / 2.0,
             6 => {
-                a[0] * a[1] * a[2] - (a[2] * a[3] * a[3]) / 2.0 - (a[0] * a[4] * a[4]) / 2.0
-                    + (a[3] * a[4] * a[5]) / SQRT_2
+                a[0] * a[1] * a[2] - (a[2] * a[3] * a[3]) / 2.0 - (a[0] * a[4] * a[4]) / 2.0 + (a[3] * a[4] * a[5]) / SQRT_2
                     - (a[1] * a[5] * a[5]) / 2.0
             }
             _ => {
-                a[0] * a[1] * a[2] - (a[2] * a[3] * a[3]) / 2.0 - (a[0] * a[4] * a[4]) / 2.0
-                    + (a[3] * a[4] * a[5]) / SQRT_2
+                a[0] * a[1] * a[2] - (a[2] * a[3] * a[3]) / 2.0 - (a[0] * a[4] * a[4]) / 2.0 + (a[3] * a[4] * a[5]) / SQRT_2
                     - (a[1] * a[5] * a[5]) / 2.0
                     + (a[2] * a[6] * a[6]) / 2.0
                     + (a[5] * a[6] * a[7]) / SQRT_2
@@ -1220,8 +1217,7 @@ impl<const N: usize> Tensor2<N> {
                 }
             }
             6 => {
-                let det = a[0] * a[1] * a[2] - (a[2] * a[3] * a[3]) / 2.0 - (a[0] * a[4] * a[4]) / 2.0
-                    + (a[3] * a[4] * a[5]) / SQRT_2
+                let det = a[0] * a[1] * a[2] - (a[2] * a[3] * a[3]) / 2.0 - (a[0] * a[4] * a[4]) / 2.0 + (a[3] * a[4] * a[5]) / SQRT_2
                     - (a[1] * a[5] * a[5]) / 2.0;
                 if f64::abs(det) > tolerance {
                     ai.vec[0] = (a[1] * a[2] - a[4] * a[4] / 2.0) / det;
@@ -1234,8 +1230,7 @@ impl<const N: usize> Tensor2<N> {
                 }
             }
             _ => {
-                let det = a[0] * a[1] * a[2] - (a[2] * a[3] * a[3]) / 2.0 - (a[0] * a[4] * a[4]) / 2.0
-                    + (a[3] * a[4] * a[5]) / SQRT_2
+                let det = a[0] * a[1] * a[2] - (a[2] * a[3] * a[3]) / 2.0 - (a[0] * a[4] * a[4]) / 2.0 + (a[3] * a[4] * a[5]) / SQRT_2
                     - (a[1] * a[5] * a[5]) / 2.0
                     + (a[2] * a[6] * a[6]) / 2.0
                     + (a[5] * a[6] * a[7]) / SQRT_2
@@ -1351,10 +1346,7 @@ impl<const N: usize> Tensor2<N> {
     /// }
     /// ```
     pub fn norm(&self) -> f64 {
-        let mut sm = self.vec[0] * self.vec[0]
-            + self.vec[1] * self.vec[1]
-            + self.vec[2] * self.vec[2]
-            + self.vec[3] * self.vec[3];
+        let mut sm = self.vec[0] * self.vec[0] + self.vec[1] * self.vec[1] + self.vec[2] * self.vec[2] + self.vec[3] * self.vec[3];
         if N > 4 {
             sm += self.vec[4] * self.vec[4] + self.vec[5] * self.vec[5];
         }
@@ -1516,10 +1508,8 @@ impl<const N: usize> Tensor2<N> {
     /// ```
     pub fn deviator_norm(&self) -> f64 {
         let a = &self.vec;
-        let mut sq_norm_s = a[3] * a[3]
-            + (a[0] - a[1]) * (a[0] - a[1]) / 3.0
-            + (a[1] - a[2]) * (a[1] - a[2]) / 3.0
-            + (a[2] - a[0]) * (a[2] - a[0]) / 3.0;
+        let mut sq_norm_s =
+            a[3] * a[3] + (a[0] - a[1]) * (a[0] - a[1]) / 3.0 + (a[1] - a[2]) * (a[1] - a[2]) / 3.0 + (a[2] - a[0]) * (a[2] - a[0]) / 3.0;
         if N > 4 {
             sq_norm_s += a[4] * a[4] + a[5] * a[5];
         }
@@ -1741,10 +1731,7 @@ impl<const N: usize> Tensor2<N> {
         match N {
             4 => O6 * (d01 * d01 + d12 * d12 + d20 * d20) + 0.5 * (a[3] * a[3]),
             6 => O6 * (d01 * d01 + d12 * d12 + d20 * d20) + 0.5 * (a[3] * a[3] + a[4] * a[4] + a[5] * a[5]),
-            _ => {
-                O6 * (d01 * d01 + d12 * d12 + d20 * d20)
-                    + 0.5 * (a[3] * a[3] + a[4] * a[4] + a[5] * a[5] - a[6] * a[6] - a[7] * a[7] - a[8] * a[8])
-            }
+            _ => O6 * (d01 * d01 + d12 * d12 + d20 * d20) + 0.5 * (a[3] * a[3] + a[4] * a[4] + a[5] * a[5] - a[6] * a[6] - a[7] * a[7] - a[8] * a[8]),
         }
     }
 
@@ -2289,8 +2276,7 @@ mod tests {
         let mut tt = Tensor2::<9>::new();
         const NOISE: f64 = 1234.568;
         tt.vec.fill(NOISE);
-        tt.set_std_matrix(&[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
-            .unwrap();
+        tt.set_std_matrix(&[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]).unwrap();
         let correct = &[
             1.0,
             5.0,
@@ -2329,8 +2315,7 @@ mod tests {
         // symmetric
         let mut tt = Tensor2::<6>::new();
         tt.vec.fill(NOISE);
-        tt.set_std_matrix(&[[1.0, 4.0, 6.0], [4.0, 2.0, 5.0], [6.0, 5.0, 3.0]])
-            .unwrap();
+        tt.set_std_matrix(&[[1.0, 4.0, 6.0], [4.0, 2.0, 5.0], [6.0, 5.0, 3.0]]).unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2];
         for m in 0..6 {
             approx_eq(tt.get(m), correct[m], 1e-14);
@@ -2339,8 +2324,7 @@ mod tests {
         // symmetric generalized plane
         let mut tt = Tensor2::<4>::new();
         tt.vec.fill(NOISE);
-        tt.set_std_matrix(&[[1.0, 4.0, 0.0], [4.0, 2.0, 0.0], [0.0, 0.0, 3.0]])
-            .unwrap();
+        tt.set_std_matrix(&[[1.0, 4.0, 0.0], [4.0, 2.0, 0.0], [0.0, 0.0, 3.0]]).unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2];
         for m in 0..4 {
             approx_eq(tt.get(m), correct[m], 1e-14);
@@ -2790,8 +2774,7 @@ mod tests {
 
     #[test]
     fn as_general_works() {
-        let tt = Tensor2::<4>::from_std_matrix(&[[1.0, 2.0 / SQRT_2, 0.0], [2.0 / SQRT_2, 3.0, 0.0], [0.0, 0.0, 4.0]])
-            .unwrap();
+        let tt = Tensor2::<4>::from_std_matrix(&[[1.0, 2.0 / SQRT_2, 0.0], [2.0 / SQRT_2, 3.0, 0.0], [0.0, 0.0, 4.0]]).unwrap();
         let tt_gen = tt.as_general();
         assert_eq!(format!("{:.2?}", kelvin_vector(&tt)), "[1.00, 3.00, 4.00, 2.00]");
         assert_eq!(
@@ -2961,8 +2944,7 @@ mod tests {
             [3.0, 1.0, 3.0],
         ],
         ).unwrap();
-        let c = Tensor2::<9>::from_std_matrix(&[[100.0, 100.0, 100.0], [100.0, 100.0, 100.0], [100.0, 100.0, 100.0]])
-            .unwrap();
+        let c = Tensor2::<9>::from_std_matrix(&[[100.0, 100.0, 100.0], [100.0, 100.0, 100.0], [100.0, 100.0, 100.0]]).unwrap();
         a.set_tensor(2.0, &b);
         a.update(10.0, &c);
         let out = a.as_std_matrix();
@@ -2984,8 +2966,7 @@ mod tests {
             [1.0, 2.0, 3.0],
         ],
         ).unwrap();
-        let c = Tensor2::<6>::from_std_matrix(&[[100.0, 100.0, 100.0], [100.0, 100.0, 100.0], [100.0, 100.0, 100.0]])
-            .unwrap();
+        let c = Tensor2::<6>::from_std_matrix(&[[100.0, 100.0, 100.0], [100.0, 100.0, 100.0], [100.0, 100.0, 100.0]]).unwrap();
         a.set_tensor(2.0, &b);
         a.update(10.0, &c);
         let out = a.as_std_matrix();
@@ -3752,14 +3733,7 @@ mod tests {
         assert_eq!(omega.get(2), 0.0);
     }
 
-    fn check_sample<const N: usize>(
-        sample: &SampleTensor2,
-        tol_norm: f64,
-        tol_trace: f64,
-        tol_det: f64,
-        tol_dev_norm: f64,
-        tol_dev_det: f64,
-    ) {
+    fn check_sample<const N: usize>(sample: &SampleTensor2, tol_norm: f64, tol_trace: f64, tol_det: f64, tol_dev_norm: f64, tol_dev_det: f64) {
         let tt = Tensor2::<N>::from_std_matrix(&sample.matrix).unwrap();
         approx_eq(tt.norm(), sample.norm_a, tol_norm);
         approx_eq(tt.trace(), sample.ii1, tol_trace);

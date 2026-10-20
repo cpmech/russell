@@ -201,12 +201,7 @@ impl TransfiniteSamples {
             }),
         ];
 
-        Transfinite2d::new(
-            boundary_functions,
-            deriv1_boundary_functions,
-            Some(deriv2_boundary_functions),
-        )
-        .unwrap()
+        Transfinite2d::new(boundary_functions, deriv1_boundary_functions, Some(deriv2_boundary_functions)).unwrap()
     }
 
     /// Generates a transfinite mapping of a half of a ring centered @ (0,0)
@@ -330,12 +325,7 @@ impl TransfiniteSamples {
             }),
         ];
 
-        Transfinite2d::new(
-            boundary_functions,
-            deriv1_boundary_functions,
-            Some(deriv2_boundary_functions),
-        )
-        .unwrap()
+        Transfinite2d::new(boundary_functions, deriv1_boundary_functions, Some(deriv2_boundary_functions)).unwrap()
     }
 
     /// Generates a transfinite mapping of a quarter of a perforated lozenge
@@ -416,12 +406,7 @@ impl TransfiniteSamples {
             }),
         ];
 
-        Transfinite2d::new(
-            boundary_functions,
-            deriv1_boundary_functions,
-            Some(deriv2_boundary_functions),
-        )
-        .unwrap()
+        Transfinite2d::new(boundary_functions, deriv1_boundary_functions, Some(deriv2_boundary_functions)).unwrap()
     }
 
     /// Generates a transfinite mapping of a "brick"
@@ -778,12 +763,7 @@ impl TransfiniteSamples {
             }),
         ];
 
-        Transfinite3d::new(
-            boundary_functions,
-            deriv1_boundary_functions,
-            Some(deriv2_boundary_functions),
-        )
-        .unwrap()
+        Transfinite3d::new(boundary_functions, deriv1_boundary_functions, Some(deriv2_boundary_functions)).unwrap()
     }
 }
 

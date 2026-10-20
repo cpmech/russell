@@ -57,22 +57,10 @@ mod tests {
         let b_2x3 = Matrix::new(2, 3);
         let b_3x2 = Matrix::new(3, 2);
         let mut c_2x2 = Matrix::new(2, 2);
-        assert_eq!(
-            mat_add(&mut c_2x2, 1.0, &a_2x3, 1.0, &b_2x2),
-            Err("matrices are incompatible")
-        );
-        assert_eq!(
-            mat_add(&mut c_2x2, 1.0, &a_3x2, 1.0, &b_2x2),
-            Err("matrices are incompatible")
-        );
-        assert_eq!(
-            mat_add(&mut c_2x2, 1.0, &a_2x2, 1.0, &b_2x3),
-            Err("matrices are incompatible")
-        );
-        assert_eq!(
-            mat_add(&mut c_2x2, 1.0, &a_2x2, 1.0, &b_3x2),
-            Err("matrices are incompatible")
-        );
+        assert_eq!(mat_add(&mut c_2x2, 1.0, &a_2x3, 1.0, &b_2x2), Err("matrices are incompatible"));
+        assert_eq!(mat_add(&mut c_2x2, 1.0, &a_3x2, 1.0, &b_2x2), Err("matrices are incompatible"));
+        assert_eq!(mat_add(&mut c_2x2, 1.0, &a_2x2, 1.0, &b_2x3), Err("matrices are incompatible"));
+        assert_eq!(mat_add(&mut c_2x2, 1.0, &a_2x2, 1.0, &b_3x2), Err("matrices are incompatible"));
     }
 
     #[test]
@@ -90,11 +78,7 @@ mod tests {
             [0.5, 1.0, 1.5, 2.0],
             [0.5, 1.0, 1.5, 2.0],
         ]);
-        let mut c = Matrix::from(&[
-            [NOISE, NOISE, NOISE, NOISE],
-            [NOISE, NOISE, NOISE, NOISE],
-            [NOISE, NOISE, NOISE, NOISE],
-        ]);
+        let mut c = Matrix::from(&[[NOISE, NOISE, NOISE, NOISE], [NOISE, NOISE, NOISE, NOISE], [NOISE, NOISE, NOISE, NOISE]]);
         mat_add(&mut c, 1.0, &a, -4.0, &b).unwrap();
         #[rustfmt::skip]
         let correct = &[

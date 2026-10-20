@@ -134,10 +134,7 @@ impl RootFinder {
                     let t0 = fa / fc;
                     let t1 = fb / fc;
                     let t2 = fb / fa;
-                    (
-                        t2 * (del * t0 * (t0 - t1) - (b - a) * (t1 - 1.0)),
-                        (t0 - 1.0) * (t1 - 1.0) * (t2 - 1.0),
-                    )
+                    (t2 * (del * t0 * (t0 - t1) - (b - a) * (t1 - 1.0)), (t0 - 1.0) * (t1 - 1.0) * (t2 - 1.0))
                 };
 
                 // fix the sign of p and q
@@ -203,19 +200,13 @@ mod tests {
         let args = &mut 0;
         let mut solver = RootFinder::new();
         assert_eq!(f(1.0, args).unwrap(), 0.0);
-        assert_eq!(
-            solver.brent(-0.5, -0.5, args, f).err(),
-            Some("xa must be different from xb")
-        );
+        assert_eq!(solver.brent(-0.5, -0.5, args, f).err(), Some("xa must be different from xb"));
         assert_eq!(
             solver.brent(-0.5, -0.5 - 10.0 * f64::EPSILON, args, f).err(),
             Some("xa and xb must bracket the root and f(xa) × f(xb) < 0")
         );
         solver.brent_max_iterations = 0;
-        assert_eq!(
-            solver.brent(0.0, 2.0, args, f).err(),
-            Some("brent solver failed to converge")
-        );
+        assert_eq!(solver.brent(0.0, 2.0, args, f).err(), Some("brent solver failed to converge"));
     }
 
     #[test]
@@ -225,11 +216,7 @@ mod tests {
             target: usize,
         }
         let f = |x, args: &mut Args| {
-            let res = if args.count == args.target {
-                Err("stop")
-            } else {
-                Ok(x * x - 1.0)
-            };
+            let res = if args.count == args.target { Err("stop") } else { Ok(x * x - 1.0) };
             args.count += 1;
             res
         };

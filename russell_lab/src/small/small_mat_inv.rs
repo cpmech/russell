@@ -64,11 +64,7 @@ const ZERO_DETERMINANT: f64 = 1e-15;
 ///     Ok(())
 /// }
 /// ```
-pub fn small_mat_inv<T, const N: usize>(
-    ai: &mut SmallMatrix<T, N>,
-    a: &SmallMatrix<T, N>,
-    n: usize,
-) -> Result<T, StrError>
+pub fn small_mat_inv<T, const N: usize>(ai: &mut SmallMatrix<T, N>, a: &SmallMatrix<T, N>, n: usize) -> Result<T, StrError>
 where
     T: Float,
 {
@@ -220,12 +216,7 @@ mod tests {
     fn check_matrix<const N: usize>(a: &[[f64; N]; N], b: &[[f64; N]; N], tol: f64) {
         for i in 0..N {
             for j in 0..N {
-                assert!(
-                    (a[i][j] - b[i][j]).abs() <= tol,
-                    "mismatch at [{i}][{j}]: {} != {}",
-                    a[i][j],
-                    b[i][j]
-                );
+                assert!((a[i][j] - b[i][j]).abs() <= tol, "mismatch at [{i}][{j}]: {} != {}", a[i][j], b[i][j]);
             }
         }
     }

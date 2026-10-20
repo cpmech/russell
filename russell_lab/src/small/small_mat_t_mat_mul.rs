@@ -53,14 +53,8 @@ use num_traits::Num;
 /// assert_eq!(c, correct);
 /// ```
 #[inline]
-pub fn small_mat_t_mat_mul<T, const N: usize>(
-    c: &mut SmallMatrix<T, N>,
-    alpha: T,
-    a: &SmallMatrix<T, N>,
-    b: &SmallMatrix<T, N>,
-    beta: T,
-    n: usize,
-) where
+pub fn small_mat_t_mat_mul<T, const N: usize>(c: &mut SmallMatrix<T, N>, alpha: T, a: &SmallMatrix<T, N>, b: &SmallMatrix<T, N>, beta: T, n: usize)
+where
     T: Num + Copy,
 {
     assert!(n <= N, "n must be <= N");
@@ -93,18 +87,8 @@ mod tests {
     #[test]
     fn small_mat_t_mat_mul_works_1() {
         // c := 1⋅aᵀ⋅b
-        let a = [
-            [1.0, 2.0, 0.0, 0.0],
-            [3.0, 4.0, 0.0, 0.0],
-            [0.0, 0.0, 1.0, 0.0],
-            [0.0, 0.0, 0.0, 1.0],
-        ];
-        let b = [
-            [-1.0, -2.0, 0.0, 0.0],
-            [-4.0, -5.0, 0.0, 0.0],
-            [0.0, 0.0, 2.0, 0.0],
-            [0.0, 0.0, 0.0, 3.0],
-        ];
+        let a = [[1.0, 2.0, 0.0, 0.0], [3.0, 4.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]];
+        let b = [[-1.0, -2.0, 0.0, 0.0], [-4.0, -5.0, 0.0, 0.0], [0.0, 0.0, 2.0, 0.0], [0.0, 0.0, 0.0, 3.0]];
         let mut c = [[0.0; 4]; 4];
         small_mat_t_mat_mul(&mut c, 1.0, &a, &b, 0.0, 4);
         #[rustfmt::skip]

@@ -69,8 +69,7 @@ pub struct System<'a, A> {
     pub(crate) function: Arc<dyn Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a>,
 
     /// Jacobian function
-    pub(crate) jacobian:
-        Option<Arc<dyn Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a>>,
+    pub(crate) jacobian: Option<Arc<dyn Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a>>,
 
     /// Calc mass matrix function
     pub(crate) calc_mass: Option<Arc<dyn Fn(&mut CooMatrix) + Send + Sync + 'a>>,
@@ -152,10 +151,7 @@ impl<'a, A> System<'a, A> {
     ///     Ok(())
     /// }
     /// ```
-    pub fn new(
-        ndim: usize,
-        function: impl Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a,
-    ) -> Self {
+    pub fn new(ndim: usize, function: impl Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a) -> Self {
         System {
             ndim,
             function: Arc::new(function),
@@ -215,12 +211,7 @@ impl<'a, A> System<'a, A> {
     ///     * `nnz = ndim²` otherwise
     /// * `symmetric` -- specifies the symmetric type for the mass and **Jacobian** matrices
     /// * `callback` -- the function to calculate the mass matrix (will be called just once)
-    pub fn set_mass(
-        &mut self,
-        nnz: Option<usize>,
-        symmetric: Sym,
-        callback: impl Fn(&mut CooMatrix) + Send + Sync + 'a,
-    ) -> Result<(), StrError> {
+    pub fn set_mass(&mut self, nnz: Option<usize>, symmetric: Sym, callback: impl Fn(&mut CooMatrix) + Send + Sync + 'a) -> Result<(), StrError> {
         if let Some(sym) = self.sym_jac {
             if symmetric != sym {
                 return Err("the mass matrix must have the same symmetric type as the Jacobian matrix");

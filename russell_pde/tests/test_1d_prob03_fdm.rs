@@ -29,10 +29,7 @@ fn test_1d_prob03_fdm_sps() -> Result<(), StrError> {
         let mut curve_ana = Curve::new();
         let mut curve_num = Curve::new();
         curve_ana.set_label("Analytical");
-        curve_num
-            .set_label("Numerical")
-            .set_marker_style("o")
-            .set_line_style("None");
+        curve_num.set_label("Numerical").set_marker_style("o").set_line_style("None");
         let xx_ana = linspace(xmin, xmax, 101);
         let uu_ana = xx_ana.iter().map(|&x| analytical(x)).collect::<Vec<_>>();
         let mut xx_num = vec![0.0; nx];

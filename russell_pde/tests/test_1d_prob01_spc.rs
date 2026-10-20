@@ -34,11 +34,7 @@ fn run_spc(lmm: bool, nx: usize, tol: f64, genie: Genie) -> Result<(), StrError>
     spc.set_solver_options(genie);
 
     // solve the problem
-    let a = if lmm {
-        spc.solve_lmm(0.0, source)?
-    } else {
-        spc.solve_sps(0.0, source)?
-    };
+    let a = if lmm { spc.solve_lmm(0.0, source)? } else { spc.solve_sps(0.0, source)? };
 
     // analytical solution
     let mut err_max = 0.0;
@@ -62,9 +58,6 @@ fn run_spc(lmm: bool, nx: usize, tol: f64, genie: Genie) -> Result<(), StrError>
         }
     });
     let nn = nx - 1;
-    println!(
-        "N = {:>2}, max(err) = {:>10.5e}, max(flow_err) = {:>10.5e}",
-        nn, err_max, flow_err_max
-    );
+    println!("N = {:>2}, max(err) = {:>10.5e}, max(flow_err) = {:>10.5e}", nn, err_max, flow_err_max);
     Ok(())
 }

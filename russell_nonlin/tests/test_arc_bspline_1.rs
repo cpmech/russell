@@ -104,10 +104,7 @@ fn run_test(name: &str, ddl: f64, bordering: bool, expected_status: Status) {
 
         // draw tangent vectors
         let mut arrows = Canvas::new();
-        arrows
-            .set_arrow_scale(10.0)
-            .set_edge_color("None")
-            .set_face_color("black");
+        arrows.set_arrow_scale(10.0).set_edge_color("None").set_face_color("black");
         for i in 0..uu0.len() {
             let dds = stepsizes[i];
             let xf = uu0[i] + dds * du0ds[i];

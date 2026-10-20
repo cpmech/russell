@@ -124,10 +124,7 @@ fn run_spc_map(lmm: bool, nn: usize, tol: f64) -> Result<(), StrError> {
             .draw_arrows_alt(&x_arr, &y_arr, &wwx, &wwy);
         let mut plot = Plot::new();
         let mut inset = InsetAxes::new();
-        inset
-            .set_range(-2.0, 2.0, 0.0, 2.0)
-            .add(&quiver_zoom)
-            .draw(0.33, 0.33, 0.66, 0.66);
+        inset.set_range(-2.0, 2.0, 0.0, 2.0).add(&quiver_zoom).draw(0.33, 0.33, 0.66, 0.66);
         plot.set_gridspec("gs", 1, 3, "wspace=0.3");
         plot.set_subplot_grid("gs", "0", "0:1")
             .add(&contour_ana)

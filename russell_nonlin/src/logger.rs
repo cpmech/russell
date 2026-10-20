@@ -131,10 +131,7 @@ impl Logger {
             Method::Natural => {
                 if err.residual_converged {
                     let res_max = format_scientific(err.residual_max, 10, 2);
-                    format!(
-                        "{:>10} {:>10} {:>5} {} {} {:>10} {:>12}",
-                        "·", "·", k, res_max, icon_gh, "·", "·"
-                    )
+                    format!("{:>10} {:>10} {:>5} {} {} {:>10} {:>12}", "·", "·", k, res_max, icon_gh, "·", "·")
                 } else {
                     let res_max = format_scientific(err.residual_max, 10, 2);
                     let del_max = format_scientific(err.delta_max, 10, 2);
@@ -198,8 +195,7 @@ impl Logger {
                 fs::create_dir_all(p).map_err(|_| "cannot create directory")?;
             }
             let mut file = File::create(&path).map_err(|_| "cannot create file")?;
-            file.write_all(self.buffer.as_bytes())
-                .map_err(|_| "cannot write file")?;
+            file.write_all(self.buffer.as_bytes()).map_err(|_| "cannot write file")?;
             file.sync_all().map_err(|_| "cannot sync file")?;
         } else {
             // Write directly to stdout

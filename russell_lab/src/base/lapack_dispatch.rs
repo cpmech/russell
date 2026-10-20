@@ -163,26 +163,9 @@ unsafe extern "C" {
     // hidden lengths. They are Fortran LAPACK calls, not CBLAS: the leading
     // dimensions, the workspace and `lwork` are the caller's, which is why every
     // entry below sizes a workspace instead of letting the shim do it.
-    fn c_dgesv(
-        n: *const i32,
-        nrhs: *const i32,
-        a: *mut f64,
-        lda: *const i32,
-        ipiv: *mut i32,
-        b: *mut f64,
-        ldb: *const i32,
-        info: *mut i32,
-    );
+    fn c_dgesv(n: *const i32, nrhs: *const i32, a: *mut f64, lda: *const i32, ipiv: *mut i32, b: *mut f64, ldb: *const i32, info: *mut i32);
     fn c_dgetrf(m: *const i32, n: *const i32, a: *mut f64, lda: *const i32, ipiv: *mut i32, info: *mut i32);
-    fn c_dgetri(
-        n: *const i32,
-        a: *mut f64,
-        lda: *const i32,
-        ipiv: *const i32,
-        work: *mut f64,
-        lwork: *const i32,
-        info: *mut i32,
-    );
+    fn c_dgetri(n: *const i32, a: *mut f64, lda: *const i32, ipiv: *const i32, work: *mut f64, lwork: *const i32, info: *mut i32);
     fn c_dpotrf(upper: CcBool, n: *const i32, a: *mut f64, lda: *const i32, info: *mut i32);
     fn c_dsyev(
         calc_v: CcBool,
@@ -316,16 +299,7 @@ pub fn dgesv(a: &mut [f64], b: &mut [f64]) -> Result<(), LapackError> {
         // Safety: `a` has n*n entries and `b` n, both checked above, and the shim
         // is linked in this configuration.
         unsafe {
-            c_dgesv(
-                &n_i32,
-                &nrhs,
-                a.as_mut_ptr(),
-                &lda,
-                ipiv.as_mut_ptr(),
-                b.as_mut_ptr(),
-                &ldb,
-                &mut info,
-            );
+            c_dgesv(&n_i32, &nrhs, a.as_mut_ptr(), &lda, ipiv.as_mut_ptr(), b.as_mut_ptr(), &ldb, &mut info);
         }
         if info != 0 {
             return Err(lapack_error("dgesv", info, LapackError::Singular, || {
@@ -367,10 +341,7 @@ pub fn dpotrf(a: &mut [f64], n: usize) -> Result<(), LapackError> {
         unsafe { c_dpotrf(C_FALSE, &n_i32, a.as_mut_ptr(), &lda, &mut info) };
         if info != 0 {
             return Err(lapack_error("dpotrf", info, LapackError::Singular, || {
-                println!(
-                    "LAPACK ERROR (dpotrf): The leading minor of order {} is not positive definite",
-                    info
-                );
+                println!("LAPACK ERROR (dpotrf): The leading minor of order {} is not positive definite", info);
             }));
         }
         Ok(())
@@ -476,14 +447,7 @@ pub fn dsyev(a: &mut [f64], w: &mut [f64], n: usize, upper: bool) -> Result<(), 
 ///
 /// [`LapackError::Convergence`] if `dbdsqr` exhausted its iteration limit,
 /// [`LapackError::BadShape`] on a shape mismatch.
-pub fn dgesvd(
-    a: &mut [f64],
-    m: usize,
-    n: usize,
-    s: &mut [f64],
-    u: &mut [f64],
-    vt: &mut [f64],
-) -> Result<(), LapackError> {
+pub fn dgesvd(a: &mut [f64], m: usize, n: usize, s: &mut [f64], u: &mut [f64], vt: &mut [f64]) -> Result<(), LapackError> {
     if a.len() != m * n {
         return Err(LapackError::BadShape);
     }
@@ -590,12 +554,7 @@ pub fn dgesvd(
 /// # Errors
 ///
 /// [`LapackError::Convergence`] if `dlahqr` exhausted its iteration limit.
-pub fn dgeev(
-    v_real: &mut [f64],
-    v_imag: &mut [f64],
-    a: &mut [f64],
-    n: usize,
-) -> Result<(Vec<f64>, Vec<f64>), LapackError> {
+pub fn dgeev(v_real: &mut [f64], v_imag: &mut [f64], a: &mut [f64], n: usize) -> Result<(Vec<f64>, Vec<f64>), LapackError> {
     assert_eq!(a.len(), n * n, "dgeev: a must be n*n");
     assert_eq!(v_real.len(), n * n, "dgeev: v_real must be n*n");
     assert_eq!(v_imag.len(), n * n, "dgeev: v_imag must be n*n");
@@ -974,17 +933,7 @@ pub fn dgetri(lu: &mut [f64], n: usize, ipiv: &[usize]) -> Result<(), LapackErro
         let mut lwork = -1i32;
         // Safety: `lu` has n*n entries and `ipiv_i32` n, both checked above; the
         // query writes only `work[0]`.
-        unsafe {
-            c_dgetri(
-                &n_i32,
-                lu.as_mut_ptr(),
-                &lda,
-                ipiv_i32.as_ptr(),
-                work.as_mut_ptr(),
-                &lwork,
-                &mut info,
-            )
-        };
+        unsafe { c_dgetri(&n_i32, lu.as_mut_ptr(), &lda, ipiv_i32.as_ptr(), work.as_mut_ptr(), &lwork, &mut info) };
         if info != 0 {
             // Unreachable: a query with `lwork = -1` is never rejected.
             return Err(lapack_error("dgetri", info, LapackError::Singular, || {}));
@@ -993,17 +942,7 @@ pub fn dgetri(lu: &mut [f64], n: usize, ipiv: &[usize]) -> Result<(), LapackErro
         let mut work = vec![0.0f64; need];
         lwork = need as i32;
         // Safety: as above, and `work` now holds the size the library asked for.
-        unsafe {
-            c_dgetri(
-                &n_i32,
-                lu.as_mut_ptr(),
-                &lda,
-                ipiv_i32.as_ptr(),
-                work.as_mut_ptr(),
-                &lwork,
-                &mut info,
-            )
-        };
+        unsafe { c_dgetri(&n_i32, lu.as_mut_ptr(), &lda, ipiv_i32.as_ptr(), work.as_mut_ptr(), &lwork, &mut info) };
         if info != 0 {
             // The call site's message is the native routine's; this one prints
             // nothing because the accelerated branch never did.
@@ -1076,16 +1015,8 @@ pub fn dggev(
         let ldvr = if calc_vr { n_i32 } else { 1 };
         let mut vl_dummy = [0.0f64];
         let mut vr_dummy = [0.0f64];
-        let vl_ptr = if calc_vl {
-            vl.as_mut_ptr()
-        } else {
-            vl_dummy.as_mut_ptr()
-        };
-        let vr_ptr = if calc_vr {
-            vr.as_mut_ptr()
-        } else {
-            vr_dummy.as_mut_ptr()
-        };
+        let vl_ptr = if calc_vl { vl.as_mut_ptr() } else { vl_dummy.as_mut_ptr() };
+        let vr_ptr = if calc_vr { vr.as_mut_ptr() } else { vr_dummy.as_mut_ptr() };
         let mut info = 0i32;
         let mut work = vec![0.0f64; 1];
         let mut lwork = -1i32;
@@ -1212,16 +1143,8 @@ pub fn zggev(
         let ldvr = if calc_vr { n_i32 } else { 1 };
         let mut vl_dummy = [Complex64::new(0.0, 0.0)];
         let mut vr_dummy = [Complex64::new(0.0, 0.0)];
-        let vl_ptr = if calc_vl {
-            vl.as_mut_ptr()
-        } else {
-            vl_dummy.as_mut_ptr()
-        };
-        let vr_ptr = if calc_vr {
-            vr.as_mut_ptr()
-        } else {
-            vr_dummy.as_mut_ptr()
-        };
+        let vl_ptr = if calc_vl { vl.as_mut_ptr() } else { vl_dummy.as_mut_ptr() };
+        let vr_ptr = if calc_vr { vr.as_mut_ptr() } else { vr_dummy.as_mut_ptr() };
         // `ZGGEV`'s `RWORK`: real, `8*n`, for `ZGGBAL`'s balancing norms.
         let mut rwork = vec![0.0f64; 8 * n];
         let mut info = 0i32;
@@ -1297,9 +1220,7 @@ mod tests {
     /// transposed index.
     fn sample4() -> Vec<f64> {
         // Row-major [[4,1,2,1],[1,3,0,1],[2,0,5,2],[1,1,2,6]] as column-major.
-        vec![
-            4.0, 1.0, 2.0, 1.0, 1.0, 3.0, 0.0, 1.0, 2.0, 0.0, 5.0, 2.0, 1.0, 1.0, 2.0, 6.0,
-        ]
+        vec![4.0, 1.0, 2.0, 1.0, 1.0, 3.0, 0.0, 1.0, 2.0, 0.0, 5.0, 2.0, 1.0, 1.0, 2.0, 6.0]
     }
 
     /// The same matrix multiplied by a vector, through the BLAS dispatch, so the
@@ -1326,12 +1247,7 @@ mod tests {
 
         for i in 0..4 {
             assert!((b_got[i] - x_true[i]).abs() < 1e-12, "x[{i}] = {}", b_got[i]);
-            assert!(
-                (b_got[i] - b_want[i]).abs() < 1e-12,
-                "x[{i}]: {} vs {}",
-                b_got[i],
-                b_want[i]
-            );
+            assert!((b_got[i] - b_want[i]).abs() < 1e-12, "x[{i}]: {} vs {}", b_got[i], b_want[i]);
         }
     }
 
@@ -1372,12 +1288,7 @@ mod tests {
         let mut want = vec![4.0, 2.0, 2.0, 3.0];
         algebra_linear::lapack::dpotrf(&mut want, 2).unwrap();
         for i in 0..4 {
-            assert!(
-                (got[i] - want[i]).abs() < 1e-14,
-                "dpotrf [{i}]: {} vs {}",
-                got[i],
-                want[i]
-            );
+            assert!((got[i] - want[i]).abs() < 1e-14, "dpotrf [{i}]: {} vs {}", got[i], want[i]);
         }
         // The upper triangle keeps what it held, as LAPACK specifies.
         assert_eq!(got[2], 2.0);
@@ -1404,10 +1315,7 @@ mod tests {
         let mut a = vec![1.0, 2.0, 2.0, 1.0];
         assert_eq!(dpotrf(&mut a, 2), Err(LapackError::Singular));
         let mut b = vec![1.0, 2.0, 2.0, 1.0];
-        assert_eq!(
-            dpotrf(&mut b, 2),
-            algebra_linear::lapack::dpotrf(&mut [1.0, 2.0, 2.0, 1.0], 2)
-        );
+        assert_eq!(dpotrf(&mut b, 2), algebra_linear::lapack::dpotrf(&mut [1.0, 2.0, 2.0, 1.0], 2));
 
         let mut a = vec![1.0, 2.0, 3.0];
         assert_eq!(dpotrf(&mut a, 2), Err(LapackError::BadShape));
@@ -1531,18 +1439,12 @@ mod tests {
         let mut u = vec![0.0; 4];
         let mut vt = vec![0.0; 6];
         // `a` is checked first, as in the native routine: 6 entries is not 2*2.
-        assert_eq!(
-            dgesvd(&mut a, 2, 2, &mut s, &mut u, &mut vt),
-            Err(LapackError::BadShape)
-        );
+        assert_eq!(dgesvd(&mut a, 2, 2, &mut s, &mut u, &mut vt), Err(LapackError::BadShape));
         // A zero dimension is not an error, but nothing is written either.
         assert_eq!(dgesvd(&mut Vec::new(), 0, 3, &mut s, &mut u, &mut vt), Ok(()));
         let mut wrong_s = vec![0.0; 3];
         let mut a = vec![0.0; 6];
-        assert_eq!(
-            dgesvd(&mut a, 2, 3, &mut wrong_s, &mut u, &mut vt),
-            Err(LapackError::BadShape)
-        );
+        assert_eq!(dgesvd(&mut a, 2, 3, &mut wrong_s, &mut u, &mut vt), Err(LapackError::BadShape));
     }
 
     /// The eigenvalues, sorted, because the order of a Schur form is not part of
@@ -1603,14 +1505,8 @@ mod tests {
                 let avr = mat_vec(&orig, &vr, n);
                 let avi = mat_vec(&orig, &vi, n);
                 for i in 0..n {
-                    assert!(
-                        (avr[i] - (re * vr[i] - im * vi[i])).abs() < 1e-12,
-                        "dgeev pair {j} re {i}"
-                    );
-                    assert!(
-                        (avi[i] - (re * vi[i] + im * vr[i])).abs() < 1e-12,
-                        "dgeev pair {j} im {i}"
-                    );
+                    assert!((avr[i] - (re * vr[i] - im * vi[i])).abs() < 1e-12, "dgeev pair {j} re {i}");
+                    assert!((avi[i] - (re * vi[i] + im * vr[i])).abs() < 1e-12, "dgeev pair {j} im {i}");
                 }
             }
         }
@@ -1702,12 +1598,7 @@ mod tests {
             );
             for i in 0..n * n {
                 let scale = want[i].abs().max(1.0);
-                assert!(
-                    (got[i] - want[i]).abs() / scale < 1e-12,
-                    "dgetri n={n} [{i}]: {} vs {}",
-                    got[i],
-                    want[i]
-                );
+                assert!((got[i] - want[i]).abs() / scale < 1e-12, "dgetri n={n} [{i}]: {} vs {}", got[i], want[i]);
             }
         }
     }
@@ -1738,10 +1629,7 @@ mod tests {
         assert_eq!(dgetrf(&mut Vec::new(), 0), Ok((Vec::new(), 1.0)));
 
         let mut a = vec![1.0, 2.0, 3.0];
-        assert_eq!(
-            dgetrf(&mut a, 2),
-            algebra_linear::lapack::dgetrf(&mut [1.0, 2.0, 3.0], 2)
-        );
+        assert_eq!(dgetrf(&mut a, 2), algebra_linear::lapack::dgetrf(&mut [1.0, 2.0, 3.0], 2));
 
         // A factorized matrix with a zero diagonal of `U`: `dgetri` must report
         // it, not hand back a half-written inverse. Both backends exit through
@@ -1842,14 +1730,8 @@ mod tests {
                     let (av_re, av_im) = (mat_vec(&a, &vr_re, n), mat_vec(&a, &vr_im, n));
                     let (bv_re, bv_im) = (mat_vec(&b, &vr_re, n), mat_vec(&b, &vr_im, n));
                     for i in 0..n {
-                        assert!(
-                            (av_re[i] - (re * bv_re[i] - im * bv_im[i])).abs() < 1e-12,
-                            "dggev pair {j} re {i}"
-                        );
-                        assert!(
-                            (av_im[i] - (re * bv_im[i] + im * bv_re[i])).abs() < 1e-12,
-                            "dggev pair {j} im {i}"
-                        );
+                        assert!((av_re[i] - (re * bv_re[i] - im * bv_im[i])).abs() < 1e-12, "dggev pair {j} re {i}");
+                        assert!((av_im[i] - (re * bv_im[i] + im * bv_re[i])).abs() < 1e-12, "dggev pair {j} im {i}");
                     }
                 }
             }
@@ -1886,11 +1768,7 @@ mod tests {
             let mut a_got = a.clone();
             let mut b_got = b.clone();
             let (mut al_got, mut be_got) = (vec![Complex64::new(0.0, 0.0); n], vec![Complex64::new(0.0, 0.0); n]);
-            let mut vl_got = if calc_vl {
-                vec![Complex64::new(0.0, 0.0); n * n]
-            } else {
-                Vec::new()
-            };
+            let mut vl_got = if calc_vl { vec![Complex64::new(0.0, 0.0); n * n] } else { Vec::new() };
             let mut vr_got = vec![Complex64::new(0.0, 0.0); n * n];
             zggev(
                 calc_vl,
@@ -1908,11 +1786,7 @@ mod tests {
             let mut a_want = a.clone();
             let mut b_want = b.clone();
             let (mut al_want, mut be_want) = (vec![Complex64::new(0.0, 0.0); n], vec![Complex64::new(0.0, 0.0); n]);
-            let mut vl_want = if calc_vl {
-                vec![Complex64::new(0.0, 0.0); n * n]
-            } else {
-                Vec::new()
-            };
+            let mut vl_want = if calc_vl { vec![Complex64::new(0.0, 0.0); n * n] } else { Vec::new() };
             let mut vr_want = vec![Complex64::new(0.0, 0.0); n * n];
             algebra_linear::lapack::qz::zggev(
                 calc_vl,

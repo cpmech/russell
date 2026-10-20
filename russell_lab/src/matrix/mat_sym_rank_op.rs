@@ -69,14 +69,7 @@ use crate::StrError;
 ///     Ok(())
 /// }
 /// ```
-pub fn mat_sym_rank_op(
-    c: &mut Matrix,
-    a: &Matrix,
-    alpha: f64,
-    beta: f64,
-    upper: bool,
-    second_case: bool,
-) -> Result<(), StrError> {
+pub fn mat_sym_rank_op(c: &mut Matrix, a: &Matrix, alpha: f64, beta: f64, upper: bool, second_case: bool) -> Result<(), StrError> {
     let (m, n) = c.dims();
     if m != n {
         return Err("[c] matrix must be square");

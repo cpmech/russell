@@ -41,26 +41,14 @@ fn main() -> Result<(), StrError> {
 
     // allocate x and rhs
     let mut x = ComplexVector::new(ndim);
-    let rhs = ComplexVector::from(&[
-        cpx!(5.5, 10.5),
-        cpx!(36.0, 54.0),
-        cpx!(-9.0, 3.0),
-        cpx!(1.5, 4.5),
-        cpx!(14.0, 24.0),
-    ]);
+    let rhs = ComplexVector::from(&[cpx!(5.5, 10.5), cpx!(36.0, 54.0), cpx!(-9.0, 3.0), cpx!(1.5, 4.5), cpx!(14.0, 24.0)]);
 
     // calculate the solution
     umfpack.solve(&mut x, &rhs, false)?;
     println!("x =\n{}", x);
 
     // check the results
-    let correct = &[
-        cpx!(1.0, 1.0),
-        cpx!(2.0, 2.0),
-        cpx!(3.0, 3.0),
-        cpx!(4.0, 4.0),
-        cpx!(5.0, 5.0),
-    ];
+    let correct = &[cpx!(1.0, 1.0), cpx!(2.0, 2.0), cpx!(3.0, 3.0), cpx!(4.0, 4.0), cpx!(5.0, 5.0)];
     complex_vec_approx_eq(&x, correct, 1e-14);
 
     // analysis

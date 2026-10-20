@@ -8,15 +8,7 @@ pub(crate) trait SolverTrait<A>: Send {
     ///
     /// 1. Calculates the initial stepsize
     /// 2. Determines the first tangent vector in pseudo-arclength
-    fn initialize(
-        &mut self,
-        work: &mut Workspace,
-        ddl_ini: f64,
-        u: &Vector,
-        l: f64,
-        dir: IniDir,
-        args: &mut A,
-    ) -> Result<(), StrError>;
+    fn initialize(&mut self, work: &mut Workspace, ddl_ini: f64, u: &Vector, l: f64, dir: IniDir, args: &mut A) -> Result<(), StrError>;
 
     /// Performs one continuation step to advance the solution (u, λ)
     fn step(&mut self, work: &mut Workspace, u: &Vector, l: f64, stop: Stop, args: &mut A) -> Result<Status, StrError>;

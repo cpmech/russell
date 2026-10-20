@@ -46,10 +46,7 @@ mod tests {
         work.stats.n_accepted = params.stiffness.skip_first_n_accepted_step + 1;
         work.stiff_h_times_rho = 3.25 + 0.01; // DoPri5
         work.stiff_n_detection_yes = params.stiffness.ratified_after_nstep - 1; // will add 1
-        assert_eq!(
-            detect_stiffness(&mut work, 0.0, &params).err(),
-            Some("stiffness detected")
-        );
+        assert_eq!(detect_stiffness(&mut work, 0.0, &params).err(), Some("stiffness detected"));
 
         params.stiffness.stop_with_error = false;
         work.stiff_n_detection_yes = params.stiffness.ratified_after_nstep - 1; // will add 1

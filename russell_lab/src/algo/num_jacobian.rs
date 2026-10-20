@@ -77,14 +77,7 @@ use crate::{Matrix, Vector, deriv1_central5};
 ///     Ok(())
 /// }
 /// ```
-pub fn num_jacobian<F, A>(
-    ndim: usize,
-    x_at: f64,
-    y_at: &Vector,
-    alpha: f64,
-    args: &mut A,
-    function: F,
-) -> Result<Matrix, StrError>
+pub fn num_jacobian<F, A>(ndim: usize, x_at: f64, y_at: &Vector, alpha: f64, args: &mut A, function: F) -> Result<Matrix, StrError>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
@@ -157,9 +150,6 @@ mod tests {
     fn num_jacobian_captures_errors() {
         let y = Vector::new(1);
         let args = &mut 0;
-        assert_eq!(
-            num_jacobian(1, 0.0, &y, 2.0, args, |_, _, _, _| { Err("stop") }).err(),
-            Some("stop")
-        );
+        assert_eq!(num_jacobian(1, 0.0, &y, 2.0, args, |_, _, _, _| { Err("stop") }).err(), Some("stop"));
     }
 }

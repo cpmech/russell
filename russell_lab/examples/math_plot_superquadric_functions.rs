@@ -42,10 +42,7 @@ fn main() -> Result<(), StrError> {
         let mut zz = vec![vec![0.0; n_alpha]; n_theta];
         let mut plot = Plot::new();
         let colors = &["#E9708E", "#4C689C", "#58B090", "#F39A27", "#976ED7", "#C23B23"];
-        for (index, (r, s, t)) in [(0.5, 0.5, 0.5), (1.0, 1.0, 1.0), (2.0, 2.0, 2.0), (10.0, 10.0, 10.0)]
-            .iter()
-            .enumerate()
-        {
+        for (index, (r, s, t)) in [(0.5, 0.5, 0.5), (1.0, 1.0, 1.0), (2.0, 2.0, 2.0), (10.0, 10.0, 10.0)].iter().enumerate() {
             let (a, b, c) = (2.0 / r, 2.0 / s, 2.0 / t);
             let dx = (index as f64) * 2.0;
             let dy = dx;
@@ -61,9 +58,7 @@ fn main() -> Result<(), StrError> {
             plot.add(&surf);
         }
         let path = format!("{}/math_plot_functions_superquadric.svg", OUT_DIR);
-        plot.set_equal_axes(true)
-            .set_figure_size_points(800.0, 800.0)
-            .save(&path)?;
+        plot.set_equal_axes(true).set_figure_size_points(800.0, 800.0).save(&path)?;
     }
     Ok(())
 }

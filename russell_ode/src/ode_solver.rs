@@ -372,11 +372,7 @@ impl<'a, A> OdeSolver<'a, A> {
 
         // done
         self.work.stats.stop_sw_total();
-        if success {
-            Ok(())
-        } else {
-            Err("variable stepping did not converge")
-        }
+        if success { Ok(()) } else { Err("variable stepping did not converge") }
     }
 
     /// Update the parameters (e.g., for sensitive analyses)
@@ -522,10 +518,7 @@ mod tests {
         solver.update_params(params).unwrap();
         assert_eq!(solver.params.step.n_step_max, 2);
         params.method = Method::FwEuler;
-        assert_eq!(
-            solver.update_params(params).err(),
-            Some("update_params must not change the method")
-        );
+        assert_eq!(solver.update_params(params).err(), Some("update_params must not change the method"));
         params.method = Method::MdEuler;
         params.step.m_max = 0.0;
         assert_eq!(
@@ -557,9 +550,7 @@ mod tests {
         // solve
         let h_equal = Some(0.2);
         let mut y = y0.clone();
-        solver
-            .solve(&mut y, 0.0, 0.4, h_equal, &mut args, Some(&mut out))
-            .unwrap();
+        solver.solve(&mut y, 0.0, 0.4, h_equal, &mut args, Some(&mut out)).unwrap();
 
         // check
         vec_approx_eq(&y, &[0.4], 1e-15);
@@ -581,9 +572,7 @@ mod tests {
         }
 
         // define the callback function
-        let cb = |_stats: &Stats, _h: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| -> Result<bool, StrError> {
-            Err("unreachable")
-        };
+        let cb = |_stats: &Stats, _h: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| -> Result<bool, StrError> { Err("unreachable") };
         assert_eq!(cb(solver.stats(), 0.0, 0.0, &y0, &mut args).err(), Some("unreachable"));
 
         // run again and stop earlier
@@ -649,9 +638,7 @@ mod tests {
         let x0 = 0.0;
         let x1 = 1.0;
         let mut y = Vector::from(&[x0]);
-        solver
-            .solve(&mut y, x0, x1, h_equal, &mut args, Some(&mut out))
-            .unwrap();
+        solver.solve(&mut y, x0, x1, h_equal, &mut args, Some(&mut out)).unwrap();
 
         // check
         vec_approx_eq(&y, &[x1], 1e-15);
@@ -686,9 +673,7 @@ mod tests {
         // solve
         let h_equal = Some(0.2);
         let mut y = y0.clone();
-        solver
-            .solve(&mut y, 0.0, 0.4, h_equal, &mut args, Some(&mut out))
-            .unwrap();
+        solver.solve(&mut y, 0.0, 0.4, h_equal, &mut args, Some(&mut out)).unwrap();
 
         // check
         vec_approx_eq(&y, &[0.4], 1e-15);
@@ -708,9 +693,7 @@ mod tests {
         }
 
         // define the callback function
-        let cb = |_stats: &Stats, _h: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| -> Result<bool, StrError> {
-            Err("unreachable")
-        };
+        let cb = |_stats: &Stats, _h: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| -> Result<bool, StrError> { Err("unreachable") };
         assert_eq!(cb(solver.stats(), 0.0, 0.0, &y0, &mut args).err(), Some("unreachable"));
 
         // run again but stop at the first output
@@ -732,9 +715,7 @@ mod tests {
         });
         // ... equal steps
         let mut y = y0.clone();
-        solver
-            .solve(&mut y, 0.0, 0.4, Some(0.2), &mut args, Some(&mut out))
-            .unwrap();
+        solver.solve(&mut y, 0.0, 0.4, Some(0.2), &mut args, Some(&mut out)).unwrap();
         assert!(y[0] > 0.0 && y[0] < 0.4);
         // ... variable steps
         let mut y = y0.clone();
@@ -777,18 +758,14 @@ mod tests {
 
         // output
         let mut out = Output::new();
-        out.set_dense_x_out(interior_x_out)
-            .unwrap()
-            .set_dense_recording(selected_y);
+        out.set_dense_x_out(interior_x_out).unwrap().set_dense_recording(selected_y);
 
         // solve
         let h_equal = Some(0.2);
         let x0 = -1.0;
         let x1 = 1.0;
         let mut y = Vector::from(&[x0]);
-        solver
-            .solve(&mut y, x0, x1, h_equal, &mut args, Some(&mut out))
-            .unwrap();
+        solver.solve(&mut y, x0, x1, h_equal, &mut args, Some(&mut out)).unwrap();
 
         // check
         vec_approx_eq(&y, &[x1], 1e-15);

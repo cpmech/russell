@@ -50,22 +50,10 @@ mod tests {
         let wrong_1x2 = Matrix::new(1, 2);
         let wrong_2x1 = Matrix::new(2, 1);
         let ok = Matrix::new(2, 2);
-        assert_eq!(
-            complex_mat_zip(&mut a, &wrong_1x2, &ok).err(),
-            Some("matrices are incompatible")
-        );
-        assert_eq!(
-            complex_mat_zip(&mut a, &wrong_2x1, &ok).err(),
-            Some("matrices are incompatible")
-        );
-        assert_eq!(
-            complex_mat_zip(&mut a, &ok, &wrong_1x2).err(),
-            Some("matrices are incompatible")
-        );
-        assert_eq!(
-            complex_mat_zip(&mut a, &ok, &wrong_2x1).err(),
-            Some("matrices are incompatible")
-        );
+        assert_eq!(complex_mat_zip(&mut a, &wrong_1x2, &ok).err(), Some("matrices are incompatible"));
+        assert_eq!(complex_mat_zip(&mut a, &wrong_2x1, &ok).err(), Some("matrices are incompatible"));
+        assert_eq!(complex_mat_zip(&mut a, &ok, &wrong_1x2).err(), Some("matrices are incompatible"));
+        assert_eq!(complex_mat_zip(&mut a, &ok, &wrong_2x1).err(), Some("matrices are incompatible"));
     }
 
     #[test]

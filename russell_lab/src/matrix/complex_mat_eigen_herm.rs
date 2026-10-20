@@ -136,9 +136,7 @@ pub fn complex_mat_eigen_herm(l: &mut Vector, a: &mut ComplexMatrix, upper: bool
         return algebra_linear::lapack::zeig::zheev(a.as_mut_data(), l.as_mut_data(), m, upper).map_err(|e| match e {
             // `zsteqr` exhausted its iteration limit; same string as the
             // shim's `info > 0` branch returns.
-            algebra_linear::lapack::LapackError::Convergence => {
-                "LAPACK ERROR (zheev): The algorithm failed to converge"
-            }
+            algebra_linear::lapack::LapackError::Convergence => "LAPACK ERROR (zheev): The algorithm failed to converge",
             _ => "LAPACK ERROR (zheev): An argument had an illegal value",
         });
     }
@@ -208,20 +206,11 @@ mod tests {
     fn complex_mat_eigen_herm_handles_errors() {
         let mut a = ComplexMatrix::new(0, 1);
         let mut l = Vector::new(0);
-        assert_eq!(
-            complex_mat_eigen_herm(&mut l, &mut a, false).err(),
-            Some("matrix must be square")
-        );
+        assert_eq!(complex_mat_eigen_herm(&mut l, &mut a, false).err(), Some("matrix must be square"));
         let mut a = ComplexMatrix::new(0, 0);
-        assert_eq!(
-            complex_mat_eigen_herm(&mut l, &mut a, false).err(),
-            Some("matrix dimension must be ≥ 1")
-        );
+        assert_eq!(complex_mat_eigen_herm(&mut l, &mut a, false).err(), Some("matrix dimension must be ≥ 1"));
         let mut a = ComplexMatrix::new(1, 1);
-        assert_eq!(
-            complex_mat_eigen_herm(&mut l, &mut a, false).err(),
-            Some("l vector is incompatible")
-        );
+        assert_eq!(complex_mat_eigen_herm(&mut l, &mut a, false).err(), Some("l vector is incompatible"));
     }
 
     #[test]

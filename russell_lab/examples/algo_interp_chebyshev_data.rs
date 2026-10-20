@@ -31,9 +31,7 @@ fn main() -> Result<(), StrError> {
         .set_line_style("None")
         .set_marker_style("o")
         .set_marker_void(true);
-    curve_int
-        .set_label(&format!("interpolated,N={}", nn))
-        .set_marker_every(5);
+    curve_int.set_label(&format!("interpolated,N={}", nn)).set_marker_every(5);
     curve_dat.draw(xx_dat.as_data(), uu.as_data());
     curve_int.draw(xx.as_data(), yy_int.as_data());
     let mut plot = Plot::new();

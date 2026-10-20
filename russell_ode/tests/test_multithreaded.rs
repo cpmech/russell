@@ -33,9 +33,7 @@ struct Simulator<'a> {
 
 impl<'a> Simulator<'a> {
     fn new(method: Method) -> Self {
-        Simulator {
-            data: SimData::new(method),
-        }
+        Simulator { data: SimData::new(method) }
     }
 }
 
@@ -47,14 +45,7 @@ impl<'a> Runner for Simulator<'a> {
     fn run_and_check(&mut self) {
         self.data
             .solver
-            .solve(
-                &mut self.data.y,
-                self.data.x0,
-                self.data.x1,
-                None,
-                &mut self.data.a,
-                None,
-            )
+            .solve(&mut self.data.y, self.data.x0, self.data.x1, None, &mut self.data.a, None)
             .unwrap();
         approx_eq(self.data.y[0], self.data.x1, 1e-15);
     }
@@ -63,9 +54,6 @@ impl<'a> Runner for Simulator<'a> {
 #[test]
 fn test_multithreaded() {
     // run simulations concurrently
-    let mut runners: Vec<Box<dyn Runner>> = vec![
-        Box::new(Simulator::new(Method::FwEuler)),
-        Box::new(Simulator::new(Method::MdEuler)),
-    ];
+    let mut runners: Vec<Box<dyn Runner>> = vec![Box::new(Simulator::new(Method::FwEuler)), Box::new(Simulator::new(Method::MdEuler))];
     runners.par_iter_mut().for_each(|r| r.run_and_check());
 }

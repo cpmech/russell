@@ -247,10 +247,7 @@ pub fn elliptic_pi(n: f64, phi: f64, m: f64) -> Result<f64, StrError> {
 fn rf(x: f64, y: f64, z: f64) -> Result<f64, StrError> {
     let tiny = 5.0 * f64::MIN_POSITIVE;
     let big = 0.2 * f64::MAX;
-    if f64::min(f64::min(x, y), z) < 0.0
-        || f64::min(f64::min(x + y, x + z), y + z) < tiny
-        || f64::max(f64::max(x, y), z) > big
-    {
+    if f64::min(f64::min(x, y), z) < 0.0 || f64::min(f64::min(x + y, x + z), y + z) < tiny || f64::max(f64::max(x, y), z) > big {
         return Err("(x,y,z) must be non-negative and at most one can be zero");
     }
     let mut xt = x;
@@ -341,10 +338,7 @@ fn rd(x: f64, y: f64, z: f64) -> Result<f64, StrError> {
     let ed = ea - 6.0 * eb;
     let ee = ed + ec + ec;
     let ans = 3.0 * sum
-        + fac
-            * (1.0
-                + ed * (-RD_C1 + RD_C5 * ed - RD_C6 * dz * ee)
-                + dz * (RD_C2 * ee + dz * (-RD_C3 * ec + dz * RD_C4 * ea)))
+        + fac * (1.0 + ed * (-RD_C1 + RD_C5 * ed - RD_C6 * dz * ee) + dz * (RD_C2 * ee + dz * (-RD_C3 * ec + dz * RD_C4 * ea)))
             / (ave * f64::sqrt(ave));
     Ok(ans)
 }
@@ -418,11 +412,7 @@ fn rj(x: f64, y: f64, z: f64, p: f64) -> Result<f64, StrError> {
         dy = (ave - yt) / ave;
         dz = (ave - zt) / ave;
         dp = (ave - pt) / ave;
-        if f64::max(
-            f64::max(f64::abs(dx), f64::abs(dy)),
-            f64::max(f64::abs(dz), f64::abs(dp)),
-        ) < RJ_ERR_TOL
-        {
+        if f64::max(f64::max(f64::abs(dx), f64::abs(dy)), f64::max(f64::abs(dz), f64::abs(dp))) < RJ_ERR_TOL {
             break;
         }
         it += 1;
@@ -437,10 +427,7 @@ fn rj(x: f64, y: f64, z: f64, p: f64) -> Result<f64, StrError> {
     let ee = eb + 2.0 * dp * (ea - ec);
     let mut ans = 3.0 * sum
         + fac
-            * (1.0
-                + ed * (-RJ_C1 + RJ_C5 * ed - RJ_C6 * ee)
-                + eb * (RJ_C7 + dp * (-RJ_C8 + dp * RJ_C4))
-                + dp * ea * (RJ_C2 - dp * RJ_C3)
+            * (1.0 + ed * (-RJ_C1 + RJ_C5 * ed - RJ_C6 * ee) + eb * (RJ_C7 + dp * (-RJ_C8 + dp * RJ_C4)) + dp * ea * (RJ_C2 - dp * RJ_C3)
                 - RJ_C2 * dp * ec)
             / (ave * f64::sqrt(ave));
     if p <= 0.0 {
@@ -463,12 +450,7 @@ fn rc(x: f64, y: f64) -> Result<f64, StrError> {
     let big = 0.2 * f64::MAX;
     let comp1 = 2.236 / f64::sqrt(tiny);
     let comp2 = f64::powf(tiny * big, 2.0) / 25.0;
-    if x < 0.0
-        || y == 0.0
-        || (x + f64::abs(y)) < tiny
-        || (x + f64::abs(y)) > big
-        || (y < -comp1 && x > 0.0 && x < comp2)
-    {
+    if x < 0.0 || y == 0.0 || (x + f64::abs(y)) < tiny || (x + f64::abs(y)) > big || (y < -comp1 && x > 0.0 && x < comp2) {
         return Err("x must be non-negative. y must not be zero");
     }
     let (mut xt, mut yt, w) = if y > 0.0 {
@@ -550,10 +532,7 @@ mod tests {
             (1.0, 0.0, 0.0),
         ];
         for (x, y, z) in cases {
-            assert_eq!(
-                rf(x, y, z).err(),
-                Some("(x,y,z) must be non-negative and at most one can be zero")
-            );
+            assert_eq!(rf(x, y, z).err(), Some("(x,y,z) must be non-negative and at most one can be zero"));
             assert_eq!(
                 rd(x, y, z).err(),
                 Some("(x,y) must be non-negative and at most one can be zero. z must be positive")
@@ -581,14 +560,8 @@ mod tests {
     fn elliptic_f_captures_errors() {
         assert_eq!(elliptic_f(-1.0, 0.0).err(), Some("phi and m must be non-negative"));
         assert_eq!(elliptic_f(1.0, -1.0).err(), Some("phi and m must be non-negative"));
-        assert_eq!(
-            elliptic_f(PI / 2.0 + 1.0, 1.0).err(),
-            Some("phi must be in 0 ≤ phi ≤ π/2")
-        );
-        assert_eq!(
-            elliptic_f(PI / 2.0, 1.1).err(),
-            Some("m must satisfy: 0 ≤ m·sin²(φ) ≤ 1")
-        );
+        assert_eq!(elliptic_f(PI / 2.0 + 1.0, 1.0).err(), Some("phi must be in 0 ≤ phi ≤ π/2"));
+        assert_eq!(elliptic_f(PI / 2.0, 1.1).err(), Some("m must satisfy: 0 ≤ m·sin²(φ) ≤ 1"));
     }
 
     #[test]
@@ -645,14 +618,8 @@ mod tests {
     fn elliptic_e_captures_errors() {
         assert_eq!(elliptic_e(-1.0, 0.0).err(), Some("phi and m must be non-negative"));
         assert_eq!(elliptic_e(1.0, -1.0).err(), Some("phi and m must be non-negative"));
-        assert_eq!(
-            elliptic_e(PI / 2.0 + 1.0, 1.0).err(),
-            Some("phi must be in 0 ≤ phi ≤ π/2")
-        );
-        assert_eq!(
-            elliptic_e(PI / 2.0, 1.1).err(),
-            Some("m must satisfy: 0 ≤ m·sin²(φ) ≤ 1")
-        );
+        assert_eq!(elliptic_e(PI / 2.0 + 1.0, 1.0).err(), Some("phi must be in 0 ≤ phi ≤ π/2"));
+        assert_eq!(elliptic_e(PI / 2.0, 1.1).err(), Some("m must satisfy: 0 ≤ m·sin²(φ) ≤ 1"));
     }
 
     #[test]
@@ -708,26 +675,11 @@ mod tests {
 
     #[test]
     fn elliptic_pi_captures_errors() {
-        assert_eq!(
-            elliptic_pi(1.0, -1.0, 0.0).err(),
-            Some("phi and m must be non-negative")
-        );
-        assert_eq!(
-            elliptic_pi(1.0, 1.0, -1.0).err(),
-            Some("phi and m must be non-negative")
-        );
-        assert_eq!(
-            elliptic_pi(2.0, PI / 2.0 + 1.0, 1.0).err(),
-            Some("phi must be in 0 ≤ phi ≤ π/2")
-        );
-        assert_eq!(
-            elliptic_pi(0.5, PI / 2.0, 1.1).err(),
-            Some("m must satisfy: 0 ≤ m·sin²(φ) ≤ 1")
-        );
-        assert_eq!(
-            elliptic_pi(0.5, PI / 2.0, 1.1).err(),
-            Some("m must satisfy: 0 ≤ m·sin²(φ) ≤ 1")
-        );
+        assert_eq!(elliptic_pi(1.0, -1.0, 0.0).err(), Some("phi and m must be non-negative"));
+        assert_eq!(elliptic_pi(1.0, 1.0, -1.0).err(), Some("phi and m must be non-negative"));
+        assert_eq!(elliptic_pi(2.0, PI / 2.0 + 1.0, 1.0).err(), Some("phi must be in 0 ≤ phi ≤ π/2"));
+        assert_eq!(elliptic_pi(0.5, PI / 2.0, 1.1).err(), Some("m must satisfy: 0 ≤ m·sin²(φ) ≤ 1"));
+        assert_eq!(elliptic_pi(0.5, PI / 2.0, 1.1).err(), Some("m must satisfy: 0 ≤ m·sin²(φ) ≤ 1"));
     }
 
     #[test]
@@ -874,20 +826,12 @@ mod tests {
         // Complete elliptic integral of the first kind
         // K(m) = F(π/2, m)
         // m must satisfy: `0 ≤ m·sin²(φ) ≤ 1`
-        approx_eq(
-            elliptic_f(phi, m).unwrap(),
-            2.1565156474996432354386749988003220288641102164928,
-            1e-50,
-        ); // Mathematica: N[EllipticK[3/4], 50]
+        approx_eq(elliptic_f(phi, m).unwrap(), 2.1565156474996432354386749988003220288641102164928, 1e-50); // Mathematica: N[EllipticK[3/4], 50]
 
         // Complete elliptic integral of the second kind
         // E(m) = E(π/2, m)
         // m must satisfy: `0 ≤ m·sin²(φ) ≤ 1`
-        approx_eq(
-            elliptic_e(phi, m).unwrap(),
-            1.2110560275684595248035628995489786764942397997358,
-            1e-15,
-        ); // Mathematica: N[EllipticE[3/4], 50]
+        approx_eq(elliptic_e(phi, m).unwrap(), 1.2110560275684595248035628995489786764942397997358, 1e-15); // Mathematica: N[EllipticE[3/4], 50]
 
         // Complete elliptic integral of the third kind
         // Π(n, m) = Π(n, π/2, m)

@@ -145,16 +145,7 @@ pub struct Grid2d {
 
 impl Grid2d {
     /// Auxiliary function to allocate the grid
-    fn do_allocate(
-        xmin: f64,
-        xmax: f64,
-        ymin: f64,
-        ymax: f64,
-        nx: usize,
-        ny: usize,
-        coords: Vec<(f64, f64)>,
-        cgl_grid: bool,
-    ) -> Self {
+    fn do_allocate(xmin: f64, xmax: f64, ymin: f64, ymax: f64, nx: usize, ny: usize, coords: Vec<(f64, f64)>, cgl_grid: bool) -> Self {
         Self {
             xmin,
             xmax,
@@ -937,34 +928,16 @@ mod tests {
     fn new_fails_on_invalid_input() {
         assert_eq!(Grid2d::new(&[0.0], &[0.0, 1.0]).err(), Some("nx must be ≥ 2"));
         assert_eq!(Grid2d::new(&[0.0, 1.0], &[0.0]).err(), Some("ny must be ≥ 2"));
-        assert_eq!(
-            Grid2d::new(&[0.0, 0.0], &[0.0, 1.0]).err(),
-            Some("xx must be strictly increasing")
-        );
-        assert_eq!(
-            Grid2d::new(&[0.0, 1.0], &[0.0, 0.0]).err(),
-            Some("yy must be strictly increasing")
-        );
+        assert_eq!(Grid2d::new(&[0.0, 0.0], &[0.0, 1.0]).err(), Some("xx must be strictly increasing"));
+        assert_eq!(Grid2d::new(&[0.0, 1.0], &[0.0, 0.0]).err(), Some("yy must be strictly increasing"));
     }
 
     #[test]
     fn new_uniform_fails_on_invalid_input() {
-        assert_eq!(
-            Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 1, 4).err(),
-            Some("nx must be ≥ 2")
-        );
-        assert_eq!(
-            Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 4, 1).err(),
-            Some("ny must be ≥ 2")
-        );
-        assert_eq!(
-            Grid2d::new_uniform(1.0, 0.0, 0.0, 1.0, 4, 4).err(),
-            Some("xmax must be > xmin")
-        );
-        assert_eq!(
-            Grid2d::new_uniform(0.0, 1.0, 1.0, 0.0, 4, 4).err(),
-            Some("ymax must be > ymin")
-        );
+        assert_eq!(Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 1, 4).err(), Some("nx must be ≥ 2"));
+        assert_eq!(Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 4, 1).err(), Some("ny must be ≥ 2"));
+        assert_eq!(Grid2d::new_uniform(1.0, 0.0, 0.0, 1.0, 4, 4).err(), Some("xmax must be > xmin"));
+        assert_eq!(Grid2d::new_uniform(0.0, 1.0, 1.0, 0.0, 4, 4).err(), Some("ymax must be > ymin"));
     }
 
     #[test]

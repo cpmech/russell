@@ -11,14 +11,7 @@ pub(crate) trait OdeSolverTrait<A>: Send {
     fn step(&mut self, work: &mut Workspace, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(), StrError>;
 
     /// Updates x and y and computes the next stepsize
-    fn accept(
-        &mut self,
-        work: &mut Workspace,
-        x: &mut f64,
-        y: &mut Vector,
-        h: f64,
-        args: &mut A,
-    ) -> Result<(), StrError>;
+    fn accept(&mut self, work: &mut Workspace, x: &mut f64, y: &mut Vector, h: f64, args: &mut A) -> Result<(), StrError>;
 
     /// Rejects the update
     fn reject(&mut self, work: &mut Workspace, h: f64);

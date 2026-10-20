@@ -47,10 +47,7 @@ fn test_radau5_brusselator_pde() {
         let plot = |v_field: bool| {
             let mut surf1 = Surface::new();
             let mut surf2 = Surface::new();
-            surf1
-                .set_with_surface(false)
-                .set_with_wireframe(true)
-                .set_wire_line_style("--");
+            surf1.set_with_surface(false).set_with_wireframe(true).set_wire_line_style("--");
             surf2
                 .set_with_surface(false)
                 .set_with_wireframe(true)
@@ -111,8 +108,6 @@ impl ReferenceData {
         let input = File::open(path).map_err(|_| "cannot open file").unwrap();
         let buffered = BufReader::new(input);
 
-        serde_json::from_reader(buffered)
-            .map_err(|_| "cannot parse JSON file")
-            .unwrap()
+        serde_json::from_reader(buffered).map_err(|_| "cannot parse JSON file").unwrap()
     }
 }

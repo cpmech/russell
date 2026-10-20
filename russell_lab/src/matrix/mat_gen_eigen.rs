@@ -295,69 +295,27 @@ mod tests {
         let mut beta_wrong = Vector::new(m + 1);
         let mut v_wrong = Matrix::new(m + 1, m);
         assert_eq!(
-            mat_gen_eigen(
-                &mut alpha_real_wrong,
-                &mut alpha_imag,
-                &mut beta,
-                &mut v,
-                &mut a,
-                &mut b
-            ),
+            mat_gen_eigen(&mut alpha_real_wrong, &mut alpha_imag, &mut beta, &mut v, &mut a, &mut b),
             Err("vectors are incompatible")
         );
         assert_eq!(
-            mat_gen_eigen(
-                &mut alpha_real,
-                &mut alpha_imag_wrong,
-                &mut beta,
-                &mut v,
-                &mut a,
-                &mut b
-            ),
+            mat_gen_eigen(&mut alpha_real, &mut alpha_imag_wrong, &mut beta, &mut v, &mut a, &mut b),
             Err("vectors are incompatible")
         );
         assert_eq!(
-            mat_gen_eigen(
-                &mut alpha_real,
-                &mut alpha_imag,
-                &mut beta_wrong,
-                &mut v,
-                &mut a,
-                &mut b
-            ),
+            mat_gen_eigen(&mut alpha_real, &mut alpha_imag, &mut beta_wrong, &mut v, &mut a, &mut b),
             Err("vectors are incompatible")
         );
         assert_eq!(
-            mat_gen_eigen(
-                &mut alpha_real,
-                &mut alpha_imag,
-                &mut beta,
-                &mut v_wrong,
-                &mut a,
-                &mut b
-            ),
+            mat_gen_eigen(&mut alpha_real, &mut alpha_imag, &mut beta, &mut v_wrong, &mut a, &mut b),
             Err("matrices are incompatible")
         );
         assert_eq!(
-            mat_gen_eigen(
-                &mut alpha_real,
-                &mut alpha_imag,
-                &mut beta,
-                &mut v,
-                &mut a,
-                &mut b_wrong1,
-            ),
+            mat_gen_eigen(&mut alpha_real, &mut alpha_imag, &mut beta, &mut v, &mut a, &mut b_wrong1,),
             Err("matrices are incompatible")
         );
         assert_eq!(
-            mat_gen_eigen(
-                &mut alpha_real,
-                &mut alpha_imag,
-                &mut beta,
-                &mut v,
-                &mut a,
-                &mut b_wrong2,
-            ),
+            mat_gen_eigen(&mut alpha_real, &mut alpha_imag, &mut beta, &mut v, &mut a, &mut b_wrong2,),
             Err("matrices are incompatible")
         );
     }
@@ -373,15 +331,7 @@ mod tests {
         let mut u = Matrix::new(m, m);
         let mut v = Matrix::new(m, m);
         assert_eq!(
-            mat_gen_eigen_lr(
-                &mut alpha_real,
-                &mut alpha_imag,
-                &mut beta,
-                &mut u,
-                &mut v,
-                &mut a,
-                &mut b
-            ),
+            mat_gen_eigen_lr(&mut alpha_real, &mut alpha_imag, &mut beta, &mut u, &mut v, &mut a, &mut b),
             Err("matrix must be square")
         );
         let mut a = Matrix::new(2, 2);
@@ -393,87 +343,31 @@ mod tests {
         let mut u_wrong = Matrix::new(m + 1, m);
         let mut v_wrong = Matrix::new(m + 1, m);
         assert_eq!(
-            mat_gen_eigen_lr(
-                &mut alpha_real_wrong,
-                &mut alpha_imag,
-                &mut beta,
-                &mut u,
-                &mut v,
-                &mut a,
-                &mut b
-            ),
+            mat_gen_eigen_lr(&mut alpha_real_wrong, &mut alpha_imag, &mut beta, &mut u, &mut v, &mut a, &mut b),
             Err("vectors are incompatible")
         );
         assert_eq!(
-            mat_gen_eigen_lr(
-                &mut alpha_real,
-                &mut alpha_imag_wrong,
-                &mut beta,
-                &mut u,
-                &mut v,
-                &mut a,
-                &mut b
-            ),
+            mat_gen_eigen_lr(&mut alpha_real, &mut alpha_imag_wrong, &mut beta, &mut u, &mut v, &mut a, &mut b),
             Err("vectors are incompatible")
         );
         assert_eq!(
-            mat_gen_eigen_lr(
-                &mut alpha_real,
-                &mut alpha_imag,
-                &mut beta_wrong,
-                &mut u,
-                &mut v,
-                &mut a,
-                &mut b
-            ),
+            mat_gen_eigen_lr(&mut alpha_real, &mut alpha_imag, &mut beta_wrong, &mut u, &mut v, &mut a, &mut b),
             Err("vectors are incompatible")
         );
         assert_eq!(
-            mat_gen_eigen_lr(
-                &mut alpha_real,
-                &mut alpha_imag,
-                &mut beta,
-                &mut u_wrong,
-                &mut v,
-                &mut a,
-                &mut b
-            ),
+            mat_gen_eigen_lr(&mut alpha_real, &mut alpha_imag, &mut beta, &mut u_wrong, &mut v, &mut a, &mut b),
             Err("matrices are incompatible")
         );
         assert_eq!(
-            mat_gen_eigen_lr(
-                &mut alpha_real,
-                &mut alpha_imag,
-                &mut beta,
-                &mut u,
-                &mut v_wrong,
-                &mut a,
-                &mut b
-            ),
+            mat_gen_eigen_lr(&mut alpha_real, &mut alpha_imag, &mut beta, &mut u, &mut v_wrong, &mut a, &mut b),
             Err("matrices are incompatible")
         );
         assert_eq!(
-            mat_gen_eigen_lr(
-                &mut alpha_real,
-                &mut alpha_imag,
-                &mut beta,
-                &mut u,
-                &mut v,
-                &mut a,
-                &mut b_wrong1,
-            ),
+            mat_gen_eigen_lr(&mut alpha_real, &mut alpha_imag, &mut beta, &mut u, &mut v, &mut a, &mut b_wrong1,),
             Err("matrices are incompatible")
         );
         assert_eq!(
-            mat_gen_eigen_lr(
-                &mut alpha_real,
-                &mut alpha_imag,
-                &mut beta,
-                &mut u,
-                &mut v,
-                &mut a,
-                &mut b_wrong2,
-            ),
+            mat_gen_eigen_lr(&mut alpha_real, &mut alpha_imag, &mut beta, &mut u, &mut v, &mut a, &mut b_wrong2,),
             Err("matrices are incompatible")
         );
     }
@@ -546,16 +440,7 @@ mod tests {
         let mut beta = Vector::new(m);
         let mut u = Matrix::new(m, m);
         let mut v = Matrix::new(m, m);
-        mat_gen_eigen_lr(
-            &mut alpha_real,
-            &mut alpha_imag,
-            &mut beta,
-            &mut u,
-            &mut v,
-            &mut a,
-            &mut b,
-        )
-        .unwrap();
+        mat_gen_eigen_lr(&mut alpha_real, &mut alpha_imag, &mut beta, &mut u, &mut v, &mut a, &mut b).unwrap();
         // println!("Re(α) =\n{}", alpha_real);
         // println!("Im(α) =\n{}", alpha_imag);
         // println!("β =\n{}", beta);

@@ -269,10 +269,7 @@ where
     where
         F: FnMut(usize, usize) -> T,
     {
-        let data: Vec<T> = (0..(nrow * ncol))
-            .into_iter()
-            .map(|p| function(p % nrow, p / nrow))
-            .collect();
+        let data: Vec<T> = (0..(nrow * ncol)).into_iter().map(|p| function(p % nrow, p / nrow)).collect();
         NumMatrix { nrow, ncol, data }
     }
 
@@ -1087,11 +1084,7 @@ mod tests {
     fn from_works() {
         // heap-allocated 2D array (vector of vectors)
         const IGNORED: f64 = 123.456;
-        let a_data = vec![
-            vec![1.0, 2.0],
-            vec![3.0, 4.0, IGNORED, IGNORED, IGNORED],
-            vec![5.0, 6.0],
-        ];
+        let a_data = vec![vec![1.0, 2.0], vec![3.0, 4.0, IGNORED, IGNORED, IGNORED], vec![5.0, 6.0]];
         let a = NumMatrix::<f64>::from(&a_data);
         assert_eq!(a.data, &[1.0, 3.0, 5.0, 2.0, 4.0, 6.0]);
 
@@ -1120,20 +1113,12 @@ mod tests {
     fn from_lower_works() {
         // heap-allocated 2D array (vector of vectors)
         const IGNORED: f64 = 123.456;
-        let a_data = vec![
-            vec![1.0, 2.0],
-            vec![3.0, 4.0, IGNORED, IGNORED, IGNORED],
-            vec![5.0, 6.0],
-        ];
+        let a_data = vec![vec![1.0, 2.0], vec![3.0, 4.0, IGNORED, IGNORED, IGNORED], vec![5.0, 6.0]];
         assert_eq!(
             NumMatrix::<f64>::from_lower(&a_data).err(),
             Some("the matrix must be square to set lower triangle")
         );
-        let a_data = vec![
-            vec![1.0, 2.0, 3.0],
-            vec![2.0, 4.0, 5.0, IGNORED, IGNORED, IGNORED],
-            vec![3.0, 5.0, 6.0],
-        ];
+        let a_data = vec![vec![1.0, 2.0, 3.0], vec![2.0, 4.0, 5.0, IGNORED, IGNORED, IGNORED], vec![3.0, 5.0, 6.0]];
         let a = NumMatrix::<f64>::from_lower(&a_data).unwrap();
         assert_eq!(
             a.data,
@@ -1154,20 +1139,12 @@ mod tests {
     fn from_upper_works() {
         // heap-allocated 2D array (vector of vectors)
         const IGNORED: f64 = 123.456;
-        let a_data = vec![
-            vec![1.0, 2.0],
-            vec![3.0, 4.0, IGNORED, IGNORED, IGNORED],
-            vec![5.0, 6.0],
-        ];
+        let a_data = vec![vec![1.0, 2.0], vec![3.0, 4.0, IGNORED, IGNORED, IGNORED], vec![5.0, 6.0]];
         assert_eq!(
             NumMatrix::<f64>::from_upper(&a_data).err(),
             Some("the matrix must be square to set upper triangle")
         );
-        let a_data = vec![
-            vec![1.0, 2.0, 3.0],
-            vec![2.0, 4.0, 5.0, IGNORED, IGNORED, IGNORED],
-            vec![3.0, 5.0, 6.0],
-        ];
+        let a_data = vec![vec![1.0, 2.0, 3.0], vec![2.0, 4.0, 5.0, IGNORED, IGNORED, IGNORED], vec![3.0, 5.0, 6.0]];
         let a = NumMatrix::<f64>::from_upper(&a_data).unwrap();
         assert_eq!(
             a.data,
@@ -1207,10 +1184,7 @@ mod tests {
     #[test]
     fn from_text_file_handles_problems() {
         assert_eq!(NumMatrix::<f64>::from_text_file("").err(), Some("cannot open file"),);
-        assert_eq!(
-            NumMatrix::<f64>::from_text_file("not-found").err(),
-            Some("cannot open file"),
-        );
+        assert_eq!(NumMatrix::<f64>::from_text_file("not-found").err(), Some("cannot open file"),);
         assert_eq!(
             NumMatrix::<f64>::from_text_file("./data/matrices/bad_missing_data.txt").err(),
             Some("column data is missing"),
@@ -1552,10 +1526,7 @@ mod tests {
 
         // serialize to json
         let json = serde_json::to_string(&a).unwrap();
-        assert_eq!(
-            json,
-            r#"{"nrow":3,"ncol":3,"data":[1.0,4.0,7.0,2.0,5.0,8.0,3.0,6.0,9.0]}"#
-        );
+        assert_eq!(json, r#"{"nrow":3,"ncol":3,"data":[1.0,4.0,7.0,2.0,5.0,8.0,3.0,6.0,9.0]}"#);
 
         // deserialize from json
         let from_json: NumMatrix<f64> = serde_json::from_str(&json).unwrap();

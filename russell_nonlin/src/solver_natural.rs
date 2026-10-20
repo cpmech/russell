@@ -215,15 +215,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
     ///
     /// 1. Calculates the initial stepsize
     /// 2. Determines the first tangent vector in pseudo-arclength
-    fn initialize(
-        &mut self,
-        work: &mut Workspace,
-        ddl_ini: f64,
-        _u: &Vector,
-        _l: f64,
-        dir: IniDir,
-        _args: &mut A,
-    ) -> Result<(), StrError> {
+    fn initialize(&mut self, work: &mut Workspace, ddl_ini: f64, _u: &Vector, _l: f64, dir: IniDir, _args: &mut A) -> Result<(), StrError> {
         // set flags
         self.iter_jac_computed = false;
 

@@ -87,10 +87,7 @@ fn main() -> Result<(), StrError> {
     let xx = Vector::linspace(-0.15, 1.65, 300)?;
     let yy = xx.get_mapped(&f);
     let mut curve_f = Curve::new();
-    curve_f
-        .set_label("$f(x)=(x-1)^4+(x-1)^2$")
-        .set_line_color("C0")
-        .set_line_width(2.5);
+    curve_f.set_label("$f(x)=(x-1)^4+(x-1)^2$").set_line_color("C0").set_line_width(2.5);
     curve_f.draw(xx.as_data(), yy.as_data());
 
     // 2. Tangent line (full linear model): y = f(x0) + slope*(x - x0)
@@ -150,10 +147,7 @@ fn main() -> Result<(), StrError> {
     // 6. Accepted (new) point — strict LineSearcher (c1=0.5)
     let mut curve_new = Curve::new();
     curve_new
-        .set_label(&format!(
-            "manual: accepted ($x={:.2},\\ \\alpha={:.1}$)",
-            x_new, accepted_alpha
-        ))
+        .set_label(&format!("manual: accepted ($x={:.2},\\ \\alpha={:.1}$)", x_new, accepted_alpha))
         .set_line_style("None")
         .set_marker_style("*")
         .set_marker_size(12.0)
@@ -164,10 +158,7 @@ fn main() -> Result<(), StrError> {
     // 7. Accepted (new) point — default LineSearcher (c1=1e-4)
     let mut curve_new_ls = Curve::new();
     curve_new_ls
-        .set_label(&format!(
-            "LineSearcher: accepted ($x={:.2},\\ \\alpha={:.1}$)",
-            x_new_ls, alpha_ls
-        ))
+        .set_label(&format!("LineSearcher: accepted ($x={:.2},\\ \\alpha={:.1}$)", x_new_ls, alpha_ls))
         .set_line_style("None")
         .set_marker_style("D")
         .set_marker_void(true)

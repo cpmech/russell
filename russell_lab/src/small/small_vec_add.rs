@@ -39,14 +39,8 @@ use num_traits::Num;
 /// assert_eq!(w, [14.0, 23.0, 32.0, 41.0]);
 /// ```
 #[inline]
-pub fn small_vec_add<T, const N: usize>(
-    w: &mut SmallVector<T, N>,
-    alpha: T,
-    u: &SmallVector<T, N>,
-    beta: T,
-    v: &SmallVector<T, N>,
-    n: usize,
-) where
+pub fn small_vec_add<T, const N: usize>(w: &mut SmallVector<T, N>, alpha: T, u: &SmallVector<T, N>, beta: T, v: &SmallVector<T, N>, n: usize)
+where
     T: Num + Copy,
 {
     assert!(n <= N, "n must be <= N");

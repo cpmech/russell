@@ -56,22 +56,10 @@ mod tests {
         let mut b_2x2 = ComplexMatrix::new(2, 2);
         let mut b_2x1 = ComplexMatrix::new(2, 1);
         let mut b_1x2 = ComplexMatrix::new(1, 2);
-        assert_eq!(
-            complex_mat_update(&mut b_2x2, cpx!(2.0, 0.0), &a_2x1),
-            Err("matrices are incompatible")
-        );
-        assert_eq!(
-            complex_mat_update(&mut b_2x2, cpx!(2.0, 0.0), &a_1x2),
-            Err("matrices are incompatible")
-        );
-        assert_eq!(
-            complex_mat_update(&mut b_2x1, cpx!(2.0, 0.0), &a_2x2),
-            Err("matrices are incompatible")
-        );
-        assert_eq!(
-            complex_mat_update(&mut b_1x2, cpx!(2.0, 0.0), &a_2x2),
-            Err("matrices are incompatible")
-        );
+        assert_eq!(complex_mat_update(&mut b_2x2, cpx!(2.0, 0.0), &a_2x1), Err("matrices are incompatible"));
+        assert_eq!(complex_mat_update(&mut b_2x2, cpx!(2.0, 0.0), &a_1x2), Err("matrices are incompatible"));
+        assert_eq!(complex_mat_update(&mut b_2x1, cpx!(2.0, 0.0), &a_2x2), Err("matrices are incompatible"));
+        assert_eq!(complex_mat_update(&mut b_1x2, cpx!(2.0, 0.0), &a_2x2), Err("matrices are incompatible"));
     }
 
     #[test]

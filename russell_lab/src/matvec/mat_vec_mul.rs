@@ -71,14 +71,8 @@ mod tests {
         let a_1x2 = Matrix::new(1, 2);
         let a_3x1 = Matrix::new(3, 1);
         let mut v = Vector::new(3);
-        assert_eq!(
-            mat_vec_mul(&mut v, 1.0, &a_1x2, &u),
-            Err("matrix and vectors are incompatible")
-        );
-        assert_eq!(
-            mat_vec_mul(&mut v, 1.0, &a_3x1, &u),
-            Err("matrix and vectors are incompatible")
-        );
+        assert_eq!(mat_vec_mul(&mut v, 1.0, &a_1x2, &u), Err("matrix and vectors are incompatible"));
+        assert_eq!(mat_vec_mul(&mut v, 1.0, &a_3x1, &u), Err("matrix and vectors are incompatible"));
     }
 
     #[test]

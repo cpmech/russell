@@ -306,10 +306,7 @@ impl Stats {
             String::new()
         } else {
             let hist = self.get_histogram_of_iterations(13, '■', BAR_LEN);
-            format!(
-                "\n\nDistribution of the number of converged iterations across all steps:\n{}",
-                hist
-            )
+            format!("\n\nDistribution of the number of converged iterations across all steps:\n{}", hist)
         };
 
         // Write summary to buffer

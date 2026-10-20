@@ -100,10 +100,7 @@ fn test_2d_prob06_spc() -> Result<(), StrError> {
             .set_figure_size_points(600.0, 600.0)
             .save(&fn_a)
             .unwrap();
-        plot.add(&surf_ana)
-            .add(&surf_num)
-            .set_figure_size_points(600.0, 600.0)
-            .save(&fn_b)?;
+        plot.add(&surf_ana).add(&surf_num).set_figure_size_points(600.0, 600.0).save(&fn_b)?;
     }
     Ok(())
 }

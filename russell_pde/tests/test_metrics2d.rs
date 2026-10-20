@@ -112,11 +112,7 @@ fn test_metrics_2d() -> Result<(), StrError> {
         }),
     ];
 
-    let mut map = Transfinite2d::new(
-        boundary_functions,
-        deriv1_boundary_functions,
-        Some(deriv2_boundary_functions),
-    )?;
+    let mut map = Transfinite2d::new(boundary_functions, deriv1_boundary_functions, Some(deriv2_boundary_functions))?;
 
     let mut met = Metrics::new(2, false);
 
@@ -300,8 +296,7 @@ fn mathematica(r: f64, s: f64, xx: &[[f64; 2]; 4], a: f64, b: f64) -> (Vector, V
         + (1.0 + s) * (y2 - y3))
         / 4.0;
 
-    let dx_ds_0 = ((2.0 * b * (d23 * q10 - d10 * q23) * (-1.0 + f64::powi(r, 2))) / (d10 * d23)
-        + (4.0 * a * q30 * (-1.0 + r) * s) / d30
+    let dx_ds_0 = ((2.0 * b * (d23 * q10 - d10 * q23) * (-1.0 + f64::powi(r, 2))) / (d10 * d23) + (4.0 * a * q30 * (-1.0 + r) * s) / d30
         - (4.0 * a * q21 * (1.0 + r) * s) / d21
         + (-1.0 + r) * x0
         - x1
@@ -312,8 +307,7 @@ fn mathematica(r: f64, s: f64, xx: &[[f64; 2]; 4], a: f64, b: f64) -> (Vector, V
         - r * x3)
         / 4.0;
 
-    let dx_ds_1 = ((2.0 * b * (-(d23 * p10) + d10 * p23) * (-1.0 + f64::powi(r, 2))) / (d10 * d23)
-        - (4.0 * a * p30 * (-1.0 + r) * s) / d30
+    let dx_ds_1 = ((2.0 * b * (-(d23 * p10) + d10 * p23) * (-1.0 + f64::powi(r, 2))) / (d10 * d23) - (4.0 * a * p30 * (-1.0 + r) * s) / d30
         + (4.0 * a * p21 * (1.0 + r) * s) / d21
         + (-1.0 + r) * y0
         - (1.0 + r) * y1
@@ -342,14 +336,7 @@ fn mathematica(r: f64, s: f64, xx: &[[f64; 2]; 4], a: f64, b: f64) -> (Vector, V
     (g_cov_0, g_cov_1, g_ctr_0, g_ctr_1, det_g)
 }
 
-fn draw_cov_vectors_2d(
-    canvas: &mut Canvas,
-    text: Option<&mut Text>,
-    x: &Vector,
-    met: &Metrics,
-    scale: f64,
-    normalize: bool,
-) {
+fn draw_cov_vectors_2d(canvas: &mut Canvas, text: Option<&mut Text>, x: &Vector, met: &Metrics, scale: f64, normalize: bool) {
     let txt_scale = 1.1 * scale;
 
     // covariant base vector in r-direction
@@ -359,12 +346,10 @@ fn draw_cov_vectors_2d(
     } else {
         met.g_cov[0].clone()
     };
-    canvas.set_edge_color("red").set_face_color("red").draw_arrow(
-        x[0],
-        x[1],
-        x[0] + scale * g0[0],
-        x[1] + scale * g0[1],
-    );
+    canvas
+        .set_edge_color("red")
+        .set_face_color("red")
+        .draw_arrow(x[0], x[1], x[0] + scale * g0[0], x[1] + scale * g0[1]);
 
     // covariant base vector in s-direction
     let g1 = if normalize {
@@ -373,12 +358,10 @@ fn draw_cov_vectors_2d(
     } else {
         met.g_cov[1].clone()
     };
-    canvas.set_edge_color("blue").set_face_color("blue").draw_arrow(
-        x[0],
-        x[1],
-        x[0] + scale * g1[0],
-        x[1] + scale * g1[1],
-    );
+    canvas
+        .set_edge_color("blue")
+        .set_face_color("blue")
+        .draw_arrow(x[0], x[1], x[0] + scale * g1[0], x[1] + scale * g1[1]);
 
     if let Some(txt) = text {
         txt.draw(x[0] + txt_scale * g0[0], x[1] + txt_scale * g0[1], "$\\vec{g}_1$");
@@ -386,14 +369,7 @@ fn draw_cov_vectors_2d(
     }
 }
 
-fn draw_ctr_vectors_2d(
-    canvas: &mut Canvas,
-    text: Option<&mut Text>,
-    x: &Vector,
-    met: &Metrics,
-    scale: f64,
-    normalize: bool,
-) {
+fn draw_ctr_vectors_2d(canvas: &mut Canvas, text: Option<&mut Text>, x: &Vector, met: &Metrics, scale: f64, normalize: bool) {
     let txt_scale = 1.2 * scale;
 
     // contravariant base vector in r-direction
@@ -403,12 +379,10 @@ fn draw_ctr_vectors_2d(
     } else {
         met.g_ctr[0].clone()
     };
-    canvas.set_edge_color("green").set_face_color("green").draw_arrow(
-        x[0],
-        x[1],
-        x[0] + scale * g0[0],
-        x[1] + scale * g0[1],
-    );
+    canvas
+        .set_edge_color("green")
+        .set_face_color("green")
+        .draw_arrow(x[0], x[1], x[0] + scale * g0[0], x[1] + scale * g0[1]);
 
     // contravariant base vector in s-direction
     let g1 = if normalize {
@@ -417,12 +391,10 @@ fn draw_ctr_vectors_2d(
     } else {
         met.g_ctr[1].clone()
     };
-    canvas.set_edge_color("orange").set_face_color("orange").draw_arrow(
-        x[0],
-        x[1],
-        x[0] + scale * g1[0],
-        x[1] + scale * g1[1],
-    );
+    canvas
+        .set_edge_color("orange")
+        .set_face_color("orange")
+        .draw_arrow(x[0], x[1], x[0] + scale * g1[0], x[1] + scale * g1[1]);
 
     if let Some(txt) = text {
         txt.draw(x[0] + txt_scale * g0[0], x[1] + txt_scale * g0[1], "$2\\vec{g}^1$");

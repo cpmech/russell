@@ -23,11 +23,7 @@ fn time<F: FnMut()>(reps: usize, mut f: F) -> f64 {
     best
 }
 fn main() {
-    let backend = if cfg!(feature = "open_blas") {
-        "open_blas"
-    } else {
-        "native"
-    };
+    let backend = if cfg!(feature = "open_blas") { "open_blas" } else { "native" };
     for n in [256, 512, 1024] {
         let a = filled(n, 0.0);
         let b = filled(n, 0.1);

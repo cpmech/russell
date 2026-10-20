@@ -310,11 +310,7 @@ mod tests {
     fn as_array_2d_works() {
         // heap-allocated 2D array (vector of vectors)
         const IGNORED: f64 = 123.456;
-        let a_data = vec![
-            vec![1.0, 2.0],
-            vec![3.0, 4.0, IGNORED, IGNORED, IGNORED],
-            vec![5.0, 6.0],
-        ];
+        let a_data = vec![vec![1.0, 2.0], vec![3.0, 4.0, IGNORED, IGNORED, IGNORED], vec![5.0, 6.0]];
         assert_eq!(
             array_2d_str(&a_data),
             "1,2,\n\

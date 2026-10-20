@@ -68,10 +68,7 @@ fn solve_nonlinear_system(genie: Genie) -> Result<(), StrError> {
     let mut uu = Vector::from(&[0.0, 0.0, 0.0, 0.0]);
     let mut mdu = Vector::new(neq);
     let mut norm_rr0 = 1.0;
-    println!(
-        "{:>4}{:>13}{:>13}{:>13}{:>13}{:>15}",
-        "it", "d1", "d2", "d3", "d4", "err"
-    );
+    println!("{:>4}{:>13}{:>13}{:>13}{:>13}{:>15}", "it", "d1", "d2", "d3", "d4", "err");
     let uu_ref = &[
         vec![0.000000, 0.000000, 0.000000, 0.000000],
         vec![-0.236393, -0.106230, -0.225574, -0.086557],
@@ -89,10 +86,7 @@ fn solve_nonlinear_system(genie: Genie) -> Result<(), StrError> {
         } else {
             vec_norm(&rr, Norm::Euc) / norm_rr0
         };
-        println!(
-            "{:>4}{:>13.6}{:>13.6}{:>13.6}{:>13.6}{:>15.6e}",
-            it, uu[0], uu[1], uu[2], uu[3], err
-        );
+        println!("{:>4}{:>13.6}{:>13.6}{:>13.6}{:>13.6}{:>15.6e}", it, uu[0], uu[1], uu[2], uu[3], err);
         vec_approx_eq(&uu, &uu_ref[it], 1e-6);
         if err < 1e-13 {
             break;
@@ -103,11 +97,7 @@ fn solve_nonlinear_system(genie: Genie) -> Result<(), StrError> {
         vec_update(&mut uu, -1.0, &mdu)?;
         it += 1;
     }
-    if it != 5 {
-        Err("number of iterations must be 5")
-    } else {
-        Ok(())
-    }
+    if it != 5 { Err("number of iterations must be 5") } else { Ok(()) }
 }
 
 #[test]

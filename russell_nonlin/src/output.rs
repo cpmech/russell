@@ -78,10 +78,7 @@ impl<'a, A> Output<'a, A> {
     /// # Arguments
     ///
     /// * `callback` -- function to be executed on an accepted step
-    pub fn set_callback(
-        &mut self,
-        callback: impl Fn(&Stats, &Vector, f64, f64, &mut A) -> Result<bool, StrError> + Send + Sync + 'a,
-    ) -> &mut Self {
+    pub fn set_callback(&mut self, callback: impl Fn(&Stats, &Vector, f64, f64, &mut A) -> Result<bool, StrError> + Send + Sync + 'a) -> &mut Self {
         self.callback = Some(Arc::new(callback));
         self
     }

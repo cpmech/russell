@@ -141,11 +141,7 @@ fn test_modified_bessel_functions_big() {
 
 #[test]
 fn test_modified_bessel_functions_neg() {
-    let dat: HashMap<String, Vec<f64>> = read_table(
-        "data/reference/as-9-modbessel-integer-neg.cmp",
-        Some(&["x", "I0", "I1", "I2", "I3"]),
-    )
-    .unwrap();
+    let dat: HashMap<String, Vec<f64>> = read_table("data/reference/as-9-modbessel-integer-neg.cmp", Some(&["x", "I0", "I1", "I2", "I3"])).unwrap();
 
     let xx = dat.get("x").unwrap();
     let i0 = dat.get("I0").unwrap();

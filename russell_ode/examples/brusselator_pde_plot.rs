@@ -160,11 +160,7 @@ impl Graph {
     pub fn save(&mut self, v_field: bool) -> Result<(), StrError> {
         let field = if v_field { "v" } else { "u" };
         let path = format!("{}_{}.svg", self.path_key, field);
-        let (width, height) = if self.second_book {
-            (800.0, 1000.0)
-        } else {
-            (1000.0, 1500.0)
-        };
+        let (width, height) = if self.second_book { (800.0, 1000.0) } else { (1000.0, 1500.0) };
         self.plot.set_figure_size_points(width, height).save(&path)
     }
 }

@@ -45,11 +45,7 @@ fn run_fdm(lmm: bool, nx: usize, tol: f64, genie: Genie, symmetric: bool) -> Res
     fdm.set_solver_options(genie, symmetric);
 
     // solve the problem
-    let a = if lmm {
-        fdm.solve_lmm(0.0, source)?
-    } else {
-        fdm.solve_sps(0.0, source)?
-    };
+    let a = if lmm { fdm.solve_lmm(0.0, source)? } else { fdm.solve_sps(0.0, source)? };
 
     // analytical solution
     fdm.for_each_coord(|m, x| {

@@ -33,13 +33,7 @@ use crate::{Complex64, StrError, array_plus_opx_complex};
 ///     Ok(())
 /// }
 /// ```
-pub fn complex_mat_add(
-    c: &mut ComplexMatrix,
-    alpha: Complex64,
-    a: &ComplexMatrix,
-    beta: Complex64,
-    b: &ComplexMatrix,
-) -> Result<(), StrError> {
+pub fn complex_mat_add(c: &mut ComplexMatrix, alpha: Complex64, a: &ComplexMatrix, beta: Complex64, b: &ComplexMatrix) -> Result<(), StrError> {
     let (m, n) = c.dims();
     if a.nrow() != m || a.ncol() != n || b.nrow() != m || b.ncol() != n {
         return Err("matrices are incompatible");
@@ -65,22 +59,10 @@ mod tests {
         let mut c_2x2 = ComplexMatrix::new(2, 2);
         let alpha = cpx!(1.0, 0.0);
         let beta = cpx!(1.0, 0.0);
-        assert_eq!(
-            complex_mat_add(&mut c_2x2, alpha, &a_2x3, beta, &b_2x2),
-            Err("matrices are incompatible")
-        );
-        assert_eq!(
-            complex_mat_add(&mut c_2x2, alpha, &a_3x2, beta, &b_2x2),
-            Err("matrices are incompatible")
-        );
-        assert_eq!(
-            complex_mat_add(&mut c_2x2, alpha, &a_2x2, beta, &b_2x3),
-            Err("matrices are incompatible")
-        );
-        assert_eq!(
-            complex_mat_add(&mut c_2x2, alpha, &a_2x2, beta, &b_3x2),
-            Err("matrices are incompatible")
-        );
+        assert_eq!(complex_mat_add(&mut c_2x2, alpha, &a_2x3, beta, &b_2x2), Err("matrices are incompatible"));
+        assert_eq!(complex_mat_add(&mut c_2x2, alpha, &a_3x2, beta, &b_2x2), Err("matrices are incompatible"));
+        assert_eq!(complex_mat_add(&mut c_2x2, alpha, &a_2x2, beta, &b_2x3), Err("matrices are incompatible"));
+        assert_eq!(complex_mat_add(&mut c_2x2, alpha, &a_2x2, beta, &b_3x2), Err("matrices are incompatible"));
     }
 
     #[test]
@@ -98,11 +80,7 @@ mod tests {
             [0.5, 1.0, 1.5, 2.0],
             [0.5, 1.0, 1.5, 2.0],
         ]);
-        let mut c = ComplexMatrix::from(&[
-            [NOISE, NOISE, NOISE, NOISE],
-            [NOISE, NOISE, NOISE, NOISE],
-            [NOISE, NOISE, NOISE, NOISE],
-        ]);
+        let mut c = ComplexMatrix::from(&[[NOISE, NOISE, NOISE, NOISE], [NOISE, NOISE, NOISE, NOISE], [NOISE, NOISE, NOISE, NOISE]]);
         let alpha = cpx!(1.0, 0.0);
         let beta = cpx!(-4.0, 0.0);
         complex_mat_add(&mut c, alpha, &a, beta, &b).unwrap();

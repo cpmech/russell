@@ -117,16 +117,7 @@ fn test_arc_singular_initial_state_2() {
     }
 }
 
-fn do_plot(
-    index: usize,
-    perturbation: f64,
-    lambda_ana: impl Fn(f64) -> f64,
-    uu: &[f64],
-    ll: &[f64],
-    hh: &[f64],
-    duds: &[f64],
-    dlds: &[f64],
-) {
+fn do_plot(index: usize, perturbation: f64, lambda_ana: impl Fn(f64) -> f64, uu: &[f64], ll: &[f64], hh: &[f64], duds: &[f64], dlds: &[f64]) {
     let mut curve_ana = Curve::new();
     curve_ana.set_label("analytical");
     let uu_ana = linspace(0.0, 3.0, 201);
@@ -142,10 +133,7 @@ fn do_plot(
     curve_num.draw(&uu, &ll);
 
     let mut arrows = Canvas::new();
-    arrows
-        .set_arrow_scale(10.0)
-        .set_edge_color("None")
-        .set_face_color("black");
+    arrows.set_arrow_scale(10.0).set_edge_color("None").set_face_color("black");
     for i in 0..uu.len() {
         let xf = uu[i] + hh[i] * duds[i];
         let yf = ll[i] + hh[i] * dlds[i];

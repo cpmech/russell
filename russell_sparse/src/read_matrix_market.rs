@@ -91,9 +91,7 @@ impl MatrixMarketData {
                     self.symmetric = false;
                 }
                 _ => {
-                    return Err(
-                        "after %%MatrixMarket, the fourth option must be \"general\", \"symmetric\", or \"Hermitian\"",
-                    );
+                    return Err("after %%MatrixMarket, the fourth option must be \"general\", \"symmetric\", or \"Hermitian\"");
                 }
             },
             None => return Err("cannot find the fourth option in the header line"),
@@ -343,10 +341,7 @@ impl MatrixMarketData {
 ///     Ok(())
 /// }
 /// ```
-pub fn read_matrix_market<P>(
-    full_path: &P,
-    symmetric_handling: MMsym,
-) -> Result<(Option<CooMatrix>, Option<ComplexCooMatrix>), StrError>
+pub fn read_matrix_market<P>(full_path: &P, symmetric_handling: MMsym) -> Result<(Option<CooMatrix>, Option<ComplexCooMatrix>), StrError>
 where
     P: AsRef<OsStr> + ?Sized,
 {
@@ -378,9 +373,7 @@ where
     // symmetric type
     let sym = if data.symmetric {
         if data.m != data.n {
-            return Err(
-                "MatrixMarket data is invalid: the number of rows must equal the number of columns for symmetric matrices",
-            );
+            return Err("MatrixMarket data is invalid: the number of rows must equal the number of columns for symmetric matrices");
         }
         match symmetric_handling {
             MMsym::LeaveAsLower => Sym::YesLower,
@@ -406,25 +399,20 @@ where
                 if data.symmetric {
                     match symmetric_handling {
                         MMsym::LeaveAsLower => {
-                            coo.put(data.i as usize, data.j as usize, cpx!(data.aij, data.bij))
-                                .unwrap();
+                            coo.put(data.i as usize, data.j as usize, cpx!(data.aij, data.bij)).unwrap();
                         }
                         MMsym::SwapToUpper => {
-                            coo.put(data.j as usize, data.i as usize, cpx!(data.aij, data.bij))
-                                .unwrap();
+                            coo.put(data.j as usize, data.i as usize, cpx!(data.aij, data.bij)).unwrap();
                         }
                         MMsym::MakeItFull => {
-                            coo.put(data.i as usize, data.j as usize, cpx!(data.aij, data.bij))
-                                .unwrap();
+                            coo.put(data.i as usize, data.j as usize, cpx!(data.aij, data.bij)).unwrap();
                             if data.i != data.j {
-                                coo.put(data.j as usize, data.i as usize, cpx!(data.aij, data.bij))
-                                    .unwrap();
+                                coo.put(data.j as usize, data.i as usize, cpx!(data.aij, data.bij)).unwrap();
                             }
                         }
                     }
                 } else {
-                    coo.put(data.i as usize, data.j as usize, cpx!(data.aij, data.bij))
-                        .unwrap();
+                    coo.put(data.i as usize, data.j as usize, cpx!(data.aij, data.bij)).unwrap();
                 };
             }
         }
@@ -476,10 +464,7 @@ mod tests {
     fn parse_header_captures_errors() {
         let mut data = MatrixMarketData::new();
 
-        assert_eq!(
-            data.parse_header("  \n"),
-            Err("cannot find the keyword %%MatrixMarket on the first line")
-        );
+        assert_eq!(data.parse_header("  \n"), Err("cannot find the keyword %%MatrixMarket on the first line"));
         assert_eq!(
             data.parse_header("MatrixMarket  "),
             Err("the header (first line) must start with %%MatrixMarket"),
@@ -531,28 +516,13 @@ mod tests {
     fn parse_dimensions_captures_errors() {
         let mut data = MatrixMarketData::new();
 
-        assert_eq!(
-            data.parse_dimensions(" wrong \n").err(),
-            Some("cannot parse number of rows")
-        );
+        assert_eq!(data.parse_dimensions(" wrong \n").err(), Some("cannot parse number of rows"));
 
-        assert_eq!(
-            data.parse_dimensions(" 1 \n").err(),
-            Some("cannot read number of columns")
-        );
-        assert_eq!(
-            data.parse_dimensions(" 1 wrong").err(),
-            Some("cannot parse number of columns")
-        );
+        assert_eq!(data.parse_dimensions(" 1 \n").err(), Some("cannot read number of columns"));
+        assert_eq!(data.parse_dimensions(" 1 wrong").err(), Some("cannot parse number of columns"));
 
-        assert_eq!(
-            data.parse_dimensions(" 1 1   \n").err(),
-            Some("cannot read number of non-zeros")
-        );
-        assert_eq!(
-            data.parse_dimensions(" 1 1  wrong").err(),
-            Some("cannot parse number of non-zeros")
-        );
+        assert_eq!(data.parse_dimensions(" 1 1   \n").err(), Some("cannot read number of non-zeros"));
+        assert_eq!(data.parse_dimensions(" 1 1  wrong").err(), Some("cannot parse number of non-zeros"));
 
         assert_eq!(
             data.parse_dimensions(" 0 1  1").err(),
@@ -635,15 +605,11 @@ mod tests {
         );
         assert_eq!(
             read_matrix_market("./data/matrix_market/bad_symmetric_rectangular.mtx", h).err(),
-            Some(
-                "MatrixMarket data is invalid: the number of rows must equal the number of columns for symmetric matrices"
-            )
+            Some("MatrixMarket data is invalid: the number of rows must equal the number of columns for symmetric matrices")
         );
         assert_eq!(
             read_matrix_market("./data/matrix_market/bad_symmetric_rectangular_complex.mtx", h).err(),
-            Some(
-                "MatrixMarket data is invalid: the number of rows must equal the number of columns for symmetric matrices"
-            )
+            Some("MatrixMarket data is invalid: the number of rows must equal the number of columns for symmetric matrices")
         );
         assert_eq!(
             read_matrix_market("./data/matrix_market/bad_not_complex_hermitian.mtx", h).err(),
@@ -662,10 +628,7 @@ mod tests {
         assert_eq!((coo.nrow, coo.ncol, coo.nnz, coo.max_nnz), (5, 5, 12, 12));
         assert_eq!(coo.indices_i, &[0, 1, 0, 2, 4, 1, 2, 3, 4, 2, 1, 4]);
         assert_eq!(coo.indices_j, &[0, 0, 1, 1, 1, 2, 2, 2, 2, 3, 4, 4]);
-        assert_eq!(
-            coo.values,
-            &[2.0, 3.0, 3.0, -1.0, 4.0, 4.0, -3.0, 1.0, 2.0, 2.0, 6.0, 1.0]
-        );
+        assert_eq!(coo.values, &[2.0, 3.0, 3.0, -1.0, 4.0, 4.0, -3.0, 1.0, 2.0, 2.0, 6.0, 1.0]);
         assert_eq!(coo.get_nnz(), 12);
         assert_eq!(coo.get_actual_nnz(), 12);
     }
@@ -713,12 +676,7 @@ mod tests {
         assert_eq!((coo.nrow, coo.ncol, coo.nnz, coo.max_nnz), (5, 5, 15, 15));
         assert_eq!(coo.indices_i, &[0, 1, 2, 3, 4, 1, 2, 3, 4, 2, 3, 4, 3, 4, 4]);
         assert_eq!(coo.indices_j, &[0, 1, 2, 3, 4, 0, 0, 0, 0, 1, 1, 1, 2, 2, 3]);
-        assert_eq!(
-            coo.values,
-            &[
-                2.0, 2.0, 9.0, 7.0, 8.0, 1.0, 1.0, 3.0, 2.0, 2.0, 1.0, 1.0, 1.0, 5.0, 1.0
-            ],
-        );
+        assert_eq!(coo.values, &[2.0, 2.0, 9.0, 7.0, 8.0, 1.0, 1.0, 3.0, 2.0, 2.0, 1.0, 1.0, 1.0, 5.0, 1.0],);
         assert_eq!(coo.get_nnz(), 15);
         assert_eq!(coo.get_actual_nnz(), 25);
     }
@@ -760,12 +718,7 @@ mod tests {
         assert_eq!((coo.nrow, coo.ncol, coo.nnz, coo.max_nnz), (5, 5, 15, 15));
         assert_eq!(coo.indices_i, &[0, 1, 2, 3, 4, 0, 0, 0, 0, 1, 1, 1, 2, 2, 3]);
         assert_eq!(coo.indices_j, &[0, 1, 2, 3, 4, 1, 2, 3, 4, 2, 3, 4, 3, 4, 4]);
-        assert_eq!(
-            coo.values,
-            &[
-                2.0, 2.0, 9.0, 7.0, 8.0, 1.0, 1.0, 3.0, 2.0, 2.0, 1.0, 1.0, 1.0, 5.0, 1.0
-            ],
-        );
+        assert_eq!(coo.values, &[2.0, 2.0, 9.0, 7.0, 8.0, 1.0, 1.0, 3.0, 2.0, 2.0, 1.0, 1.0, 1.0, 5.0, 1.0],);
         assert_eq!(coo.get_nnz(), 15);
         assert_eq!(coo.get_actual_nnz(), 25);
     }
@@ -807,10 +760,7 @@ mod tests {
         assert_eq!((coo.nrow, coo.ncol, coo.nnz, coo.max_nnz), (5, 5, 11, 14));
         assert_eq!(coo.indices_i, &[0, 1, 0, 2, 1, 3, 2, 3, 4, 1, 4, 0, 0, 0]);
         assert_eq!(coo.indices_j, &[0, 0, 1, 1, 2, 2, 3, 3, 1, 4, 4, 0, 0, 0]);
-        assert_eq!(
-            coo.values,
-            &[2.0, 3.0, 3.0, -1.0, -1.0, 2.0, 2.0, 3.0, 6.0, 6.0, 1.0, 0.0, 0.0, 0.0]
-        );
+        assert_eq!(coo.values, &[2.0, 3.0, 3.0, -1.0, -1.0, 2.0, 2.0, 3.0, 6.0, 6.0, 1.0, 0.0, 0.0, 0.0]);
         let mut a = Matrix::new(5, 5);
         coo.to_dense(&mut a).unwrap();
         let correct = "┌                ┐\n\

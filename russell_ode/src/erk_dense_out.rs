@@ -78,12 +78,8 @@ impl ErkDenseOut {
                 self.d[1][m] = y_diff;
                 self.d[2][m] = b_spl;
                 self.d[3][m] = y_diff - h * k[6][m] - b_spl;
-                self.d[4][m] = dd[0][0] * k[0][m]
-                    + dd[0][2] * k[2][m]
-                    + dd[0][3] * k[3][m]
-                    + dd[0][4] * k[4][m]
-                    + dd[0][5] * k[5][m]
-                    + dd[0][6] * k[6][m];
+                self.d[4][m] =
+                    dd[0][0] * k[0][m] + dd[0][2] * k[2][m] + dd[0][3] * k[3][m] + dd[0][4] * k[4][m] + dd[0][5] * k[5][m] + dd[0][6] * k[6][m];
                 self.d[4][m] *= h;
             }
         }
@@ -212,9 +208,7 @@ impl ErkDenseOut {
             let theta = (x_out - x_prev) / h;
             let u_theta = 1.0 - theta;
             for m in 0..self.ndim {
-                y_out[m] = self.d[0][m]
-                    + theta
-                        * (self.d[1][m] + u_theta * (self.d[2][m] + theta * (self.d[3][m] + u_theta * self.d[4][m])));
+                y_out[m] = self.d[0][m] + theta * (self.d[1][m] + u_theta * (self.d[2][m] + theta * (self.d[3][m] + u_theta * self.d[4][m])));
             }
         }
         if self.method == Method::DoPri8 {
@@ -223,8 +217,7 @@ impl ErkDenseOut {
             let u_theta = 1.0 - theta;
             for m in 0..self.ndim {
                 let par = self.d[4][m] + theta * (self.d[5][m] + u_theta * (self.d[6][m] + theta * self.d[7][m]));
-                y_out[m] = self.d[0][m]
-                    + theta * (self.d[1][m] + u_theta * (self.d[2][m] + theta * (self.d[3][m] + u_theta * par)));
+                y_out[m] = self.d[0][m] + theta * (self.d[1][m] + u_theta * (self.d[2][m] + theta * (self.d[3][m] + u_theta * par)));
             }
         }
     }

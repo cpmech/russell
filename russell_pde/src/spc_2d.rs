@@ -636,12 +636,7 @@ impl<'a> Spc2d<'a> {
     /// * The augmented system size is (neq + nlag) × (neq + nlag)
     /// * Matrix is generally dense due to spectral method
     /// * Includes domain mapping scaling from `[-1,1]×[-1,1]` to `[xmin,xmax]×[ymin,ymax]`
-    pub fn get_matrices_lmm(
-        &self,
-        alpha: f64,
-        extra_nnz: usize,
-        get_constraints_mat: bool,
-    ) -> (CooMatrix, Option<CooMatrix>) {
+    pub fn get_matrices_lmm(&self, alpha: f64, extra_nnz: usize, get_constraints_mat: bool) -> (CooMatrix, Option<CooMatrix>) {
         // allocate matrices
         let (neq, nlag, ndim) = self.get_dims_lmm();
         let nx = self.grid.nx();
@@ -947,17 +942,11 @@ mod tests {
     fn new_captures_errors() {
         let ebcs = EssentialBcs2d::new();
         let nbcs = NaturalBcs2d::new();
-        assert_eq!(
-            Spc2d::new(0.0, 1.0, 0.0, 1.0, 1, 2, ebcs, nbcs, 1.0, 1.0).err(),
-            Some("nx must be ≥ 2")
-        );
+        assert_eq!(Spc2d::new(0.0, 1.0, 0.0, 1.0, 1, 2, ebcs, nbcs, 1.0, 1.0).err(), Some("nx must be ≥ 2"));
 
         let ebcs = EssentialBcs2d::new();
         let nbcs = NaturalBcs2d::new();
-        assert_eq!(
-            Spc2d::new(0.0, 1.0, 0.0, 1.0, 2, 1, ebcs, nbcs, 1.0, 1.0).err(),
-            Some("ny must be ≥ 2")
-        );
+        assert_eq!(Spc2d::new(0.0, 1.0, 0.0, 1.0, 2, 1, ebcs, nbcs, 1.0, 1.0).err(), Some("ny must be ≥ 2"));
 
         let mut ebcs = EssentialBcs2d::new();
         let mut nbcs = NaturalBcs2d::new();
@@ -997,10 +986,7 @@ mod tests {
         let nbcs = NaturalBcs2d::new();
         let spc = Spc2d::new(-1.0, 1.0, -1.0, 1.0, 2, 2, ebcs, nbcs, 1.0, 1.0).unwrap();
         let a = Vector::from(&[0.0]); // wrong size
-        assert_eq!(
-            spc.calculate_flow_vectors(&a).err(),
-            Some("a.dim() must equal the number of equations")
-        );
+        assert_eq!(spc.calculate_flow_vectors(&a).err(), Some("a.dim() must equal the number of equations"));
     }
 
     #[test]

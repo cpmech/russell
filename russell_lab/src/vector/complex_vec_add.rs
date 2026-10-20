@@ -29,13 +29,7 @@ use crate::{Complex64, StrError, array_plus_opx_complex};
 ///     Ok(())
 /// }
 /// ```
-pub fn complex_vec_add(
-    w: &mut ComplexVector,
-    alpha: Complex64,
-    u: &ComplexVector,
-    beta: Complex64,
-    v: &ComplexVector,
-) -> Result<(), StrError> {
+pub fn complex_vec_add(w: &mut ComplexVector, alpha: Complex64, u: &ComplexVector, beta: Complex64, v: &ComplexVector) -> Result<(), StrError> {
     array_plus_opx_complex(w.as_mut_data(), alpha, u.as_data(), beta, v.as_data())
 }
 
@@ -55,14 +49,8 @@ mod tests {
         let mut w_2 = ComplexVector::new(2);
         let alpha = cpx!(1.0, 0.0);
         let beta = cpx!(1.0, 0.0);
-        assert_eq!(
-            complex_vec_add(&mut w_2, alpha, &u_3, beta, &v_2),
-            Err("arrays are incompatible")
-        );
-        assert_eq!(
-            complex_vec_add(&mut w_2, alpha, &u_2, beta, &v_3),
-            Err("arrays are incompatible")
-        );
+        assert_eq!(complex_vec_add(&mut w_2, alpha, &u_3, beta, &v_2), Err("arrays are incompatible"));
+        assert_eq!(complex_vec_add(&mut w_2, alpha, &u_2, beta, &v_3), Err("arrays are incompatible"));
     }
 
     #[test]

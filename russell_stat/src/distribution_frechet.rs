@@ -195,10 +195,7 @@ mod tests {
 
     #[test]
     fn frechet_handles_errors() {
-        assert_eq!(
-            DistributionFrechet::new(2.0, 3.0, f64::INFINITY).err(),
-            Some("invalid parameters")
-        );
+        assert_eq!(DistributionFrechet::new(2.0, 3.0, f64::INFINITY).err(), Some("invalid parameters"));
     }
 
     #[test]

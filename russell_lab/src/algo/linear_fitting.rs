@@ -104,10 +104,7 @@ mod tests {
     fn linear_fitting_handles_errors() {
         let x = [1.0, 2.0];
         let y = [6.0, 5.0, 7.0, 10.0];
-        assert_eq!(
-            linear_fitting(&x, &y, false).err(),
-            Some("arrays must have the same lengths")
-        );
+        assert_eq!(linear_fitting(&x, &y, false).err(), Some("arrays must have the same lengths"));
     }
 
     #[test]

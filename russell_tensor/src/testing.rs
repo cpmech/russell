@@ -534,11 +534,7 @@ impl HaberaZilian {
     /// Generates the Habera-Zilian test tensor
     pub fn tensor(&self, name: &str, delta: f64) -> Tensor2<6> {
         let d = self.diagonal(name, delta);
-        let qq_3x3 = [
-            [1.0 / SQRT_2, -0.5, 0.5],
-            [1.0 / SQRT_2, 0.5, -0.5],
-            [0.0, 1.0 / SQRT_2, 1.0 / SQRT_2],
-        ];
+        let qq_3x3 = [[1.0 / SQRT_2, -0.5, 0.5], [1.0 / SQRT_2, 0.5, -0.5], [0.0, 1.0 / SQRT_2, 1.0 / SQRT_2]];
         let mut aa_3x3 = [[0.0; 3]; 3];
         let ll = [[d[0], 0.0, 0.0], [0.0, d[1], 0.0], [0.0, 0.0, d[2]]];
         similarity_transform(&mut aa_3x3, &ll, &qq_3x3);
@@ -794,11 +790,7 @@ impl ReferencePolarDecomp {
 
     /// Reference rotation for example 01 (60° about E3).
     pub fn example01_rotation() -> [[f64; 3]; 3] {
-        [
-            [0.5, -0.8660254037844386, 0.0],
-            [0.8660254037844386, 0.5, 0.0],
-            [0.0, 0.0, 1.0],
-        ]
+        [[0.5, -0.8660254037844386, 0.0], [0.8660254037844386, 0.5, 0.0], [0.0, 0.0, 1.0]]
     }
 
     /// Reference right stretch for example 01.
@@ -948,8 +940,7 @@ mod tests {
             // reconstruct A using analytical eigendyads
             for i in 0..3 {
                 for j in 0..3 {
-                    aa_rec_3x3[i][j] =
-                        dat.ll[0] * dat.dyad0[i][j] + dat.ll[1] * dat.dyad1[i][j] + dat.ll[2] * dat.dyad2[i][j];
+                    aa_rec_3x3[i][j] = dat.ll[0] * dat.dyad0[i][j] + dat.ll[1] * dat.dyad1[i][j] + dat.ll[2] * dat.dyad2[i][j];
                 }
             }
             let aa_rec_3x3_mat = Matrix::from(&aa_rec_3x3);

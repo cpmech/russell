@@ -148,11 +148,7 @@ fn run(
 
 fn main() -> Result<(), StrError> {
     // grid types
-    let grid_types = [
-        InterpGrid::Uniform,
-        InterpGrid::ChebyshevGauss,
-        InterpGrid::ChebyshevGaussLobatto,
-    ];
+    let grid_types = [InterpGrid::Uniform, InterpGrid::ChebyshevGauss, InterpGrid::ChebyshevGaussLobatto];
 
     // plot solutions
     for grid_type in &grid_types {

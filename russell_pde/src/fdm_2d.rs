@@ -352,13 +352,7 @@ impl<'a> Fdm2d<'a> {
     /// * Boundary conditions are validated when solving, not during construction
     /// * Default solver: UMFPACK with symmetric matrices
     /// * Call [EssentialBcs2d::validate()] before solving to check boundary condition consistency
-    pub fn new(
-        grid: Grid2d,
-        ebcs: EssentialBcs2d<'a>,
-        nbcs: NaturalBcs2d<'a>,
-        kx: f64,
-        ky: f64,
-    ) -> Result<Self, StrError> {
+    pub fn new(grid: Grid2d, ebcs: EssentialBcs2d<'a>, nbcs: NaturalBcs2d<'a>, kx: f64, ky: f64) -> Result<Self, StrError> {
         // check grid
         let (dx, dy) = match grid.get_dx_dy() {
             Some((dx, dy)) => (dx, dy),
@@ -641,11 +635,7 @@ impl<'a> Fdm2d<'a> {
                 };
             });
         });
-        if np == 0 {
-            (kk_bar, None)
-        } else {
-            (kk_bar, Some(kk_check))
-        }
+        if np == 0 { (kk_bar, None) } else { (kk_bar, Some(kk_check)) }
     }
 
     /// Returns the matrix for the Lagrange multipliers method (LMM)
@@ -669,13 +659,7 @@ impl<'a> Fdm2d<'a> {
     /// * `sym_mm` -- symmetry of the M matrix
     ///
     /// Note: this matrix is not symmetric because of the flipping (mirroring) strategy for boundary nodes.
-    pub fn get_matrices_lmm(
-        &self,
-        alpha: f64,
-        extra_nnz: usize,
-        get_constraints_mat: bool,
-        sym_mm: Sym,
-    ) -> (CooMatrix, Option<CooMatrix>) {
+    pub fn get_matrices_lmm(&self, alpha: f64, extra_nnz: usize, get_constraints_mat: bool, sym_mm: Sym) -> (CooMatrix, Option<CooMatrix>) {
         // build the augmented matrix
         let nx = self.grid.nx();
         let ny = self.grid.ny();

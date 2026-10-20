@@ -570,11 +570,7 @@ impl<'a> Fdm1d<'a> {
                 }
             });
         });
-        if np == 0 {
-            (kk_bar, None)
-        } else {
-            (kk_bar, Some(kk_check))
-        }
+        if np == 0 { (kk_bar, None) } else { (kk_bar, Some(kk_check)) }
     }
 
     /// Assembles the augmented matrix for the Lagrange Multipliers Method (LMM)
@@ -605,13 +601,7 @@ impl<'a> Fdm1d<'a> {
     /// # Notes
     ///
     /// * The augmented system size is (neq + nlag) × (neq + nlag)
-    pub fn get_matrices_lmm(
-        &self,
-        alpha: f64,
-        extra_nnz: usize,
-        get_constraints_mat: bool,
-        sym_mm: Sym,
-    ) -> (CooMatrix, Option<CooMatrix>) {
+    pub fn get_matrices_lmm(&self, alpha: f64, extra_nnz: usize, get_constraints_mat: bool, sym_mm: Sym) -> (CooMatrix, Option<CooMatrix>) {
         // build the augmented matrix
         let (neq, nlag, ndim) = self.get_dims_lmm();
         let band = if sym_mm.triangular() { 2 } else { 3 };

@@ -12,12 +12,7 @@ fn main() -> Result<(), StrError> {
         [cpx!( 2.41, 0.39), cpx!(-0.56, 1.47), cpx!(-0.83,-0.69), cpx!(-1.96, 0.67)],
     ]);
 
-    let mut b = ComplexVector::from(&[
-        cpx!(26.26, 51.78),
-        cpx!(6.43, -8.68),
-        cpx!(-5.75, 25.31),
-        cpx!(1.16, 2.57),
-    ]);
+    let mut b = ComplexVector::from(&[cpx!(26.26, 51.78), cpx!(6.43, -8.68), cpx!(-5.75, 25.31), cpx!(1.16, 2.57)]);
 
     // solve b := x := A⁻¹ b
     complex_solve_lin_sys(&mut b, &mut a).unwrap();

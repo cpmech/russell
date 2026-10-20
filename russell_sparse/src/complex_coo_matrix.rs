@@ -167,14 +167,8 @@ mod tests {
         a_1x2.put(0, 0, cpx!(123.0, 321.0)).unwrap();
         b_1x2.put(0, 0, 456.0).unwrap();
         b_1x2.put(0, 1, 654.0).unwrap();
-        assert_eq!(
-            a_1x2.assign_real(2.0, 3.0, &b_2x1).err(),
-            Some("matrices must have the same nrow")
-        );
-        assert_eq!(
-            a_1x2.assign_real(2.0, 3.0, &b_1x3).err(),
-            Some("matrices must have the same ncol")
-        );
+        assert_eq!(a_1x2.assign_real(2.0, 3.0, &b_2x1).err(), Some("matrices must have the same nrow"));
+        assert_eq!(a_1x2.assign_real(2.0, 3.0, &b_1x3).err(), Some("matrices must have the same ncol"));
         assert_eq!(
             a_1x2.assign_real(2.0, 3.0, &b_1x2).err(),
             Some("COO matrix: max number of items has been reached")
@@ -224,24 +218,15 @@ mod tests {
         let mut b_1x2 = CooMatrix::new(1, 2, nnz_b, Sym::No).unwrap();
         a_1x2.put(0, 0, cpx!(123.0, 321.0)).unwrap();
         b_1x2.put(0, 0, 456.0).unwrap();
-        assert_eq!(
-            a_1x2.add_real(2.0, 3.0, &b_2x1).err(),
-            Some("other.nrow must be ≤ this.nrow")
-        );
-        assert_eq!(
-            a_1x2.add_real(2.0, 3.0, &b_1x3).err(),
-            Some("other.ncol must be ≤ this.ncol")
-        );
+        assert_eq!(a_1x2.add_real(2.0, 3.0, &b_2x1).err(), Some("other.nrow must be ≤ this.nrow"));
+        assert_eq!(a_1x2.add_real(2.0, 3.0, &b_1x3).err(), Some("other.ncol must be ≤ this.ncol"));
         assert_eq!(
             a_1x2.add_real(2.0, 3.0, &b_1x2).err(),
             Some("COO matrix: max number of items has been reached")
         );
         let mut a_2x2 = ComplexCooMatrix::new(2, 2, 1, Sym::YesLower).unwrap();
         let b_2x2 = CooMatrix::new(2, 2, 1, Sym::YesFull).unwrap();
-        assert_eq!(
-            a_2x2.add_real(2.0, 3.0, &b_2x2).err(),
-            Some("matrices must have the same symmetric flag")
-        );
+        assert_eq!(a_2x2.add_real(2.0, 3.0, &b_2x2).err(), Some("matrices must have the same symmetric flag"));
     }
 
     #[test]

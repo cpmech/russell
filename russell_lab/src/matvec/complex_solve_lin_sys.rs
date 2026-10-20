@@ -137,9 +137,7 @@ pub fn complex_solve_lin_sys(b: &mut ComplexVector, a: &mut ComplexMatrix) -> Re
             algebra_linear::lapack::LapackError::BadShape => "LAPACK ERROR (dgesv): An argument had an illegal value",
             // Unreachable: a direct solve has no iteration. Listed for
             // exhaustiveness.
-            algebra_linear::lapack::LapackError::Convergence => {
-                "LAPACK ERROR (dgesv): The algorithm failed to converge"
-            }
+            algebra_linear::lapack::LapackError::Convergence => "LAPACK ERROR (dgesv): The algorithm failed to converge",
             algebra_linear::lapack::LapackError::NotImplemented(r) => algebra_linear::lapack::not_implemented(r),
         })?;
     }
@@ -278,13 +276,7 @@ mod tests {
         ]);
 
         // solution
-        let x_correct = &[
-            cpx!(3.3, -1.00),
-            cpx!(1.0, 0.17),
-            cpx!(5.5, 0.00),
-            cpx!(9.0, 0.00),
-            cpx!(10.0, -17.75),
-        ];
+        let x_correct = &[cpx!(3.3, -1.00), cpx!(1.0, 0.17), cpx!(5.5, 0.00), cpx!(9.0, 0.00), cpx!(10.0, -17.75)];
 
         // run test
         // solve b := x := A⁻¹ b

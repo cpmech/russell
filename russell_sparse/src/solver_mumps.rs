@@ -259,12 +259,11 @@ impl LinSolTrait for SolverMUMPS {
         let scaling = mumps_scaling(par.scaling);
         let pct_inc_workspace = to_i32(par.mumps_pct_inc_workspace);
         let max_work_memory = to_i32(par.mumps_max_work_memory);
-        self.effective_num_threads =
-            if using_intel_mkl() || par.mumps_num_threads != 0 || par.mumps_override_prevent_nt_issue_with_openblas {
-                to_i32(par.mumps_num_threads)
-            } else {
-                1 // avoid bug with OpenBLAS
-            };
+        self.effective_num_threads = if using_intel_mkl() || par.mumps_num_threads != 0 || par.mumps_override_prevent_nt_issue_with_openblas {
+            to_i32(par.mumps_num_threads)
+        } else {
+            1 // avoid bug with OpenBLAS
+        };
 
         // requests
         let compute_determinant = if par.compute_determinant { 1 } else { 0 };
@@ -595,10 +594,7 @@ mod tests {
 
         // check COO matrix
         let (coo, _, _, _) = Samples::rectangular_1x2(true, false);
-        assert_eq!(
-            solver.factorize(&coo, None).err(),
-            Some("the COO matrix must be square")
-        );
+        assert_eq!(solver.factorize(&coo, None).err(), Some("the COO matrix must be square"));
         let coo = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
         assert_eq!(
             solver.factorize(&coo, None).err(),
@@ -646,10 +642,7 @@ mod tests {
         let mut coo = CooMatrix::new(2, 2, 2, Sym::No).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         let mut solver = SolverMUMPS::new().unwrap();
-        assert_eq!(
-            solver.factorize(&coo, None),
-            Err("Error(-10): numerically singular matrix")
-        );
+        assert_eq!(solver.factorize(&coo, None), Err("Error(-10): numerically singular matrix"));
     }
 
     #[test]
@@ -846,18 +839,9 @@ mod tests {
             assert!(!res.is_empty());
             assert_ne!(res, default);
         }
-        assert_eq!(
-            handle_mumps_error_code(ERROR_NULL_POINTER),
-            "MUMPS failed due to NULL POINTER error"
-        );
-        assert_eq!(
-            handle_mumps_error_code(ERROR_MALLOC),
-            "MUMPS failed due to MALLOC error"
-        );
-        assert_eq!(
-            handle_mumps_error_code(ERROR_VERSION),
-            "MUMPS failed due to VERSION error"
-        );
+        assert_eq!(handle_mumps_error_code(ERROR_NULL_POINTER), "MUMPS failed due to NULL POINTER error");
+        assert_eq!(handle_mumps_error_code(ERROR_MALLOC), "MUMPS failed due to MALLOC error");
+        assert_eq!(handle_mumps_error_code(ERROR_VERSION), "MUMPS failed due to VERSION error");
         assert_eq!(handle_mumps_error_code(ERROR_NOT_AVAILABLE), "MUMPS is not AVAILABLE");
         assert_eq!(
             handle_mumps_error_code(ERROR_NEED_INITIALIZATION),

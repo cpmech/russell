@@ -398,10 +398,7 @@ mod tests {
         let nn = 2;
         let interp = InterpChebyshev::new(nn, xa, xb).unwrap();
         let solver = RootFinder::new();
-        assert_eq!(
-            solver.chebyshev(&interp).err(),
-            Some("the interpolant must initialized first")
-        );
+        assert_eq!(solver.chebyshev(&interp).err(), Some("the interpolant must initialized first"));
     }
 
     #[test]
@@ -546,16 +543,10 @@ mod tests {
         let (xa, xb) = (-1.0, 1.0);
         let mut solver = RootFinder::new();
         let mut roots = Vec::new();
-        assert_eq!(
-            solver.refine(&mut roots, xa, xb, args, f).err(),
-            Some("at least one root is required")
-        );
+        assert_eq!(solver.refine(&mut roots, xa, xb, args, f).err(), Some("at least one root is required"));
         let mut roots = [0.0];
         solver.newton_max_iterations = 0;
-        assert_eq!(
-            solver.refine(&mut roots, xa, xb, args, f).err(),
-            Some("Newton's method did not converge")
-        );
+        assert_eq!(solver.refine(&mut roots, xa, xb, args, f).err(), Some("Newton's method did not converge"));
     }
 
     #[test]

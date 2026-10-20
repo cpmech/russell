@@ -146,15 +146,7 @@ pub fn mat_svd(s: &mut Vector, u: &mut Matrix, vt: &mut Matrix, a: &mut Matrix) 
     // driver would be a programming error rather than a caller mistake. The two
     // strings below are the ones the accelerated path's `info` branches used to
     // report, so the caller cannot tell which backend answered.
-    lapack_dispatch::dgesvd(
-        a.as_mut_data(),
-        m,
-        n,
-        s.as_mut_data(),
-        u.as_mut_data(),
-        vt.as_mut_data(),
-    )
-    .map_err(|e| match e {
+    lapack_dispatch::dgesvd(a.as_mut_data(), m, n, s.as_mut_data(), u.as_mut_data(), vt.as_mut_data()).map_err(|e| match e {
         algebra_linear::lapack::LapackError::Convergence => "LAPACK ERROR (dgesvd): Algorithm did not converge",
         _ => "LAPACK ERROR (dgesvd): An argument had an illegal value",
     })
@@ -178,26 +170,11 @@ mod tests {
         let mut u_3x2 = Matrix::new(3, 2);
         let mut vt_3x3 = Matrix::new(3, 3);
         let mut vt_2x3 = Matrix::new(2, 3);
-        assert_eq!(
-            mat_svd(&mut s_3, &mut u, &mut vt, &mut a),
-            Err("[s] must be a min(m,n) vector")
-        );
-        assert_eq!(
-            mat_svd(&mut s, &mut u_2x2, &mut vt, &mut a),
-            Err("[u] must be an m-by-m square matrix")
-        );
-        assert_eq!(
-            mat_svd(&mut s, &mut u_3x2, &mut vt, &mut a),
-            Err("[u] must be an m-by-m square matrix")
-        );
-        assert_eq!(
-            mat_svd(&mut s, &mut u, &mut vt_3x3, &mut a),
-            Err("[vt] must be an n-by-n square matrix")
-        );
-        assert_eq!(
-            mat_svd(&mut s, &mut u, &mut vt_2x3, &mut a),
-            Err("[vt] must be an n-by-n square matrix")
-        );
+        assert_eq!(mat_svd(&mut s_3, &mut u, &mut vt, &mut a), Err("[s] must be a min(m,n) vector"));
+        assert_eq!(mat_svd(&mut s, &mut u_2x2, &mut vt, &mut a), Err("[u] must be an m-by-m square matrix"));
+        assert_eq!(mat_svd(&mut s, &mut u_3x2, &mut vt, &mut a), Err("[u] must be an m-by-m square matrix"));
+        assert_eq!(mat_svd(&mut s, &mut u, &mut vt_3x3, &mut a), Err("[vt] must be an n-by-n square matrix"));
+        assert_eq!(mat_svd(&mut s, &mut u, &mut vt_2x3, &mut a), Err("[vt] must be an n-by-n square matrix"));
     }
 
     #[test]

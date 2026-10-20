@@ -191,11 +191,7 @@ impl IterationError {
 
         // check if diverging
         self.prev_delta_diverging = self.delta_diverging;
-        self.delta_diverging = if iteration == 0 {
-            false
-        } else {
-            self.delta_max > self.delta_max_prev
-        };
+        self.delta_diverging = if iteration == 0 { false } else { self.delta_max > self.delta_max_prev };
 
         // increment continued divergence counter
         if self.prev_delta_diverging && self.delta_diverging {

@@ -530,11 +530,7 @@ mod tests {
 
     // computes ∂f/∂aₘ and returns as a 3x3 matrix of (standard) components
     fn numerical_deriv_mat<const N: usize>(a: &Tensor2<N>, fn_name: F) -> Matrix {
-        let mut args = ArgsNumDerivM {
-            fn_name,
-            a: a.clone(),
-            m: 0,
-        };
+        let mut args = ArgsNumDerivM { fn_name, a: a.clone(), m: 0 };
         let mut num_deriv = a.clone();
         for m in 0..N {
             args.m = m;

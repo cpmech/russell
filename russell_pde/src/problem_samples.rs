@@ -339,8 +339,7 @@ impl ProblemSamples {
         ebcs.set(Side::Xmax, |_| 0.0);
         nbcs.set(Side::Xmin, |_| 0.0);
         let source = Box::new(|x: f64| f64::exp(4.0 * x));
-        let analytical =
-            Box::new(|x: f64| (f64::exp(4.0 * x) - 4.0 * f64::exp(-4.0) * (x - 1.0) - f64::exp(4.0)) / 16.0);
+        let analytical = Box::new(|x: f64| (f64::exp(4.0 * x) - 4.0 * f64::exp(-4.0) * (x - 1.0) - f64::exp(4.0)) / 16.0);
         (xmin, xmax, kx, ebcs, nbcs, source, analytical)
     }
 
@@ -418,9 +417,7 @@ impl ProblemSamples {
             let c2 = (phi_ll - c1 * f64::sin(beta * ll)) / f64::cos(beta * ll);
             c1 * f64::sin(beta * x) + c2 * f64::cos(beta * x)
         });
-        let ana_flow = Box::new(move |x: f64| {
-            (-kx) * ((g0 * f64::cos(beta * (ll - x)) - beta * phi_ll * f64::sin(beta * x)) / f64::cos(beta * ll))
-        });
+        let ana_flow = Box::new(move |x: f64| (-kx) * ((g0 * f64::cos(beta * (ll - x)) - beta * phi_ll * f64::sin(beta * x)) / f64::cos(beta * ll)));
         (xmin, xmax, kx, ebcs, nbcs, source, analytical, ana_flow)
     }
 
@@ -672,8 +669,7 @@ impl ProblemSamples {
             nbcs.set(Side::Ymax, |_, _| 0.0);
         }
         // source and analytical solution
-        let source =
-            Box::new(move |x, y| (8.0 * k * PI * PI + alpha) * f64::sin(2.0 * PI * x) * f64::cos(2.0 * PI * y));
+        let source = Box::new(move |x, y| (8.0 * k * PI * PI + alpha) * f64::sin(2.0 * PI * x) * f64::cos(2.0 * PI * y));
         let analytical = Box::new(|x, y| f64::sin(2.0 * PI * x) * f64::cos(2.0 * PI * y));
         let ana_flow = Box::new(move |x, y| {
             (

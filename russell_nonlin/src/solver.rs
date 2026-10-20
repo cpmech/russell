@@ -149,11 +149,7 @@ impl<'a, A> Solver<'a, A> {
         // perform continuation
         if !ddl.auto {
             // constant or list-based stepsize
-            let n_step_max = if !ddl.list.is_empty() {
-                ddl.list.len()
-            } else {
-                self.config.n_step_max
-            };
+            let n_step_max = if !ddl.list.is_empty() { ddl.list.len() } else { self.config.n_step_max };
             for i in 0..n_step_max {
                 // log
                 self.work.stats.sw_step.reset();
@@ -223,9 +219,7 @@ impl<'a, A> Solver<'a, A> {
                 // redo the step if it violates the stop u-component criterion
                 if self.config.enable_precise_stop_u_comp {
                     if let Some((i, u1i, is_min)) = stop.u_comp() {
-                        if (is_min && self.work.u[i] < u1i - CONFIG_H_MIN)
-                            || (!is_min && self.work.u[i] > u1i + CONFIG_H_MIN)
-                        {
+                        if (is_min && self.work.u[i] < u1i - CONFIG_H_MIN) || (!is_min && self.work.u[i] > u1i + CONFIG_H_MIN) {
                             status = Status::UnmetStopCriterion;
                         }
                     }
@@ -364,11 +358,7 @@ impl<'a, A> Solver<'a, A> {
         // set rdiff to zero if it is too small so that tiny differences in
         // the solver yield deterministic stepsize control behavior
         assert!(rdiff >= 0.0, "rdiff must be non-negative");
-        let rdiff = if rdiff < self.config.tg_control_rdiff_min {
-            0.0
-        } else {
-            rdiff
-        };
+        let rdiff = if rdiff < self.config.tg_control_rdiff_min { 0.0 } else { rdiff };
 
         // calculates the the relative changes on the tangent vector
         let rho = if self.config.tg_control_enabled {
@@ -430,10 +420,7 @@ mod tests {
         let (system, _, _, _) = Samples::two_eq_ref();
         let mut config = Config::new();
         config.tol_abs_residual = 0.0; // wrong
-        assert_eq!(
-            Solver::new(&config, system).err(),
-            Some("requirement: tol_abs_residual ≥ 1e-12")
-        );
+        assert_eq!(Solver::new(&config, system).err(), Some("requirement: tol_abs_residual ≥ 1e-12"));
     }
 
     #[test]
@@ -595,15 +582,7 @@ mod tests {
         let mut solver = Solver::new(&config, system).unwrap();
         let mut l = 0.0;
         solver
-            .solve(
-                &mut args,
-                &mut u,
-                &mut l,
-                IniDir::Pos,
-                Stop::Steps(1),
-                &DeltaLambda::constant(1.0),
-                None,
-            )
+            .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::constant(1.0), None)
             .unwrap();
         vec_approx_eq(&u, &u_ref, 1e-15);
         let stats = solver.get_stats();
@@ -625,15 +604,7 @@ mod tests {
         let mut solver = Solver::new(&config, system).unwrap();
         let mut l = 0.0;
         solver
-            .solve(
-                &mut args,
-                &mut u,
-                &mut l,
-                IniDir::Pos,
-                Stop::Steps(1),
-                &DeltaLambda::auto(1e-4),
-                None,
-            )
+            .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::auto(1e-4), None)
             .unwrap();
         vec_approx_eq(&u, &u_ref, 1e-15);
         let stats = solver.get_stats();
@@ -655,15 +626,7 @@ mod tests {
         let mut solver = Solver::new(&config, system).unwrap();
         let mut l = 0.0;
         solver
-            .solve(
-                &mut args,
-                &mut u,
-                &mut l,
-                IniDir::Pos,
-                Stop::Steps(3),
-                &DeltaLambda::auto(1e-4),
-                None,
-            )
+            .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(3), &DeltaLambda::auto(1e-4), None)
             .unwrap();
         let (l_pred, u0_pred, u1_pred) = solver.get_debug_predictor_values();
         assert!(l_pred.is_empty());
@@ -679,15 +642,7 @@ mod tests {
         let mut solver = Solver::new(&config, system).unwrap();
         let mut l = 0.0;
         solver
-            .solve(
-                &mut args,
-                &mut u,
-                &mut l,
-                IniDir::Pos,
-                Stop::Steps(5),
-                &DeltaLambda::auto(1e-4),
-                None,
-            )
+            .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(5), &DeltaLambda::auto(1e-4), None)
             .unwrap();
         let (l_pred, u0_pred, u1_pred) = solver.get_debug_predictor_values();
         // With 5 steps and debug enabled, we should have at least 5 predictor entries

@@ -214,8 +214,8 @@ mod tests {
         let mut v_imag = vec![0.0; n * n];
         let w_imag = [10.76, -10.76, 4.70, -4.70, 0.0];
         let v = [
-            0.04, 0.62, -0.04, 0.28, -0.04, 0.29, 0.00, -0.58, 0.01, 0.34, -0.13, 0.69, -0.39, -0.02, -0.40, -0.33,
-            0.00, -0.07, -0.19, 0.22, 0.04, 0.56, -0.13, -0.80, 0.18,
+            0.04, 0.62, -0.04, 0.28, -0.04, 0.29, 0.00, -0.58, 0.01, 0.34, -0.13, 0.69, -0.39, -0.02, -0.40, -0.33, 0.00, -0.07, -0.19, 0.22, 0.04,
+            0.56, -0.13, -0.80, 0.18,
         ];
         dgeev_data(&mut v_real, &mut v_imag, &w_imag, &v).unwrap();
         #[rustfmt::skip]
@@ -257,87 +257,31 @@ mod tests {
         let vl_wrong = vec![0.0; n * wrong];
         let vr_wrong = vec![0.0; n * wrong];
         assert_eq!(
-            dgeev_data_lr(
-                &mut vl_real_wrong,
-                &mut vl_imag,
-                &mut vr_real,
-                &mut vr_imag,
-                &w_imag,
-                &vl,
-                &vr,
-            ),
+            dgeev_data_lr(&mut vl_real_wrong, &mut vl_imag, &mut vr_real, &mut vr_imag, &w_imag, &vl, &vr,),
             Err("arrays have wrong dimensions")
         );
         assert_eq!(
-            dgeev_data_lr(
-                &mut vl_real,
-                &mut vl_imag_wrong,
-                &mut vr_real,
-                &mut vr_imag,
-                &w_imag,
-                &vl,
-                &vr,
-            ),
+            dgeev_data_lr(&mut vl_real, &mut vl_imag_wrong, &mut vr_real, &mut vr_imag, &w_imag, &vl, &vr,),
             Err("arrays have wrong dimensions")
         );
         assert_eq!(
-            dgeev_data_lr(
-                &mut vl_real,
-                &mut vl_imag,
-                &mut vr_real_wrong,
-                &mut vr_imag,
-                &w_imag,
-                &vl,
-                &vr,
-            ),
+            dgeev_data_lr(&mut vl_real, &mut vl_imag, &mut vr_real_wrong, &mut vr_imag, &w_imag, &vl, &vr,),
             Err("arrays have wrong dimensions")
         );
         assert_eq!(
-            dgeev_data_lr(
-                &mut vl_real,
-                &mut vl_imag,
-                &mut vr_real,
-                &mut vr_imag_wrong,
-                &w_imag,
-                &vl,
-                &vr,
-            ),
+            dgeev_data_lr(&mut vl_real, &mut vl_imag, &mut vr_real, &mut vr_imag_wrong, &w_imag, &vl, &vr,),
             Err("arrays have wrong dimensions")
         );
         assert_eq!(
-            dgeev_data_lr(
-                &mut vl_real,
-                &mut vl_imag,
-                &mut vr_real,
-                &mut vr_imag,
-                &w_imag_wrong,
-                &vl,
-                &vr,
-            ),
+            dgeev_data_lr(&mut vl_real, &mut vl_imag, &mut vr_real, &mut vr_imag, &w_imag_wrong, &vl, &vr,),
             Err("arrays have wrong dimensions")
         );
         assert_eq!(
-            dgeev_data_lr(
-                &mut vl_real,
-                &mut vl_imag,
-                &mut vr_real,
-                &mut vr_imag,
-                &w_imag,
-                &vl_wrong,
-                &vr,
-            ),
+            dgeev_data_lr(&mut vl_real, &mut vl_imag, &mut vr_real, &mut vr_imag, &w_imag, &vl_wrong, &vr,),
             Err("arrays have wrong dimensions")
         );
         assert_eq!(
-            dgeev_data_lr(
-                &mut vl_real,
-                &mut vl_imag,
-                &mut vr_real,
-                &mut vr_imag,
-                &w_imag,
-                &vl,
-                &vr_wrong,
-            ),
+            dgeev_data_lr(&mut vl_real, &mut vl_imag, &mut vr_real, &mut vr_imag, &w_imag, &vl, &vr_wrong,),
             Err("arrays have wrong dimensions")
         );
     }
@@ -354,15 +298,7 @@ mod tests {
         let vl = vec![0.0; n * n];
         let vr = vec![0.0; n * n];
         assert_eq!(
-            dgeev_data_lr(
-                &mut vl_real,
-                &mut vl_imag,
-                &mut vr_real,
-                &mut vr_imag,
-                &w_imag,
-                &vl,
-                &vr,
-            ),
+            dgeev_data_lr(&mut vl_real, &mut vl_imag, &mut vr_real, &mut vr_imag, &w_imag, &vl, &vr,),
             Err("last eigenvalue cannot be complex")
         );
     }
@@ -376,23 +312,14 @@ mod tests {
         let mut vr_imag = vec![0.0; n * n];
         let w_imag = [10.76, -10.76, 4.70, -4.70, 0.0];
         let vl = [
-            0.04, 0.62, -0.04, 0.28, -0.04, 0.29, 0.00, -0.58, 0.01, 0.34, -0.13, 0.69, -0.39, -0.02, -0.40, -0.33,
-            0.00, -0.07, -0.19, 0.22, 0.04, 0.56, -0.13, -0.80, 0.18,
+            0.04, 0.62, -0.04, 0.28, -0.04, 0.29, 0.00, -0.58, 0.01, 0.34, -0.13, 0.69, -0.39, -0.02, -0.40, -0.33, 0.00, -0.07, -0.19, 0.22, 0.04,
+            0.56, -0.13, -0.80, 0.18,
         ];
         let vr = [
-            0.11, 0.41, 0.10, 0.40, 0.54, 0.17, -0.26, -0.51, -0.09, 0.00, 0.73, -0.03, 0.19, -0.08, -0.29, 0.00,
-            -0.02, -0.29, -0.08, -0.49, 0.46, 0.34, 0.31, -0.74, 0.16,
+            0.11, 0.41, 0.10, 0.40, 0.54, 0.17, -0.26, -0.51, -0.09, 0.00, 0.73, -0.03, 0.19, -0.08, -0.29, 0.00, -0.02, -0.29, -0.08, -0.49, 0.46,
+            0.34, 0.31, -0.74, 0.16,
         ];
-        dgeev_data_lr(
-            &mut vl_real,
-            &mut vl_imag,
-            &mut vr_real,
-            &mut vr_imag,
-            &w_imag,
-            &vl,
-            &vr,
-        )
-        .unwrap();
+        dgeev_data_lr(&mut vl_real, &mut vl_imag, &mut vr_real, &mut vr_imag, &w_imag, &vl, &vr).unwrap();
         #[rustfmt::skip]
         let correct_vl_real = Matrix::from(&[
             [ 0.04,  0.04, -0.13, -0.13,  0.04],

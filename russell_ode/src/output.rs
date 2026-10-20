@@ -642,9 +642,7 @@ impl<'a, A> Output<'a, A> {
         // step output: write file
         if let Some(fp) = &self.step_file_key {
             let full_path = format!("{}_count.json", fp).to_string();
-            let count = OutCount {
-                n: self.step_file_count,
-            };
+            let count = OutCount { n: self.step_file_count };
             count.write_json(&full_path)?;
         }
 
@@ -668,9 +666,7 @@ impl<'a, A> Output<'a, A> {
                 self.dense_file_count += 1;
                 // count
                 let full_path = format!("{}_count.json", fp).to_string();
-                let count = OutCount {
-                    n: self.dense_file_count,
-                };
+                let count = OutCount { n: self.dense_file_count };
                 count.write_json(&full_path)?;
             }
 
@@ -702,10 +698,7 @@ mod tests {
             y: Vector::new(1),
         };
         let clone = out_data.clone();
-        assert_eq!(
-            format!("{:?}", clone),
-            "OutData { h: 0.1, x: 1.0, y: NumVector { data: [0.0] } }"
-        );
+        assert_eq!(format!("{:?}", clone), "OutData { h: 0.1, x: 1.0, y: NumVector { data: [0.0] } }");
         let json = "{\"h\":0.2,\"x\":2.0,\"y\":{ \"data\":[3.0]}}";
         let from_json: OutData = serde_json::from_str(json).unwrap();
         assert_eq!(from_json.h, 0.2);
@@ -716,10 +709,7 @@ mod tests {
         let y = Vector::from(&[10.0]);
         let out_data_ref = OutDataRef { h: 0.5, x: 5.0, y: &y };
         let clone = out_data_ref.clone();
-        assert_eq!(
-            format!("{:?}", clone),
-            "OutDataRef { h: 0.5, x: 5.0, y: NumVector { data: [10.0] } }"
-        );
+        assert_eq!(format!("{:?}", clone), "OutDataRef { h: 0.5, x: 5.0, y: NumVector { data: [10.0] } }");
         let json = serde_json::to_string(&out_data_ref).unwrap();
         assert_eq!(json, "{\"h\":0.5,\"x\":5.0,\"y\":{\"data\":[10.0]}}");
 
@@ -757,10 +747,7 @@ mod tests {
     #[test]
     fn set_dense_h_out_captures_errors() {
         let mut out = Output::<'_, NoArgs>::new();
-        assert_eq!(
-            out.set_dense_h_out(f64::EPSILON).err(),
-            Some("h_out must be > 10.0 * EPSILON")
-        );
+        assert_eq!(out.set_dense_h_out(f64::EPSILON).err(), Some("h_out must be > 10.0 * EPSILON"));
     }
 
     #[test]
@@ -778,10 +765,7 @@ mod tests {
             out.set_dense_x_out(&[2.0, 1.0]).err(),
             Some("the dense output stations x must be sorted in ascending order in (x0, x1)")
         );
-        assert_eq!(
-            out.set_dense_x_out(&[1.0, 1.0]).err(),
-            Some("the x spacing must be > 10.0 * EPSILON")
-        );
+        assert_eq!(out.set_dense_x_out(&[1.0, 1.0]).err(), Some("the x spacing must be > 10.0 * EPSILON"));
         assert_eq!(
             out.set_dense_x_out(&[1.0, 1.0 + f64::EPSILON]).err(),
             Some("the x spacing must be > 10.0 * EPSILON")
@@ -841,11 +825,7 @@ mod tests {
         // with h_out
         out.set_dense_h_out(0.1).unwrap();
         out.initialize(3.0, 4.0, false).unwrap();
-        array_approx_eq(
-            &out.dense_x,
-            &[3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 4.0],
-            1e-15,
-        );
+        array_approx_eq(&out.dense_x, &[3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 4.0], 1e-15);
 
         // with x1 nearly equal to 0.5
         let x1 = 0.4999999999999;

@@ -67,10 +67,7 @@ fn check_eigen_sym(a: &Matrix, lambda: &Vector, v_matrix: &Matrix, tol: f64) {
             }
             let error = f64::abs(a_times_v_i - lambda[col] * v_matrix.get(i, col));
             if error > tol {
-                panic!(
-                    "A ⋅ v[{}] = λ[{}] ⋅ v[{}] failed at index {}. error = {:?}",
-                    col, col, col, i, error
-                );
+                panic!("A ⋅ v[{}] = λ[{}] ⋅ v[{}] failed at index {}. error = {:?}", col, col, col, i, error);
             }
         }
     }

@@ -67,9 +67,6 @@ mod tests {
             [  7.0,   8.0e-10],
         ]);
         let res = mat_to_numpy("a_matrix", &a);
-        assert_eq!(
-            res,
-            "a_matrix = np.array([[1,20],[3.01,4],[-55,6],[7,0.0000000008]],dtype=float)"
-        )
+        assert_eq!(res, "a_matrix = np.array([[1,20],[3.01,4],[-55,6],[7,0.0000000008]],dtype=float)")
     }
 }

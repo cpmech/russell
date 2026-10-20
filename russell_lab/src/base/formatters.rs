@@ -25,21 +25,9 @@ fn format_nanoseconds_in_seconds_with_digits(buf: &mut String, value: u128, digi
     if value < NS_PER_MICROSECOND {
         write!(buf, "{}ns", value).unwrap();
     } else if value < NS_PER_MILLISECOND {
-        write!(
-            buf,
-            "{:.digits$}µs",
-            (value as f64) / (NS_PER_MICROSECOND as f64),
-            digits = digits
-        )
-        .unwrap();
+        write!(buf, "{:.digits$}µs", (value as f64) / (NS_PER_MICROSECOND as f64), digits = digits).unwrap();
     } else {
-        write!(
-            buf,
-            "{:.digits$}ms",
-            (value as f64) / (NS_PER_MILLISECOND as f64),
-            digits = digits
-        )
-        .unwrap();
+        write!(buf, "{:.digits$}ms", (value as f64) / (NS_PER_MILLISECOND as f64), digits = digits).unwrap();
     }
 }
 
@@ -199,13 +187,8 @@ pub fn format_fortran(num: f64) -> String {
 /// * `standard_formatter` - the standard formatter (used to get the precision)
 /// * `scientific_precision` - the precision for scientific notation (if any)
 /// * `width` - the width of the field (may be 0 to ignore the width formatting)
-pub fn write_formatted_number<T>(
-    buffer: &mut String,
-    number: T,
-    width: usize,
-    precision: Option<usize>,
-    scientific_precision: Option<usize>,
-) where
+pub fn write_formatted_number<T>(buffer: &mut String, number: T, width: usize, precision: Option<usize>, scientific_precision: Option<usize>)
+where
     T: Num + Copy + fmt::Display + ToPrimitive,
 {
     match scientific_precision {
@@ -230,9 +213,7 @@ pub fn write_formatted_number<T>(
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        format_fortran, format_nanoseconds, format_nanoseconds_with_digits, format_scientific, write_formatted_number,
-    };
+    use super::{format_fortran, format_nanoseconds, format_nanoseconds_with_digits, format_scientific, write_formatted_number};
 
     #[test]
     fn format_nanoseconds_works() {

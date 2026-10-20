@@ -55,14 +55,8 @@ use num_traits::Num;
 /// assert_eq!(c, correct);
 /// ```
 #[inline]
-pub fn small_mat_add<T, const N: usize>(
-    c: &mut SmallMatrix<T, N>,
-    alpha: T,
-    a: &SmallMatrix<T, N>,
-    beta: T,
-    b: &SmallMatrix<T, N>,
-    n: usize,
-) where
+pub fn small_mat_add<T, const N: usize>(c: &mut SmallMatrix<T, N>, alpha: T, a: &SmallMatrix<T, N>, beta: T, b: &SmallMatrix<T, N>, n: usize)
+where
     T: Num + Copy,
 {
     assert!(n <= N, "n must be <= N");

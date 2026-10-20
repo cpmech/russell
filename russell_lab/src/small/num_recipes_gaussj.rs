@@ -121,10 +121,7 @@ where
 ///     Ok(())
 /// }
 /// ```
-pub fn num_recipes_gaussj_sol<T, const N: usize, const M: usize>(
-    a: &mut SmallMatrix<T, N>,
-    b: &mut [[T; M]; N],
-) -> Result<(), StrError>
+pub fn num_recipes_gaussj_sol<T, const N: usize, const M: usize>(a: &mut SmallMatrix<T, N>, b: &mut [[T; M]; N]) -> Result<(), StrError>
 where
     T: Float,
 {
@@ -357,13 +354,7 @@ mod tests {
         let mut a = a_original;
         let mut b = b_original;
         num_recipes_gaussj_sol(&mut a, &mut b).unwrap();
-        let x_correct: [[f64; 1]; 5] = [
-            [-629.0 / 98.0],
-            [237.0 / 49.0],
-            [-53.0 / 49.0],
-            [62.0 / 49.0],
-            [23.0 / 14.0],
-        ];
+        let x_correct: [[f64; 1]; 5] = [[-629.0 / 98.0], [237.0 / 49.0], [-53.0 / 49.0], [62.0 / 49.0], [23.0 / 14.0]];
         for i in 0..5 {
             assert!((b[i][0] - x_correct[i][0]).abs() < 1e-13, "b[{i}] = {}", b[i][0]);
         }

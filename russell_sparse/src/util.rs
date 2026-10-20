@@ -76,7 +76,7 @@ pub fn get_system_info_linux() -> String {
         .arg("lscpu 2>/dev/null | grep -E 'Model name|Architecture|Socket|Core|Thread|CPU\\(s\\)|MHz|BogoMIPS|L1|L2|L3' | head -20")
         .output()
     {
-            if let Ok(s) = String::from_utf8(s.stdout) {
+        if let Ok(s) = String::from_utf8(s.stdout) {
             let s = s.trim();
             if !s.is_empty() {
                 let pairs: Vec<(&str, &str)> = s
@@ -86,9 +86,7 @@ pub fn get_system_info_linux() -> String {
                 let max_key_len = pairs.iter().map(|(k, _)| k.len()).max().unwrap_or(0);
                 let cleaned: Vec<String> = pairs
                     .iter()
-                    .map(|(k, v)| {
-                        format!("{}{}: {}", k, " ".repeat(max_key_len - k.len()), v)
-                    })
+                    .map(|(k, v)| format!("{}{}: {}", k, " ".repeat(max_key_len - k.len()), v))
                     .collect();
                 info.push_str(&format!("\n\n--- CPU ---\n{}", cleaned.join("\n")));
             }
@@ -115,11 +113,7 @@ pub fn get_system_info_linux() -> String {
         let mut mem_lines: Vec<&str> = Vec::new();
         for line in s.lines() {
             let line = line.trim();
-            if line.starts_with("MemTotal")
-                || line.starts_with("MemFree")
-                || line.starts_with("MemAvailable")
-                || line.starts_with("SwapTotal")
-            {
+            if line.starts_with("MemTotal") || line.starts_with("MemFree") || line.starts_with("MemAvailable") || line.starts_with("SwapTotal") {
                 mem_lines.push(line);
             }
         }
@@ -286,10 +280,7 @@ mod tests {
     #[test]
     fn get_library_versions_reports_the_umfpack_source() {
         let info = get_library_versions();
-        let line = info
-            .lines()
-            .find(|line| line.starts_with("UMFPACK: "))
-            .expect("the UMFPACK line");
+        let line = info.lines().find(|line| line.starts_with("UMFPACK: ")).expect("the UMFPACK line");
         if cfg!(feature = "local_umfpack") {
             assert!(line.contains("local"), "expected a local UMFPACK, got: {line}");
         } else {

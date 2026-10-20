@@ -238,14 +238,7 @@ impl<'a, A> OdeSolverTrait<A> for ExplicitRungeKutta<'a, A> {
     }
 
     /// Updates x and y and computes the next stepsize
-    fn accept(
-        &mut self,
-        work: &mut Workspace,
-        x: &mut f64,
-        y: &mut Vector,
-        h: f64,
-        args: &mut A,
-    ) -> Result<(), StrError> {
+    fn accept(&mut self, work: &mut Workspace, x: &mut f64, y: &mut Vector, h: f64, args: &mut A) -> Result<(), StrError> {
         // save data for dense output
         if let Some(out) = self.dense_out.as_mut() {
             work.stats.n_function += out.update(&self.system, *x, y, h, &self.w, &self.k, args)?;
@@ -646,14 +639,7 @@ mod tests {
 
         // compare with Mathematica results
         let xx_correct = &[0.0, 0.2, 0.4, 0.6, 0.8, 1.0];
-        let yy_correct = &[
-            0.0,
-            0.0214,
-            0.09181796,
-            0.222106456344,
-            0.4255208257785617,
-            0.7182511366059352,
-        ];
+        let yy_correct = &[0.0, 0.0214, 0.09181796, 0.222106456344, 0.4255208257785617, 0.7182511366059352];
         let errors_correct = &[
             0.0,
             2.758160169896717e-6,

@@ -128,15 +128,12 @@ impl Transfinite2d {
 
         // compute position
         for i in 0..2 {
-            x[i] = 0.0
-                + (1.0 - r) * self.b0s[i] / 2.0
-                + (1.0 + r) * self.b1s[i] / 2.0
-                + (1.0 - s) * self.b2r[i] / 2.0
-                + (1.0 + s) * self.b3r[i] / 2.0
-                - (1.0 - r) * (1.0 - s) * self.p0[i] / 4.0
-                - (1.0 + r) * (1.0 - s) * self.p1[i] / 4.0
-                - (1.0 + r) * (1.0 + s) * self.p2[i] / 4.0
-                - (1.0 - r) * (1.0 + s) * self.p3[i] / 4.0;
+            x[i] =
+                0.0 + (1.0 - r) * self.b0s[i] / 2.0 + (1.0 + r) * self.b1s[i] / 2.0 + (1.0 - s) * self.b2r[i] / 2.0 + (1.0 + s) * self.b3r[i] / 2.0
+                    - (1.0 - r) * (1.0 - s) * self.p0[i] / 4.0
+                    - (1.0 + r) * (1.0 - s) * self.p1[i] / 4.0
+                    - (1.0 + r) * (1.0 + s) * self.p2[i] / 4.0
+                    - (1.0 - r) * (1.0 + s) * self.p3[i] / 4.0;
         }
     }
 
@@ -182,15 +179,12 @@ impl Transfinite2d {
         // position and first order derivatives
         for i in 0..2 {
             // bilinear transfinite mapping in 2D
-            x[i] = 0.0
-                + (1.0 - r) * self.b0s[i] / 2.0
-                + (1.0 + r) * self.b1s[i] / 2.0
-                + (1.0 - s) * self.b2r[i] / 2.0
-                + (1.0 + s) * self.b3r[i] / 2.0
-                - (1.0 - r) * (1.0 - s) * self.p0[i] / 4.0
-                - (1.0 + r) * (1.0 - s) * self.p1[i] / 4.0
-                - (1.0 + r) * (1.0 + s) * self.p2[i] / 4.0
-                - (1.0 - r) * (1.0 + s) * self.p3[i] / 4.0;
+            x[i] =
+                0.0 + (1.0 - r) * self.b0s[i] / 2.0 + (1.0 + r) * self.b1s[i] / 2.0 + (1.0 - s) * self.b2r[i] / 2.0 + (1.0 + s) * self.b3r[i] / 2.0
+                    - (1.0 - r) * (1.0 - s) * self.p0[i] / 4.0
+                    - (1.0 + r) * (1.0 - s) * self.p1[i] / 4.0
+                    - (1.0 + r) * (1.0 + s) * self.p2[i] / 4.0
+                    - (1.0 - r) * (1.0 + s) * self.p3[i] / 4.0;
 
             // derivative of x with respect to r
             dx_dr[i] = 0.0 - self.b0s[i] / 2.0
@@ -227,9 +221,7 @@ impl Transfinite2d {
             for i in 0..2 {
                 d2x_dr2[i] = 0.0;
                 d2x_ds2[i] = 0.0;
-                d2x_drs[i] = 0.0 - self.db0s_ds[i] / 2.0 + self.db1s_ds[i] / 2.0 - self.db2r_dr[i] / 2.0
-                    + self.db3r_dr[i] / 2.0
-                    - self.p0[i] / 4.0
+                d2x_drs[i] = 0.0 - self.db0s_ds[i] / 2.0 + self.db1s_ds[i] / 2.0 - self.db2r_dr[i] / 2.0 + self.db3r_dr[i] / 2.0 - self.p0[i] / 4.0
                     + self.p1[i] / 4.0
                     - self.p2[i] / 4.0
                     + self.p3[i] / 4.0;
@@ -253,9 +245,7 @@ impl Transfinite2d {
             d2x_ds2[i] = 0.0 + (1.0 - r) * self.ddb0s_dss[i] / 2.0 + (1.0 + r) * self.ddb1s_dss[i] / 2.0;
 
             // derivative of dx/dr with respect to s
-            d2x_drs[i] = 0.0 - self.db0s_ds[i] / 2.0 + self.db1s_ds[i] / 2.0 - self.db2r_dr[i] / 2.0
-                + self.db3r_dr[i] / 2.0
-                - self.p0[i] / 4.0
+            d2x_drs[i] = 0.0 - self.db0s_ds[i] / 2.0 + self.db1s_ds[i] / 2.0 - self.db2r_dr[i] / 2.0 + self.db3r_dr[i] / 2.0 - self.p0[i] / 4.0
                 + self.p1[i] / 4.0
                 - self.p2[i] / 4.0
                 + self.p3[i] / 4.0;
@@ -278,13 +268,7 @@ impl Transfinite2d {
     /// * `ns` - number of points along the s-direction
     /// * `cgl_r` - whether to use Chebyshev-Gauss-Lobatto points in the r-direction
     /// * `cgl_s` - whether to use Chebyshev-Gauss-Lobatto points in the s-direction
-    pub fn triangulate(
-        &mut self,
-        nr: usize,
-        ns: usize,
-        cgl_r: bool,
-        cgl_s: bool,
-    ) -> (Vec<f64>, Vec<f64>, Vec<Vec<usize>>) {
+    pub fn triangulate(&mut self, nr: usize, ns: usize, cgl_r: bool, cgl_s: bool) -> (Vec<f64>, Vec<f64>, Vec<Vec<usize>>) {
         assert!(nr >= 2, "nr must be at least 2");
         assert!(ns >= 2, "ns must be at least 2");
         let np = nr * ns;
@@ -479,11 +463,7 @@ mod tests {
         map.point(&mut x, -1.0, 0.0);
         vec_approx_eq(&x, &[r_in * SQRT_2 / 2.0, r_in * SQRT_2 / 2.0], 1e-15);
         map.point(&mut x, 0.0, 0.0);
-        vec_approx_eq(
-            &x,
-            &[(r_in + r_out) * SQRT_2 / 4.0, (r_in + r_out) * SQRT_2 / 4.0],
-            1e-15,
-        );
+        vec_approx_eq(&x, &[(r_in + r_out) * SQRT_2 / 4.0, (r_in + r_out) * SQRT_2 / 4.0], 1e-15);
 
         // check derivatives
         check_derivs(&mut map, 1e-9, 1e-8);
@@ -547,10 +527,7 @@ mod tests {
         map.point(&mut x, 0.0, 0.0);
         vec_approx_eq(
             &x,
-            &[
-                (radius / SQRT_2 + diagonal / 2.0) / 2.0,
-                (radius / SQRT_2 + diagonal / 2.0) / 2.0,
-            ],
+            &[(radius / SQRT_2 + diagonal / 2.0) / 2.0, (radius / SQRT_2 + diagonal / 2.0) / 2.0],
             1e-15,
         );
 
@@ -566,12 +543,7 @@ mod tests {
         );
         assert_eq!(
             Transfinite2d::new(
-                vec![
-                    Box::new(|_, _| {}),
-                    Box::new(|_, _| {}),
-                    Box::new(|_, _| {}),
-                    Box::new(|_, _| {})
-                ],
+                vec![Box::new(|_, _| {}), Box::new(|_, _| {}), Box::new(|_, _| {}), Box::new(|_, _| {})],
                 vec![Box::new(|_, _| {})],
                 None
             )
@@ -580,18 +552,8 @@ mod tests {
         );
         assert_eq!(
             Transfinite2d::new(
-                vec![
-                    Box::new(|_, _| {}),
-                    Box::new(|_, _| {}),
-                    Box::new(|_, _| {}),
-                    Box::new(|_, _| {})
-                ],
-                vec![
-                    Box::new(|_, _| {}),
-                    Box::new(|_, _| {}),
-                    Box::new(|_, _| {}),
-                    Box::new(|_, _| {})
-                ],
+                vec![Box::new(|_, _| {}), Box::new(|_, _| {}), Box::new(|_, _| {}), Box::new(|_, _| {})],
+                vec![Box::new(|_, _| {}), Box::new(|_, _| {}), Box::new(|_, _| {}), Box::new(|_, _| {})],
                 Some(vec![Box::new(|_, _| {})])
             )
             .err(),

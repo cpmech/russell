@@ -56,10 +56,7 @@ use num_traits::Float;
 ///     Ok(())
 /// }
 /// ```
-pub fn small_solve_lin_sys<T, const N: usize>(
-    b: &mut SmallVector<T, N>,
-    a: &mut SmallMatrix<T, N>,
-) -> Result<(), StrError>
+pub fn small_solve_lin_sys<T, const N: usize>(b: &mut SmallVector<T, N>, a: &mut SmallMatrix<T, N>) -> Result<(), StrError>
 where
     T: Float,
 {

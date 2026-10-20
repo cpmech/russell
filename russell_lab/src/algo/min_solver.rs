@@ -296,10 +296,7 @@ mod tests {
         assert_eq!(solver.validate_params().err(), Some("n_iteration_max must be ≥ 2"));
         solver.n_iteration_max = 2;
         solver.tolerance = 0.0;
-        assert_eq!(
-            solver.validate_params().err(),
-            Some("the tolerance must be ≥ 10.0 * f64::EPSILON")
-        );
+        assert_eq!(solver.validate_params().err(), Some("the tolerance must be ≥ 10.0 * f64::EPSILON"));
     }
 
     #[test]
@@ -308,15 +305,9 @@ mod tests {
         let args = &mut 0;
         assert_eq!(f(1.0, args).unwrap(), 0.0);
         let mut solver = MinSolver::new();
-        assert_eq!(
-            solver.brent(-0.5, -0.5, args, f).err(),
-            Some("xa must be different from xb")
-        );
+        assert_eq!(solver.brent(-0.5, -0.5, args, f).err(), Some("xa must be different from xb"));
         solver.n_iteration_max = 0;
-        assert_eq!(
-            solver.brent(-0.5, 2.0, args, f).err(),
-            Some("n_iteration_max must be ≥ 2")
-        );
+        assert_eq!(solver.brent(-0.5, 2.0, args, f).err(), Some("n_iteration_max must be ≥ 2"));
     }
 
     #[test]
@@ -326,11 +317,7 @@ mod tests {
             target: usize,
         }
         let f = |x, args: &mut Args| {
-            let res = if args.count == args.target {
-                Err("stop")
-            } else {
-                Ok(x * x - 1.0)
-            };
+            let res = if args.count == args.target { Err("stop") } else { Ok(x * x - 1.0) };
             args.count += 1;
             res
         };
@@ -375,11 +362,7 @@ mod tests {
             println!("\n===================================================================");
             println!("\n{}", test.name);
             if let Some(bracket) = test.min1 {
-                let (a, b) = if i % 2 == 0 {
-                    (bracket.a, bracket.b)
-                } else {
-                    (bracket.b, bracket.a)
-                };
+                let (a, b) = if i % 2 == 0 { (bracket.a, bracket.b) } else { (bracket.b, bracket.a) };
                 let xo = solver.brent(a, b, args, test.f).unwrap();
                 println!("\nxo = {:?}", xo);
                 println!("\n{}", solver.get_stats().unwrap());
@@ -387,11 +370,7 @@ mod tests {
                 approx_eq((test.f)(xo, args).unwrap(), bracket.fxo, 1e-15);
             }
             if let Some(bracket) = test.min2 {
-                let (a, b) = if i % 2 == 0 {
-                    (bracket.a, bracket.b)
-                } else {
-                    (bracket.b, bracket.a)
-                };
+                let (a, b) = if i % 2 == 0 { (bracket.a, bracket.b) } else { (bracket.b, bracket.a) };
                 let xo = solver.brent(a, b, args, test.f).unwrap();
                 println!("\nxo = {:?}", xo);
                 println!("\n{}", solver.get_stats().unwrap());
@@ -426,9 +405,6 @@ mod tests {
         assert_eq!(f(0.0, args).unwrap(), -1.0);
         let mut solver = MinSolver::new();
         solver.n_iteration_max = 2;
-        assert_eq!(
-            solver.brent(-5.0, 5.0, args, f).err(),
-            Some("brent solver failed to converge")
-        );
+        assert_eq!(solver.brent(-5.0, 5.0, args, f).err(), Some("brent solver failed to converge"));
     }
 }

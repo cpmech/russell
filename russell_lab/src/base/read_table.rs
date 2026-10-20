@@ -296,10 +296,7 @@ mod tests {
         labels.sort();
         assert_eq!(labels, &["colors", "names"]);
         assert_eq!(table.get("names").unwrap(), &["red", "green", "blue"]);
-        assert_eq!(
-            table.get("colors").unwrap(),
-            &["\"#ff0000\"", "\"#00ff00\"", "\"#0000ff\""]
-        );
+        assert_eq!(table.get("colors").unwrap(), &["\"#ff0000\"", "\"#00ff00\"", "\"#0000ff\""]);
     }
 
     #[test]

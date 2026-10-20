@@ -476,8 +476,7 @@ impl Transfinite3d {
                 - (1.0 + s) * (1.0 + t) * self.p7[i] / 8.0;
 
             // derivative of x with respect to s
-            dx_ds[i] = 0.0 + (1.0 - r) * self.db0st_ds[i] / 2.0 + (1.0 + r) * self.db1st_ds[i] / 2.0
-                - self.b2rt[i] / 2.0
+            dx_ds[i] = 0.0 + (1.0 - r) * self.db0st_ds[i] / 2.0 + (1.0 + r) * self.db1st_ds[i] / 2.0 - self.b2rt[i] / 2.0
                 + self.b3rt[i] / 2.0
                 + (1.0 - t) * self.db4rs_ds[i] / 2.0
                 + (1.0 + t) * self.db5rs_ds[i] / 2.0
@@ -533,13 +532,7 @@ impl Transfinite3d {
         }
 
         // skip second order derivatives
-        if d2x_dr2.is_none()
-            || d2x_ds2.is_none()
-            || d2x_dt2.is_none()
-            || d2x_drs.is_none()
-            || d2x_drt.is_none()
-            || d2x_dst.is_none()
-        {
+        if d2x_dr2.is_none() || d2x_ds2.is_none() || d2x_dt2.is_none() || d2x_drs.is_none() || d2x_drt.is_none() || d2x_dst.is_none() {
             return;
         }
 
@@ -560,8 +553,7 @@ impl Transfinite3d {
                 d2x_dt2[i] = 0.0;
 
                 // derivative of dx/dr with respect to s
-                d2x_drs[i] = 0.0 - self.db0st_ds[i] / 2.0 + self.db1st_ds[i] / 2.0 - self.db2rt_dr[i] / 2.0
-                    + self.db3rt_dr[i] / 2.0
+                d2x_drs[i] = 0.0 - self.db0st_ds[i] / 2.0 + self.db1st_ds[i] / 2.0 - self.db2rt_dr[i] / 2.0 + self.db3rt_dr[i] / 2.0
                     - self.b0mt[i] / 4.0
                     + self.b0pt[i] / 4.0
                     + self.b1mt[i] / 4.0
@@ -721,36 +713,33 @@ impl Transfinite3d {
                 - (1.0 + t) * self.p7[i] / 8.0;
 
             // derivative of dx/dr with respect to t
-            d2x_drt[i] = 0.0 - self.db0st_dt[i] / 2.0
-                + self.db1st_dt[i] / 2.0
-                + (1.0 - s) * self.ddb2rt_drt[i] / 2.0
-                + (1.0 + s) * self.ddb3rt_drt[i] / 2.0
-                - self.db4rs_dr[i] / 2.0
-                + self.db5rs_dr[i] / 2.0
-                + (1.0 - s) * self.db0mt_dt[i] / 4.0
-                + (1.0 + s) * self.db0pt_dt[i] / 4.0
-                - (1.0 - s) * self.db1mt_dt[i] / 4.0
-                - (1.0 + s) * self.db1pt_dt[i] / 4.0
-                - self.b0sm[i] / 4.0
-                + self.b0sp[i] / 4.0
-                + self.b1sm[i] / 4.0
-                - self.b1sp[i] / 4.0
-                + (1.0 - s) * self.db2rm_dr[i] / 4.0
-                - (1.0 - s) * self.db2rp_dr[i] / 4.0
-                + (1.0 + s) * self.db3rm_dr[i] / 4.0
-                - (1.0 + s) * self.db3rp_dr[i] / 4.0
-                + (1.0 - s) * self.p0[i] / 8.0
-                - (1.0 - s) * self.p1[i] / 8.0
-                - (1.0 + s) * self.p2[i] / 8.0
-                + (1.0 + s) * self.p3[i] / 8.0
-                - (1.0 - s) * self.p4[i] / 8.0
-                + (1.0 - s) * self.p5[i] / 8.0
-                + (1.0 + s) * self.p6[i] / 8.0
-                - (1.0 + s) * self.p7[i] / 8.0;
+            d2x_drt[i] =
+                0.0 - self.db0st_dt[i] / 2.0 + self.db1st_dt[i] / 2.0 + (1.0 - s) * self.ddb2rt_drt[i] / 2.0 + (1.0 + s) * self.ddb3rt_drt[i] / 2.0
+                    - self.db4rs_dr[i] / 2.0
+                    + self.db5rs_dr[i] / 2.0
+                    + (1.0 - s) * self.db0mt_dt[i] / 4.0
+                    + (1.0 + s) * self.db0pt_dt[i] / 4.0
+                    - (1.0 - s) * self.db1mt_dt[i] / 4.0
+                    - (1.0 + s) * self.db1pt_dt[i] / 4.0
+                    - self.b0sm[i] / 4.0
+                    + self.b0sp[i] / 4.0
+                    + self.b1sm[i] / 4.0
+                    - self.b1sp[i] / 4.0
+                    + (1.0 - s) * self.db2rm_dr[i] / 4.0
+                    - (1.0 - s) * self.db2rp_dr[i] / 4.0
+                    + (1.0 + s) * self.db3rm_dr[i] / 4.0
+                    - (1.0 + s) * self.db3rp_dr[i] / 4.0
+                    + (1.0 - s) * self.p0[i] / 8.0
+                    - (1.0 - s) * self.p1[i] / 8.0
+                    - (1.0 + s) * self.p2[i] / 8.0
+                    + (1.0 + s) * self.p3[i] / 8.0
+                    - (1.0 - s) * self.p4[i] / 8.0
+                    + (1.0 - s) * self.p5[i] / 8.0
+                    + (1.0 + s) * self.p6[i] / 8.0
+                    - (1.0 + s) * self.p7[i] / 8.0;
 
             // derivative of dx/ds with respect to t
-            d2x_dst[i] = 0.0 + (1.0 - r) * self.ddb0st_dst[i] / 2.0 + (1.0 + r) * self.ddb1st_dst[i] / 2.0
-                - self.db2rt_dt[i] / 2.0
+            d2x_dst[i] = 0.0 + (1.0 - r) * self.ddb0st_dst[i] / 2.0 + (1.0 + r) * self.ddb1st_dst[i] / 2.0 - self.db2rt_dt[i] / 2.0
                 + self.db3rt_dt[i] / 2.0
                 - self.db4rs_ds[i] / 2.0
                 + self.db5rs_ds[i] / 2.0
@@ -779,9 +768,7 @@ impl Transfinite3d {
 
     /// Returns the corner points
     pub fn get_corners(&self) -> (&Vector, &Vector, &Vector, &Vector, &Vector, &Vector, &Vector, &Vector) {
-        (
-            &self.p0, &self.p1, &self.p2, &self.p3, &self.p4, &self.p5, &self.p6, &self.p7,
-        )
+        (&self.p0, &self.p1, &self.p2, &self.p3, &self.p4, &self.p5, &self.p6, &self.p7)
     }
 }
 

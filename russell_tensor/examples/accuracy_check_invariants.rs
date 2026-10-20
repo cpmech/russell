@@ -31,9 +31,7 @@ const LABELS: [&str; NV] = ["HZ", "HA23", "naive"];
 
 fn main() {
     let q = q_sym();
-    let deltas = [
-        1e-16, 1e-14, 1e-12, 1e-10, 1e-8, 1e-6, 1e-4, 1e-2, 1e-1, 1.0, 5.0, 500.0,
-    ];
+    let deltas = [1e-16, 1e-14, 1e-12, 1e-10, 1e-8, 1e-6, 1e-4, 1e-2, 1e-1, 1.0, 5.0, 500.0];
 
     println!("Symmetric tensors, A = Q_sym ⋅ diag(d) ⋅ Q_symᵀ");
     println!("(reference: double-double, ~30 digits)");

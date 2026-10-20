@@ -88,10 +88,7 @@ where
                 panic!("complex_mat_approx_eq found Inf (real)");
             }
             if diff_re > tol {
-                panic!(
-                    "complex matrices are not approximately equal. @ ({},{}) diff_re = {:?}",
-                    i, j, diff_re
-                );
+                panic!("complex matrices are not approximately equal. @ ({},{}) diff_re = {:?}", i, j, diff_re);
             }
             let diff_im = f64::abs(a.get(i, j).im - b.at(i, j).im);
             if diff_im.is_nan() {
@@ -101,10 +98,7 @@ where
                 panic!("complex_mat_approx_eq found Inf (imag)");
             }
             if diff_im > tol {
-                panic!(
-                    "complex matrices are not approximately equal. @ ({},{}) diff_im = {:?}",
-                    i, j, diff_im
-                );
+                panic!("complex matrices are not approximately equal. @ ({},{}) diff_im = {:?}", i, j, diff_im);
             }
         }
     }

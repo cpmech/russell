@@ -227,10 +227,7 @@ fn test_circle_min_u() {
 fn do_plot(name: &str, uu: &[f64], ll: &[f64]) {
     // Draw a reference circle
     let mut circle = Canvas::new();
-    circle
-        .set_edge_color("#00ba7f")
-        .set_face_color("None")
-        .draw_circle(0.0, 0.0, RADIUS);
+    circle.set_edge_color("#00ba7f").set_face_color("None").draw_circle(0.0, 0.0, RADIUS);
 
     // Draw the state points
     let mut curve = Curve::new();

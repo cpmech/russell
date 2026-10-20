@@ -176,15 +176,8 @@ pub fn small_mat_svd<const M: usize, const N: usize>(
         // call, which squared the condition number -- at κ = 1e6 that left the
         // polar rotation factor in `russell_tensor` non-orthogonal by 1.7e-5,
         // and at κ = 1e8 by 2.8e-1.
-        algebra_linear::lapack::svd::dgesvd(
-            acm.as_flattened_mut(),
-            M,
-            N,
-            s,
-            ucm.as_flattened_mut(),
-            vtcm.as_flattened_mut(),
-        )
-        .map_err(|_| "dgesvd failed")?;
+        algebra_linear::lapack::svd::dgesvd(acm.as_flattened_mut(), M, N, s, ucm.as_flattened_mut(), vtcm.as_flattened_mut())
+            .map_err(|_| "dgesvd failed")?;
     }
 
     // copy the column-major outputs back into row-major arrays
@@ -209,13 +202,7 @@ mod tests {
     use crate::approx_eq;
 
     /// Checks that `a == u ⋅ diag(s) ⋅ vt` and that `u`/`vt` are orthogonal
-    fn check_svd<const M: usize, const N: usize>(
-        a: &[[f64; N]; M],
-        s: &[f64],
-        u: &[[f64; M]; M],
-        vt: &[[f64; N]; N],
-        tol: f64,
-    ) {
+    fn check_svd<const M: usize, const N: usize>(a: &[[f64; N]; M], s: &[f64], u: &[[f64; M]; M], vt: &[[f64; N]; N], tol: f64) {
         let min_mn = if M < N { M } else { N };
 
         // reconstruction: a == u ⋅ diag(s) ⋅ vt
@@ -266,10 +253,7 @@ mod tests {
         let mut s = [0.0; 3]; // should be 2
         let mut u = [[0.0; 2]; 2];
         let mut vt = [[0.0; 3]; 3];
-        assert_eq!(
-            small_mat_svd(&mut s, &mut u, &mut vt, &a),
-            Err("[s] must be a min(m,n) vector")
-        );
+        assert_eq!(small_mat_svd(&mut s, &mut u, &mut vt, &a), Err("[s] must be a min(m,n) vector"));
     }
 
     #[test]

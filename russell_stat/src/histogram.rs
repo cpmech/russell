@@ -150,11 +150,7 @@ where
         let mut mid;
         while upper - lower > 1 {
             mid = (upper + lower) / 2;
-            if x >= self.stations[mid] {
-                lower = mid
-            } else {
-                upper = mid
-            }
+            if x >= self.stations[mid] { lower = mid } else { upper = mid }
         }
         Some(lower)
     }
@@ -227,10 +223,7 @@ mod tests {
 
     #[test]
     fn new_fails_on_wrong_input() {
-        assert_eq!(
-            Histogram::<i32>::new(&[]).err(),
-            Some("histogram must have at least 2 stations")
-        );
+        assert_eq!(Histogram::<i32>::new(&[]).err(), Some("histogram must have at least 2 stations"));
     }
 
     #[test]

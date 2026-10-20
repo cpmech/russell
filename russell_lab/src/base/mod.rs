@@ -8,6 +8,7 @@ mod find_min_max;
 mod find_valleys_and_peaks;
 mod formatters;
 mod generators;
+pub(crate) mod lapack_dispatch;
 mod macros;
 mod read_table;
 mod sort;

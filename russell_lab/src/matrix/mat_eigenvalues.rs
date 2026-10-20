@@ -1,34 +1,8 @@
 use super::Matrix;
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-use crate::{C_FALSE, CcBool};
-use crate::{StrError, Vector, to_i32};
+use crate::StrError;
+use crate::Vector;
+use crate::base::lapack_dispatch;
 
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-unsafe extern "C" {
-    // Computes the eigenvalues and eigenvectors of a general matrix
-    // <https://www.netlib.org/lapack/explore-html/d9/d28/dgeev_8f.html>
-    fn c_dgeev(
-        calc_vl: CcBool,
-        calc_vr: CcBool,
-        n: *const i32,
-        a: *mut f64,
-        lda: *const i32,
-        wr: *mut f64,
-        wi: *mut f64,
-        vl: *mut f64,
-        ldvl: *const i32,
-        vr: *mut f64,
-        ldvr: *const i32,
-        work: *mut f64,
-        lwork: *const i32,
-        info: *mut i32,
-    );
-}
-
-#[cfg_attr(
-    not(any(feature = "open_blas", feature = "intel_mkl")),
-    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
-)]
 /// (dgeev) Computes the eigenvalues of a matrix
 ///
 /// Computes the eigenvalues `l`, such that:
@@ -100,69 +74,19 @@ pub fn mat_eigenvalues(l_real: &mut Vector, l_imag: &mut Vector, a: &mut Matrix)
     if l_real.dim() != m || l_imag.dim() != m {
         return Err("vectors are incompatible");
     }
-    let m_i32 = to_i32(m);
-    let lda = m_i32;
-    let ldu = 1;
-    let ldv = 1;
-    const EXTRA: i32 = 1;
-    let lwork = 4 * m_i32 + EXTRA;
-    let mut u = vec![0.0; ldu as usize];
-    let mut v = vec![0.0; ldv as usize];
-    let mut work = vec![0.0; lwork as usize];
-    let mut info = 0;
-    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    {
-        // Only the eigenvalues are wanted, so the eigenvectors are discarded.
-        let n = m;
-        let mut v_real = vec![0.0; n * n];
-        let mut v_imag = vec![0.0; n * n];
-        let (wr, wi) = crate::native::lapack::eig::dgeev(&mut v_real, &mut v_imag, a.as_mut_data(), n)
-            .map_err(|e| match e {
-                // dlahqr exhausted its iteration limit; the eigenvalues are only
-                // partly converged, so this is an error rather than a result.
-                crate::native::lapack::LapackError::Convergence => {
-                    "LAPACK ERROR (dgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed"
-                }
-                _ => "LAPACK ERROR (dgeev): An argument had an illegal value",
-            })?;
-        l_real.as_mut_data().copy_from_slice(&wr);
-        l_imag.as_mut_data().copy_from_slice(&wi);
-        return Ok(());
-    }
-    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-    {
-        unsafe {
-            c_dgeev(
-                C_FALSE,
-                C_FALSE,
-                &m_i32,
-                a.as_mut_data().as_mut_ptr(),
-                &lda,
-                l_real.as_mut_data().as_mut_ptr(),
-                l_imag.as_mut_data().as_mut_ptr(),
-                u.as_mut_ptr(),
-                &ldu,
-                v.as_mut_ptr(),
-                &ldv,
-                work.as_mut_ptr(),
-                &lwork,
-                &mut info,
-            );
+    // Only the eigenvalues are wanted, so the driver skips the eigenvectors
+    // (`JOBVL = JOBVR = 'N'` on the accelerated path, a discarded decomposition on
+    // the native one).
+    lapack_dispatch::dgeev_eigenvalues(l_real.as_mut_data(), l_imag.as_mut_data(), a.as_mut_data(), m).map_err(|e| {
+        match e {
+            // dlahqr exhausted its iteration limit; the eigenvalues are only
+            // partly converged, so this is an error rather than a result.
+            crate::native::lapack::LapackError::Convergence => {
+                "LAPACK ERROR (dgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed"
+            }
+            _ => "LAPACK ERROR (dgeev): An argument had an illegal value",
         }
-    }
-    if info < 0 {
-        println!("LAPACK ERROR (dgeev): Argument #{} had an illegal value", -info);
-        return Err("LAPACK ERROR (dgeev): An argument had an illegal value");
-    } else if info > 0 {
-        println!(
-            "LAPACK ERROR (dgeev): The QR algorithm failed. Elements {}+1:N of l_real and l_imag contain eigenvalues which have converged",
-            info - 1
-        );
-        return Err(
-            "LAPACK ERROR (dgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed",
-        );
-    }
-    Ok(())
+    })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

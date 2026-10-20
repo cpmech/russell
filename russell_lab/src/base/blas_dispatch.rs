@@ -31,8 +31,9 @@
 //!
 //! This is now the only place in the crate that names a `cblas_*` symbol or
 //! chooses between a native BLAS kernel and the shim: every BLAS call site goes
-//! through here. (The `c_*` LAPACK wrappers in `src/matrix` and `src/matvec` are a
-//! different layer and were not part of this.)
+//! through here. LAPACK's drivers have a module of their own,
+//! [`crate::base::lapack_dispatch`], built the same way; `dlange`/`zlange` stay
+//! here because they are norms over a BLAS buffer rather than decompositions.
 //!
 //! Five entries have no call site -- `dgemm_nt`, `dgemm_tt`, `zgemm_nt`,
 //! `zgemm_tt` and `zger`. They are here because this module is the surface a call

@@ -234,9 +234,12 @@ Two lessons from this work are worth more than the rest, because both cost hours
 
 Worth knowing before optimizing, because the obvious move is the wrong one.
 
-`mat_mat_mul`'s native branch routes to `native::blas::dgemm`, a Goto-style
-blocked kernel with a 4x4 AVX2+FMA micro-kernel (MC=128, KC=256, NC=256), and
-`portable::mat_mat_mul_data` is kept only for `wasm32`. Benchmarks:
+`mat_mat_mul` routes through `base::blas_dispatch::dgemm`, which is
+`native::blas::dgemm` -- a Goto-style blocked kernel with a 4x4 AVX2+FMA
+micro-kernel (MC=128, KC=256, NC=256) -- unless an accelerated feature is on.
+There is no `portable` module any more: `wasm32` takes the same dispatch and gets
+the native kernel's scalar fallback, and the suite runs there under `wasmtime` in
+CI. Benchmarks:
 `benchmarks/matmul_benchmark.rs` and `benchmarks/decomp_benchmark.rs`.
 
 **The LAPACK layer is BLAS-3-free end to end**, so the blocked `dgemm` does not
@@ -302,11 +305,11 @@ this one. `dgesvd` remains unblocked. The rules of thumb:
 - `dgesvd`/`zgesvd` use the direct bidiagonalization path for both shapes, not
   the QR/LQ pre-reduction the reference uses for very tall or wide inputs.
   Agreement with the reference is ~1e-15.
-- `cargo check --features open_blas` cannot be compiled on this machine at all: it
-  dies in `build.rs` at `c_code/interface_blas.c` with `lapack.h: No such file or
-  directory`, because the development headers are not installed. The `open_blas`
-  branches can only be reasoned about, not checked, so keep edits to them
-  minimal.
+- `--features open_blas` builds and passes on this machine: the headers are under
+  `/usr/include/openblas` and `pkg-config` finds them. All configurations (plain,
+  `open_blas`, `intel_mkl`, `--all-features`, `dev_lapack`, and the wasm target)
+  are runnable here, so an accelerated branch never has to be reasoned about
+  without being checked.
 - The web/WASM consumer of this crate has not been re-checked since the native
   backend landed.
 

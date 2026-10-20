@@ -202,7 +202,11 @@ where
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#[cfg(test)]
+// These tests read and write files, which WASI does not provide unless the runtime
+// preopens a directory: under `wasmtime` they trap rather than returning an error.
+// That is a property of the sandbox, not of this crate, so the module runs where
+// there is a filesystem; the numeric suites carry the wasm coverage.
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::{read_data, read_table};
     use crate::StrError;

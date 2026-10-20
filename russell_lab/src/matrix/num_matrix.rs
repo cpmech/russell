@@ -1201,6 +1201,9 @@ mod tests {
         assert_eq!(a.data, [-8.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 1.0]);
     }
 
+    // Reads a file, which WASI does not provide unless the runtime preopens a
+    // directory; under `wasmtime` it traps rather than returning an error.
+    #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn from_text_file_handles_problems() {
         assert_eq!(NumMatrix::<f64>::from_text_file("").err(), Some("cannot open file"),);
@@ -1218,6 +1221,9 @@ mod tests {
         );
     }
 
+    // Reads a file, which WASI does not provide unless the runtime preopens a
+    // directory; under `wasmtime` it traps rather than returning an error.
+    #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn from_text_file_works() {
         let a = NumMatrix::<f64>::from_text_file("./data/matrices/ok_empty_file.txt").unwrap();

@@ -37,10 +37,12 @@ jobs:
             | jq -r '.packages[] | select(.name == "algebra_linear") | .version')
           test -n "$version" || { echo "::error::algebra_linear is not a dependency any more"; exit 1; }
           echo "checking algebra_linear ${version}, the version cargo resolves"
-          mkdir -p algebra_linear_crate
+          # Extracted outside the checkout: a directory in the workspace would show
+          # up as untracked in anyone's `git status` who runs this step locally.
+          crate=$(mktemp -d)
           curl -sSfL "https://crates.io/api/v1/crates/algebra_linear/${version}/download" \
-            | tar xz -C algebra_linear_crate --strip-components=1
-          if grep -rni 'russell' algebra_linear_crate; then
+            | tar xz -C "$crate" --strip-components=1
+          if grep -rni 'russell' "$crate"; then
             echo "::error::algebra_linear now references this repository; it must stay standalone"
             exit 1
           fi

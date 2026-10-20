@@ -176,7 +176,7 @@ pub fn small_mat_svd<const M: usize, const N: usize>(
         // call, which squared the condition number -- at κ = 1e6 that left the
         // polar rotation factor in `russell_tensor` non-orthogonal by 1.7e-5,
         // and at κ = 1e8 by 2.8e-1.
-        crate::native::lapack::svd::dgesvd(
+        algebra_linear::lapack::svd::dgesvd(
             acm.as_flattened_mut(),
             M,
             N,

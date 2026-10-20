@@ -130,15 +130,17 @@ pub fn complex_solve_lin_sys(b: &mut ComplexVector, a: &mut ComplexMatrix) -> Re
     {
         // The singular message is the one the shim path produces below (its
         // info > 0 branch), so both backends are indistinguishable to a caller.
-        crate::native::lapack::complex::zgesv(a.as_mut_data(), b.as_mut_data()).map_err(|e| match e {
-            crate::native::lapack::LapackError::Singular => {
+        algebra_linear::lapack::complex::zgesv(a.as_mut_data(), b.as_mut_data()).map_err(|e| match e {
+            algebra_linear::lapack::LapackError::Singular => {
                 "LAPACK ERROR (dgesv): The factorization has been completed, but the factor U is exactly singular"
             }
-            crate::native::lapack::LapackError::BadShape => "LAPACK ERROR (dgesv): An argument had an illegal value",
+            algebra_linear::lapack::LapackError::BadShape => "LAPACK ERROR (dgesv): An argument had an illegal value",
             // Unreachable: a direct solve has no iteration. Listed for
             // exhaustiveness.
-            crate::native::lapack::LapackError::Convergence => "LAPACK ERROR (dgesv): The algorithm failed to converge",
-            crate::native::lapack::LapackError::NotImplemented(r) => crate::native::lapack::not_implemented(r),
+            algebra_linear::lapack::LapackError::Convergence => {
+                "LAPACK ERROR (dgesv): The algorithm failed to converge"
+            }
+            algebra_linear::lapack::LapackError::NotImplemented(r) => algebra_linear::lapack::not_implemented(r),
         })?;
     }
     if info < 0 {

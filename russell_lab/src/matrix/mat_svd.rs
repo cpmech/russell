@@ -155,7 +155,7 @@ pub fn mat_svd(s: &mut Vector, u: &mut Matrix, vt: &mut Matrix, a: &mut Matrix) 
         vt.as_mut_data(),
     )
     .map_err(|e| match e {
-        crate::native::lapack::LapackError::Convergence => "LAPACK ERROR (dgesvd): Algorithm did not converge",
+        algebra_linear::lapack::LapackError::Convergence => "LAPACK ERROR (dgesvd): Algorithm did not converge",
         _ => "LAPACK ERROR (dgesvd): An argument had an illegal value",
     })
 }

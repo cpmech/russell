@@ -13,6 +13,11 @@ jobs:
         rust: [stable, nightly-2026-07-01]
     steps:
       - uses: actions/checkout@v4
+      - name: Check out algebra_linear (the kernels this workspace depends on)
+        uses: actions/checkout@v4
+        with:
+          repository: cpmech/algebra_linear
+          path: algebra_linear
       - name: Install Rust
         uses: dtolnay/rust-toolchain@master
         with:

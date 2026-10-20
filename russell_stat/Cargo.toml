@@ -1,6 +1,6 @@
 [package]
 name = "russell_stat"
-version = "3.3.1"
+version = "4.0.0"
 edition = "2024"
 license = "MIT"
 description = "Statistics calculations and (engineering) probability distributions"
@@ -18,7 +18,7 @@ open_blas = ["russell_lab/open_blas"]
 intel_mkl = ["russell_lab/intel_mkl"]
 
 [dependencies]
-russell_lab = { path = "../russell_lab", version = "3" }
+russell_lab = { path = "../russell_lab", version = "4" }
 num-traits = "0.2"
 rand = "0.10"
 rand_distr = "0.6"

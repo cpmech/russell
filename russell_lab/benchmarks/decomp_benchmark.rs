@@ -7,8 +7,8 @@
 //!
 //! No criterion: these are milliseconds to seconds and the point is the order of
 //! magnitude.
+use algebra_linear::lapack::{svd, sym};
 use russell_lab::Matrix;
-use russell_lab::native::lapack::{svd, sym};
 use std::time::Instant;
 
 /// Well-conditioned and full rank. A modulo pattern repeats rows once n exceeds

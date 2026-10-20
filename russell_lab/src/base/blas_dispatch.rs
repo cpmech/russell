@@ -1,7 +1,7 @@
 //! BLAS entry points, dispatched to the native kernels or to a linked library.
 //!
 //! Every function here has the same signature as its counterpart in
-//! [`crate::native::blas`], so a call site names the *operation* rather than the
+//! [`algebra_linear::blas`], so a call site names the *operation* rather than the
 //! backend: the default build forwards to the native Rust kernel, and a build
 //! with an accelerator forwards to the C shim (`c_code/interface_blas.c`), which
 //! calls CBLAS.
@@ -308,7 +308,7 @@ pub fn dgemm(alpha: f64, a: &[f64], b: &[f64], beta: f64, c: &mut [f64], m: usiz
         }
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::dgemm(alpha, a, b, beta, c, m, n, k);
+    algebra_linear::blas::dgemm(alpha, a, b, beta, c, m, n, k);
 }
 
 /// `C := alpha * A^T * B + beta * C` (dgemm, trans = 'T','N').
@@ -346,7 +346,7 @@ pub fn dgemm_tn(alpha: f64, a: &[f64], b: &[f64], beta: f64, c: &mut [f64], m: u
         };
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::dgemm_tn(alpha, a, b, beta, c, m, n, k);
+    algebra_linear::blas::dgemm_tn(alpha, a, b, beta, c, m, n, k);
 }
 
 /// `C := alpha * A * B^T + beta * C` (dgemm, trans = 'N','T').
@@ -390,7 +390,7 @@ pub fn dgemm_nt(alpha: f64, a: &[f64], b: &[f64], beta: f64, c: &mut [f64], m: u
         };
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::dgemm_nt(alpha, a, b, beta, c, m, n, k);
+    algebra_linear::blas::dgemm_nt(alpha, a, b, beta, c, m, n, k);
 }
 
 /// `C := alpha * A^T * B^T + beta * C` (dgemm, trans = 'T','T').
@@ -434,7 +434,7 @@ pub fn dgemm_tt(alpha: f64, a: &[f64], b: &[f64], beta: f64, c: &mut [f64], m: u
         };
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::dgemm_tt(alpha, a, b, beta, c, m, n, k);
+    algebra_linear::blas::dgemm_tt(alpha, a, b, beta, c, m, n, k);
 }
 
 /// `y := alpha * A * x + beta * y` (dgemv, trans = 'N').
@@ -457,7 +457,7 @@ pub fn dgemv(alpha: f64, a: &[f64], x: &[f64], beta: f64, y: &mut [f64], m: usiz
         }
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::dgemv(alpha, a, x, beta, y, m, n);
+    algebra_linear::blas::dgemv(alpha, a, x, beta, y, m, n);
 }
 
 /// `y := alpha * A^T * x + beta * y` (dgemv, trans = 'T').
@@ -482,7 +482,7 @@ pub fn dgemv_trans(alpha: f64, a: &[f64], x: &[f64], beta: f64, y: &mut [f64], m
         }
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::dgemv_trans(alpha, a, x, beta, y, m, n);
+    algebra_linear::blas::dgemv_trans(alpha, a, x, beta, y, m, n);
 }
 
 /// `A := alpha * x * y^T + A` (dger), with `A` `m x n` column-major.
@@ -506,7 +506,7 @@ pub fn dger(alpha: f64, x: &[f64], y: &[f64], a: &mut [f64], m: usize, n: usize)
         unsafe { c_dger(alpha, x.as_ptr(), y.as_ptr(), a.as_mut_ptr(), &m_i32, &n_i32) };
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::dger(alpha, x, y, a, m, n);
+    algebra_linear::blas::dger(alpha, x, y, a, m, n);
 }
 
 /// `x . y` (ddot).
@@ -525,7 +525,7 @@ pub fn ddot(x: &[f64], y: &[f64]) -> f64 {
         unsafe { c_ddot(x.as_ptr(), y.as_ptr(), &n_i32) }
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::ddot(&x[..n], &y[..n])
+    algebra_linear::blas::ddot(&x[..n], &y[..n])
 }
 
 /// `y := alpha * x + y` (daxpy), where `y` and `x` are the same length.
@@ -546,7 +546,7 @@ pub fn daxpy(alpha: f64, x: &[f64], y: &mut [f64]) {
         unsafe { c_daxpy(alpha, x.as_ptr(), y.as_mut_ptr(), &n_i32) };
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::daxpy(alpha, x, y);
+    algebra_linear::blas::daxpy(alpha, x, y);
 }
 
 /// `y := x` (dcopy).
@@ -559,7 +559,7 @@ pub fn daxpy(alpha: f64, x: &[f64], y: &mut [f64]) {
 ///
 /// Panics if the slices differ in length.
 pub fn dcopy(x: &[f64], y: &mut [f64]) {
-    crate::native::blas::dcopy(x, y);
+    algebra_linear::blas::dcopy(x, y);
 }
 
 /// `x := alpha * x` (dscal).
@@ -571,7 +571,7 @@ pub fn dcopy(x: &[f64], y: &mut [f64]) {
 /// both sides, so routing would trade one size for the other rather than win, and
 /// the native loop is kept.
 pub fn dscal(alpha: f64, x: &mut [f64]) {
-    crate::native::blas::dscal(alpha, x);
+    algebra_linear::blas::dscal(alpha, x);
 }
 
 /// Euclidean norm `sqrt(x . x)` (dnrm2).
@@ -587,7 +587,7 @@ pub fn dnrm2(x: &[f64]) -> f64 {
         unsafe { c_dnrm2(x.as_ptr(), &n_i32) }
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::dnrm2(x)
+    algebra_linear::blas::dnrm2(x)
 }
 
 /// Sum of absolute values `|x|_1` (dasum).
@@ -603,7 +603,7 @@ pub fn dasum(x: &[f64]) -> f64 {
         unsafe { c_dasum(x.as_ptr(), &n_i32) }
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::dasum(x)
+    algebra_linear::blas::dasum(x)
 }
 
 /// Index of the first entry with the largest absolute value (idamax).
@@ -624,7 +624,7 @@ pub fn idamax(x: &[f64]) -> usize {
         i as usize
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::idamax(x)
+    algebra_linear::blas::idamax(x)
 }
 
 /// `nrm := |A|` for the one-, infinity- or Frobenius-norm (dlange).
@@ -658,7 +658,7 @@ pub fn dlange(norm: char, a: &[f64], m: usize, n: usize) -> f64 {
         unsafe { c_dlange(norm_code, &m_i32, &n_i32, a.as_ptr(), &lda, work.as_mut_ptr()) }
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::dlange(norm, a, m, n)
+    algebra_linear::blas::dlange(norm, a, m, n)
 }
 
 /// The `Norm` discriminant the shim expects for a BLAS norm character.
@@ -697,7 +697,7 @@ fn norm_discriminant(norm: char) -> i32 {
 ///
 /// Panics on an unrecognized norm character.
 pub fn zlange(norm: char, a: &[Complex64], m: usize, n: usize) -> f64 {
-    crate::native::blas::zlange(norm, a, m, n)
+    algebra_linear::blas::zlange(norm, a, m, n)
 }
 
 /// `C := alpha * A * A^T + beta * C`, or `C := alpha * A^T * A + beta * C` when
@@ -709,7 +709,7 @@ pub fn zlange(norm: char, a: &[Complex64], m: usize, n: usize) -> f64 {
 /// only the `upper` (or lower) triangle of it is written -- the other triangle
 /// keeps what it held, as BLAS specifies.
 ///
-/// The native counterpart is [`crate::native::blas::dsyrk_rank`], whose extra
+/// The native counterpart is [`algebra_linear::blas::dsyrk_rank`], whose extra
 /// `transposed` argument this entry already had to carry.
 ///
 /// # Panics
@@ -741,7 +741,7 @@ pub fn dsyrk(alpha: f64, a: &[f64], beta: f64, c: &mut [f64], n: usize, k: usize
         }
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::dsyrk_rank(alpha, a, beta, c, n, k, upper, transposed);
+    algebra_linear::blas::dsyrk_rank(alpha, a, beta, c, n, k, upper, transposed);
 }
 
 /// `y := alpha * x + y` for complex data (zaxpy).
@@ -762,7 +762,7 @@ pub fn zaxpy(alpha: Complex64, x: &[Complex64], y: &mut [Complex64]) {
         unsafe { c_zaxpy(&alpha, x.as_ptr(), y.as_mut_ptr(), &n_i32) };
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::zaxpy(alpha, x, y);
+    algebra_linear::blas::zaxpy(alpha, x, y);
 }
 
 /// `y := x` for complex data (zcopy).
@@ -774,7 +774,7 @@ pub fn zaxpy(alpha: Complex64, x: &[Complex64], y: &mut [Complex64]) {
 ///
 /// Panics if the slices differ in length.
 pub fn zcopy(x: &[Complex64], y: &mut [Complex64]) {
-    crate::native::blas::zcopy(x, y);
+    algebra_linear::blas::zcopy(x, y);
 }
 
 /// `x := alpha * x` for complex data (zscal).
@@ -790,13 +790,13 @@ pub fn zscal(alpha: Complex64, x: &mut [Complex64]) {
         unsafe { c_zscal(&alpha, x.as_mut_ptr(), &n_i32) };
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::zscal(alpha, x);
+    algebra_linear::blas::zscal(alpha, x);
 }
 
 /// Euclidean norm of a complex vector (dznrm2), as a real number.
 ///
 /// LAPACK names this `dznrm2` because its result is real even though the input is
-/// complex; the native twin is [`crate::native::blas::dznrm2`].
+/// complex; the native twin is [`algebra_linear::blas::dznrm2`].
 pub fn dznrm2(x: &[Complex64]) -> f64 {
     if x.is_empty() {
         return 0.0;
@@ -809,7 +809,7 @@ pub fn dznrm2(x: &[Complex64]) -> f64 {
         unsafe { c_dznrm2(x.as_ptr(), &n_i32) }
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::dznrm2(x)
+    algebra_linear::blas::dznrm2(x)
 }
 
 /// `C := alpha * A * B + beta * C` for complex data (zgemm, both 'N').
@@ -857,7 +857,7 @@ pub fn zgemm(
         }
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::zgemm(alpha, a, b, beta, c, m, n, k);
+    algebra_linear::blas::zgemm(alpha, a, b, beta, c, m, n, k);
 }
 
 /// `C := alpha * A^T * B + beta * C` for complex data (zgemm, 'T','N'). Not
@@ -903,7 +903,7 @@ pub fn zgemm_tn(
         };
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::zgemm_tn(alpha, a, b, beta, c, m, n, k);
+    algebra_linear::blas::zgemm_tn(alpha, a, b, beta, c, m, n, k);
 }
 
 /// `C := alpha * A * B^T + beta * C` for complex data (zgemm, 'N','T'). Not
@@ -953,7 +953,7 @@ pub fn zgemm_nt(
         };
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::zgemm_nt(alpha, a, b, beta, c, m, n, k);
+    algebra_linear::blas::zgemm_nt(alpha, a, b, beta, c, m, n, k);
 }
 
 /// `C := alpha * A^T * B^T + beta * C` for complex data (zgemm, 'T','T'). Not
@@ -1003,7 +1003,7 @@ pub fn zgemm_tt(
         };
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::zgemm_tt(alpha, a, b, beta, c, m, n, k);
+    algebra_linear::blas::zgemm_tt(alpha, a, b, beta, c, m, n, k);
 }
 
 /// `A := alpha * x * y^T + A` for complex data (zger). Not conjugated: BLAS's
@@ -1033,7 +1033,7 @@ pub fn zger(alpha: Complex64, x: &[Complex64], y: &[Complex64], a: &mut [Complex
         unsafe { c_zger(&alpha, x.as_ptr(), y.as_ptr(), a.as_mut_ptr(), &m_i32, &n_i32) };
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::zger(alpha, x, y, a, m, n);
+    algebra_linear::blas::zger(alpha, x, y, a, m, n);
 }
 
 /// `y := alpha * A * x + beta * y` for complex data (zgemv, trans = 'N').
@@ -1065,7 +1065,7 @@ pub fn zgemv(
         }
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::zgemv(alpha, a, x, beta, y, m, n);
+    algebra_linear::blas::zgemv(alpha, a, x, beta, y, m, n);
 }
 
 /// `y := alpha * A^T * x + beta * y` for complex data (zgemv, trans = 'T').
@@ -1099,7 +1099,7 @@ pub fn zgemv_trans(
         }
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::zgemv_trans(alpha, a, x, beta, y, m, n);
+    algebra_linear::blas::zgemv_trans(alpha, a, x, beta, y, m, n);
 }
 
 /// `C := alpha * A * A^H + beta * C`, or `C := alpha * A^H * A + beta * C` when
@@ -1112,7 +1112,7 @@ pub fn zgemv_trans(
 /// **The transpose here is conjugated.** That is what makes this a Hermitian
 /// rank-k update and not a symmetric one; `zherk` with `'N'` computes `A A^H`
 /// and with `'C'` computes `A^H A`, and the two conjugate different operands, so
-/// they are different kernels (see `crate::native::blas::zherk_rank`).
+/// they are different kernels (see `algebra_linear::blas::zherk_rank`).
 ///
 /// # Panics
 ///
@@ -1155,9 +1155,9 @@ pub fn zherk(
     if conj_transposed {
         // `A^H A`, contracting over A's k rows: a different kernel, not the same
         // one with the operands exchanged.
-        crate::native::blas::zherk_rank(alpha, a, beta, c, n, k, upper);
+        algebra_linear::blas::zherk_rank(alpha, a, beta, c, n, k, upper);
     } else {
-        crate::native::blas::zherk(alpha, a, beta, c, n, k, upper);
+        algebra_linear::blas::zherk(alpha, a, beta, c, n, k, upper);
     }
 }
 
@@ -1175,8 +1175,8 @@ pub fn zherk(
 /// shapes implying it. `c` is `n x n` and only the `upper` (or lower) triangle of
 /// it is written.
 ///
-/// The native counterparts are [`crate::native::blas::zsyrk`] and, for the
-/// transposed orientation, [`crate::native::blas::zsyrk_rank`].
+/// The native counterparts are [`algebra_linear::blas::zsyrk`] and, for the
+/// transposed orientation, [`algebra_linear::blas::zsyrk_rank`].
 ///
 /// # Panics
 ///
@@ -1219,9 +1219,9 @@ pub fn zsyrk(
     if transposed {
         // `A^T A`, contracting over A's k rows: a different kernel, not the same
         // one with the operands exchanged.
-        crate::native::blas::zsyrk_rank(alpha, a, beta, c, n, k, upper);
+        algebra_linear::blas::zsyrk_rank(alpha, a, beta, c, n, k, upper);
     } else {
-        crate::native::blas::zsyrk(alpha, a, beta, c, n, k, upper);
+        algebra_linear::blas::zsyrk(alpha, a, beta, c, n, k, upper);
     }
 }
 
@@ -1258,7 +1258,7 @@ mod tests {
         let c0 = data(m * n);
         for (alpha, beta) in [(1.0, 0.0), (2.5, -1.5), (-1.0, 1.0)] {
             let mut want = c0.clone();
-            crate::native::blas::dgemm(alpha, &a, &b, beta, &mut want, m, n, k);
+            algebra_linear::blas::dgemm(alpha, &a, &b, beta, &mut want, m, n, k);
             let mut got = c0.clone();
             dgemm(alpha, &a, &b, beta, &mut got, m, n, k);
             for i in 0..m * n {
@@ -1280,7 +1280,7 @@ mod tests {
         let y0 = data(m);
         for (alpha, beta) in [(1.0, 0.0), (0.5, 2.0)] {
             let mut want = y0.clone();
-            crate::native::blas::dgemv(alpha, &a, &x, beta, &mut want, m, n);
+            algebra_linear::blas::dgemv(alpha, &a, &x, beta, &mut want, m, n);
             let mut got = y0.clone();
             dgemv(alpha, &a, &x, beta, &mut got, m, n);
             for i in 0..m {
@@ -1293,7 +1293,7 @@ mod tests {
         let yt0 = data(n);
         for (alpha, beta) in [(1.0, 0.0), (0.5, 2.0)] {
             let mut want = yt0.clone();
-            crate::native::blas::dgemv_trans(alpha, &a, &xt, beta, &mut want, m, n);
+            algebra_linear::blas::dgemv_trans(alpha, &a, &xt, beta, &mut want, m, n);
             let mut got = yt0.clone();
             dgemv_trans(alpha, &a, &xt, beta, &mut got, m, n);
             for i in 0..n {
@@ -1306,10 +1306,10 @@ mod tests {
     fn level1_routines_match_the_native_kernel() {
         let x = data(23);
         let y = data(23);
-        assert_close(ddot(&x, &y), crate::native::blas::ddot(&x, &y), "ddot");
-        assert_close(dnrm2(&x), crate::native::blas::dnrm2(&x), "dnrm2");
-        assert_close(dasum(&x), crate::native::blas::dasum(&x), "dasum");
-        assert_eq!(idamax(&x), crate::native::blas::idamax(&x));
+        assert_close(ddot(&x, &y), algebra_linear::blas::ddot(&x, &y), "ddot");
+        assert_close(dnrm2(&x), algebra_linear::blas::dnrm2(&x), "dnrm2");
+        assert_close(dasum(&x), algebra_linear::blas::dasum(&x), "dasum");
+        assert_eq!(idamax(&x), algebra_linear::blas::idamax(&x));
     }
 
     /// The documented degenerate cases must survive the library too: CBLAS's
@@ -1342,7 +1342,7 @@ mod tests {
         let y0 = data(23);
         for alpha in [1.0, -2.5, 0.0] {
             let mut want = y0.clone();
-            crate::native::blas::daxpy(alpha, &x, &mut want);
+            algebra_linear::blas::daxpy(alpha, &x, &mut want);
             let mut got = y0.clone();
             daxpy(alpha, &x, &mut got);
             for i in 0..got.len() {
@@ -1350,7 +1350,7 @@ mod tests {
             }
 
             let mut want = y0.clone();
-            crate::native::blas::dscal(alpha, &mut want);
+            algebra_linear::blas::dscal(alpha, &mut want);
             let mut got = y0.clone();
             dscal(alpha, &mut got);
             for i in 0..got.len() {
@@ -1359,7 +1359,7 @@ mod tests {
         }
 
         let mut want = vec![0.0; x.len()];
-        crate::native::blas::dcopy(&x, &mut want);
+        algebra_linear::blas::dcopy(&x, &mut want);
         let mut got = vec![0.0; x.len()];
         dcopy(&x, &mut got);
         assert_eq!(got, want, "dcopy");
@@ -1375,7 +1375,7 @@ mod tests {
 
         for alpha in [cpx!(1.0, 0.0), cpx!(0.5, -1.5)] {
             let mut want = y0.clone();
-            crate::native::blas::zaxpy(alpha, &x, &mut want);
+            algebra_linear::blas::zaxpy(alpha, &x, &mut want);
             let mut got = y0.clone();
             zaxpy(alpha, &x, &mut got);
             for i in 0..got.len() {
@@ -1383,7 +1383,7 @@ mod tests {
             }
 
             let mut want = y0.clone();
-            crate::native::blas::zscal(alpha, &mut want);
+            algebra_linear::blas::zscal(alpha, &mut want);
             let mut got = y0.clone();
             zscal(alpha, &mut got);
             for i in 0..got.len() {
@@ -1392,12 +1392,12 @@ mod tests {
         }
 
         let mut want = vec![cpx!(0.0, 0.0); x.len()];
-        crate::native::blas::zcopy(&x, &mut want);
+        algebra_linear::blas::zcopy(&x, &mut want);
         let mut got = vec![cpx!(0.0, 0.0); x.len()];
         zcopy(&x, &mut got);
         assert_eq!(got, want, "zcopy");
 
-        assert_close(dznrm2(&x), crate::native::blas::dznrm2(&x), "dznrm2");
+        assert_close(dznrm2(&x), algebra_linear::blas::dznrm2(&x), "dznrm2");
     }
 
     /// The complex twin of the norm sweep, plus its own rejection of an unknown
@@ -1410,7 +1410,7 @@ mod tests {
             .collect();
         for norm in ['1', 'O', 'I', 'F', 'E', 'M'] {
             let got = zlange(norm, &a, m, n);
-            let want = crate::native::blas::zlange(norm, &a, m, n);
+            let want = algebra_linear::blas::zlange(norm, &a, m, n);
             assert_close(got, want, &format!("zlange '{norm}'"));
         }
     }
@@ -1440,7 +1440,7 @@ mod tests {
 
         for (alpha, beta) in [(cpx!(1.0, 0.0), cpx!(0.0, 0.0)), (cpx!(0.5, -1.5), cpx!(2.0, 0.25))] {
             let mut want = y0.clone();
-            crate::native::blas::zgemv(alpha, &a, &x, beta, &mut want, m, n);
+            algebra_linear::blas::zgemv(alpha, &a, &x, beta, &mut want, m, n);
             let mut got = y0.clone();
             zgemv(alpha, &a, &x, beta, &mut got, m, n);
             for i in 0..m {
@@ -1448,7 +1448,7 @@ mod tests {
             }
 
             let mut want = yt0.clone();
-            crate::native::blas::zgemv_trans(alpha, &a, &xt, beta, &mut want, m, n);
+            algebra_linear::blas::zgemv_trans(alpha, &a, &xt, beta, &mut want, m, n);
             let mut got = yt0.clone();
             zgemv_trans(alpha, &a, &xt, beta, &mut got, m, n);
             for i in 0..n {
@@ -1463,7 +1463,7 @@ mod tests {
         let a = data(m * n);
         for norm in ['1', 'O', 'I', 'F', 'E', 'M'] {
             let got = dlange(norm, &a, m, n);
-            let want = crate::native::blas::dlange(norm, &a, m, n);
+            let want = algebra_linear::blas::dlange(norm, &a, m, n);
             assert_close(got, want, &format!("dlange '{norm}'"));
         }
     }
@@ -1482,7 +1482,7 @@ mod tests {
         let c0: Vec<Complex64> = (0..m * n).map(|i| cpx!((i % 2) as f64, 0.5)).collect();
         for (alpha, beta) in [(cpx!(1.0, 0.0), cpx!(0.0, 0.0)), (cpx!(0.5, -1.5), cpx!(2.0, 0.25))] {
             let mut want = c0.clone();
-            crate::native::blas::zgemm(alpha, &a, &b, beta, &mut want, m, n, k);
+            algebra_linear::blas::zgemm(alpha, &a, &b, beta, &mut want, m, n, k);
             let mut got = c0.clone();
             zgemm(alpha, &a, &b, beta, &mut got, m, n, k);
             for i in 0..m * n {
@@ -1515,9 +1515,9 @@ mod tests {
         let b_t = data(n * k);
         let c0 = data(m * n);
         let cases: [(&str, RealGemm, RealGemm, &[f64], &[f64]); 3] = [
-            ("dgemm_tn", dgemm_tn, crate::native::blas::dgemm_tn, &a_t, &b_n),
-            ("dgemm_nt", dgemm_nt, crate::native::blas::dgemm_nt, &a_n, &b_t),
-            ("dgemm_tt", dgemm_tt, crate::native::blas::dgemm_tt, &a_t, &b_t),
+            ("dgemm_tn", dgemm_tn, algebra_linear::blas::dgemm_tn, &a_t, &b_n),
+            ("dgemm_nt", dgemm_nt, algebra_linear::blas::dgemm_nt, &a_n, &b_t),
+            ("dgemm_tt", dgemm_tt, algebra_linear::blas::dgemm_tt, &a_t, &b_t),
         ];
         for (label, lib, native, a, b) in cases {
             for (alpha, beta) in [(1.0, 0.0), (2.5, -1.5), (0.0, 3.0)] {
@@ -1549,9 +1549,9 @@ mod tests {
         let b_t = x(n * k);
         let c0 = x(m * n);
         let cases: [(&str, ComplexGemm, ComplexGemm, &[Complex64], &[Complex64]); 3] = [
-            ("zgemm_tn", zgemm_tn, crate::native::blas::zgemm_tn, &a_t, &b_n),
-            ("zgemm_nt", zgemm_nt, crate::native::blas::zgemm_nt, &a_n, &b_t),
-            ("zgemm_tt", zgemm_tt, crate::native::blas::zgemm_tt, &a_t, &b_t),
+            ("zgemm_tn", zgemm_tn, algebra_linear::blas::zgemm_tn, &a_t, &b_n),
+            ("zgemm_nt", zgemm_nt, algebra_linear::blas::zgemm_nt, &a_n, &b_t),
+            ("zgemm_tt", zgemm_tt, algebra_linear::blas::zgemm_tt, &a_t, &b_t),
         ];
         for (label, lib, native, a, b) in cases {
             for (alpha, beta) in [(cpx!(1.0, 0.0), cpx!(0.0, 0.0)), (cpx!(0.5, -1.5), cpx!(2.0, 0.25))] {
@@ -1579,7 +1579,7 @@ mod tests {
         let a0 = data(m * n);
         for alpha in [1.0, -2.5, 0.0] {
             let mut want = a0.clone();
-            crate::native::blas::dger(alpha, &x, &y, &mut want, m, n);
+            algebra_linear::blas::dger(alpha, &x, &y, &mut want, m, n);
             let mut got = a0.clone();
             dger(alpha, &x, &y, &mut got, m, n);
             for i in 0..m * n {
@@ -1598,7 +1598,7 @@ mod tests {
         let a0: Vec<Complex64> = (0..m * n).map(|i| cpx!((i % 2) as f64, 0.5)).collect();
         for alpha in [cpx!(1.0, 0.0), cpx!(0.5, -1.5)] {
             let mut want = a0.clone();
-            crate::native::blas::zger(alpha, &x, &y, &mut want, m, n);
+            algebra_linear::blas::zger(alpha, &x, &y, &mut want, m, n);
             let mut got = a0.clone();
             zger(alpha, &x, &y, &mut got, m, n);
             for i in 0..m * n {
@@ -1627,7 +1627,7 @@ mod tests {
         for transposed in [false, true] {
             for upper in [false, true] {
                 let mut want = c0.clone();
-                crate::native::blas::dsyrk_rank(2.5, &a, -1.5, &mut want, n, k, upper, transposed);
+                algebra_linear::blas::dsyrk_rank(2.5, &a, -1.5, &mut want, n, k, upper, transposed);
                 let mut got = c0.clone();
                 dsyrk(2.5, &a, -1.5, &mut got, n, k, upper, transposed);
                 for j in 0..n {
@@ -1660,9 +1660,9 @@ mod tests {
         for conj_transposed in [false, true] {
             for upper in [false, true] {
                 let native = if conj_transposed {
-                    crate::native::blas::zherk_rank as fn(f64, &[Complex64], f64, &mut [Complex64], usize, usize, bool)
+                    algebra_linear::blas::zherk_rank as fn(f64, &[Complex64], f64, &mut [Complex64], usize, usize, bool)
                 } else {
-                    crate::native::blas::zherk as fn(f64, &[Complex64], f64, &mut [Complex64], usize, usize, bool)
+                    algebra_linear::blas::zherk as fn(f64, &[Complex64], f64, &mut [Complex64], usize, usize, bool)
                 };
                 let mut want = c0.clone();
                 native(2.5, &a, -1.5, &mut want, n, k, upper);
@@ -1712,9 +1712,9 @@ mod tests {
         type Zsyrk = fn(Complex64, &[Complex64], Complex64, &mut [Complex64], usize, usize, bool);
         for transposed in [false, true] {
             let native: Zsyrk = if transposed {
-                crate::native::blas::zsyrk_rank
+                algebra_linear::blas::zsyrk_rank
             } else {
-                crate::native::blas::zsyrk
+                algebra_linear::blas::zsyrk
             };
             for upper in [false, true] {
                 let mut want = c0.clone();
@@ -1747,7 +1747,7 @@ mod tests {
 /// # Provenance
 ///
 /// The same throwaway C driver as the transposed-`gemm` fixtures in
-/// `crate::native::blas::reference_tests` (source and full output in the commit
+/// `algebra_linear::blas::reference_tests` (source and full output in the commit
 /// message that added these entries) also called `cblas_dger`, `cblas_zgeru`,
 /// `cblas_dsyrk` and `cblas_zherk` on its deterministic data, and printed the
 /// inputs as well as the results. What follows is that output, transcribed.

@@ -133,10 +133,12 @@ pub fn complex_mat_eigen_herm(l: &mut Vector, a: &mut ComplexMatrix, upper: bool
         // `a` is destroyed and holds the eigenvectors as columns, `l` receives
         // the eigenvalues in ascending order, and `upper` picks the triangle
         // that is read.
-        return crate::native::lapack::zeig::zheev(a.as_mut_data(), l.as_mut_data(), m, upper).map_err(|e| match e {
+        return algebra_linear::lapack::zeig::zheev(a.as_mut_data(), l.as_mut_data(), m, upper).map_err(|e| match e {
             // `zsteqr` exhausted its iteration limit; same string as the
             // shim's `info > 0` branch returns.
-            crate::native::lapack::LapackError::Convergence => "LAPACK ERROR (zheev): The algorithm failed to converge",
+            algebra_linear::lapack::LapackError::Convergence => {
+                "LAPACK ERROR (zheev): The algorithm failed to converge"
+            }
             _ => "LAPACK ERROR (zheev): An argument had an illegal value",
         });
     }

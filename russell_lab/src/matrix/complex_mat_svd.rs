@@ -133,8 +133,8 @@ pub fn complex_mat_svd(
         // a programming error rather than a caller mistake. The two strings below
         // are the ones the `info` branches further down report, so a native
         // failure is indistinguishable to the caller from an accelerated one.
-        use crate::native::lapack::LapackError;
-        crate::native::lapack::zsvd::zgesvd(
+        use algebra_linear::lapack::LapackError;
+        algebra_linear::lapack::zsvd::zgesvd(
             a.as_mut_data(),
             m,
             n,

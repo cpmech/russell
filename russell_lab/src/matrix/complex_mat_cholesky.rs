@@ -117,7 +117,7 @@ pub fn complex_mat_cholesky(a: &mut ComplexMatrix, upper: bool) -> Result<(), St
         // mat_cholesky does for the real dpotrf, which is lower-only) is needed,
         // and none is wanted: for `upper` the strict lower triangle must survive
         // untouched.
-        crate::native::lapack::complex::zpotrf(a.as_mut_data(), m, upper)
+        algebra_linear::lapack::complex::zpotrf(a.as_mut_data(), m, upper)
             .map_err(|_| "LAPACK ERROR (zpotrf): Positive definite check failed")?;
     }
     if info < 0 {

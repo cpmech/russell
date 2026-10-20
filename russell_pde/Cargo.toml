@@ -1,6 +1,6 @@
 [package]
 name = "russell_pde"
-version = "3.3.1"
+version = "4.0.0"
 edition = "2024"
 license = "MIT"
 description = "Essential tools to solve partial differential equations; not a full-fledged PDE solver"
@@ -20,8 +20,8 @@ local_umfpack = ["russell_sparse/local_umfpack"]
 mumps = ["russell_sparse/mumps"]
 
 [dependencies]
-russell_lab = { path = "../russell_lab", version = "3" }
-russell_sparse = { path = "../russell_sparse", version = "3" }
+russell_lab = { path = "../russell_lab", version = "4" }
+russell_sparse = { path = "../russell_sparse", version = "4" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 structopt = "0.3"

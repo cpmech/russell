@@ -1,7 +1,7 @@
 use super::{Matrix, mat_copy};
 use crate::StrError;
 use crate::base::lapack_dispatch::{dgetrf, dgetri};
-use crate::native::lapack::{LapackError, ZERO_DETERMINANT};
+use algebra_linear::lapack::{LapackError, ZERO_DETERMINANT};
 
 // constants
 

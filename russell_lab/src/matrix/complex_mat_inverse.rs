@@ -1,6 +1,6 @@
 use super::{ComplexMatrix, complex_mat_copy};
-use crate::native::lapack::ZERO_DETERMINANT;
 use crate::{Complex64, StrError, cpx, to_i32};
+use algebra_linear::lapack::ZERO_DETERMINANT;
 
 #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
@@ -181,17 +181,17 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
         // The native kernel reports 0-based pivots; the determinant loop below
         // and the shim's own convention are 1-based, so convert here. This keeps
         // the two paths' outputs in exactly the same representation.
-        let pivots = crate::native::lapack::complex::zgetrf(ai.as_mut_data(), m).map_err(|e| match e {
-            crate::native::lapack::LapackError::Singular => {
+        let pivots = algebra_linear::lapack::complex::zgetrf(ai.as_mut_data(), m).map_err(|e| match e {
+            algebra_linear::lapack::LapackError::Singular => {
                 "LAPACK ERROR (dgetrf): The factorization has been completed, but the factor U is exactly singular"
             }
-            crate::native::lapack::LapackError::BadShape => "LAPACK ERROR (dgetrf): An argument had an illegal value",
+            algebra_linear::lapack::LapackError::BadShape => "LAPACK ERROR (dgetrf): An argument had an illegal value",
             // LU has no iteration to converge, so this is unreachable; listed so
             // the match stays exhaustive if a variant is added.
-            crate::native::lapack::LapackError::Convergence => {
+            algebra_linear::lapack::LapackError::Convergence => {
                 "LAPACK ERROR (dgetrf): The algorithm failed to converge"
             }
-            crate::native::lapack::LapackError::NotImplemented(r) => crate::native::lapack::not_implemented(r),
+            algebra_linear::lapack::LapackError::NotImplemented(r) => algebra_linear::lapack::not_implemented(r),
         })?;
         for (slot, p) in ipiv.iter_mut().zip(pivots) {
             *slot = p as i32 + 1;
@@ -239,17 +239,17 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
     {
         // Back to 0-based for the native kernel.
         let pivots: Vec<usize> = ipiv.iter().map(|&p| (p - 1) as usize).collect();
-        crate::native::lapack::complex::zgetri(ai.as_mut_data(), m, &pivots).map_err(|e| match e {
-            crate::native::lapack::LapackError::Singular => {
+        algebra_linear::lapack::complex::zgetri(ai.as_mut_data(), m, &pivots).map_err(|e| match e {
+            algebra_linear::lapack::LapackError::Singular => {
                 "LAPACK ERROR (zgetri): U is exactly singular and the inverse could not be computed"
             }
-            crate::native::lapack::LapackError::BadShape => "LAPACK ERROR (zgetri): An argument had an illegal value",
+            algebra_linear::lapack::LapackError::BadShape => "LAPACK ERROR (zgetri): An argument had an illegal value",
             // Unreachable: the inverse from an LU has no iteration. Listed for
             // exhaustiveness.
-            crate::native::lapack::LapackError::Convergence => {
+            algebra_linear::lapack::LapackError::Convergence => {
                 "LAPACK ERROR (zgetri): The algorithm failed to converge"
             }
-            crate::native::lapack::LapackError::NotImplemented(r) => crate::native::lapack::not_implemented(r),
+            algebra_linear::lapack::LapackError::NotImplemented(r) => algebra_linear::lapack::not_implemented(r),
         })?;
     }
 
@@ -262,8 +262,8 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
 #[cfg(test)]
 mod tests {
     use super::{ComplexMatrix, complex_mat_inverse};
-    use crate::native::lapack::ZERO_DETERMINANT;
     use crate::{complex_approx_eq, complex_mat_approx_eq, cpx};
+    use algebra_linear::lapack::ZERO_DETERMINANT;
 
     /// Computes a⋅ai that should equal I for a square matrix
     fn get_a_times_ai(a: &ComplexMatrix, ai: &ComplexMatrix) -> ComplexMatrix {

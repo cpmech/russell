@@ -81,7 +81,7 @@ pub fn mat_eigenvalues(l_real: &mut Vector, l_imag: &mut Vector, a: &mut Matrix)
         match e {
             // dlahqr exhausted its iteration limit; the eigenvalues are only
             // partly converged, so this is an error rather than a result.
-            crate::native::lapack::LapackError::Convergence => {
+            algebra_linear::lapack::LapackError::Convergence => {
                 "LAPACK ERROR (dgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed"
             }
             _ => "LAPACK ERROR (dgeev): An argument had an illegal value",

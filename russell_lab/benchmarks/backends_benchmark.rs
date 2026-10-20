@@ -43,13 +43,13 @@
 //! kernels are single-threaded and a multi-threaded comparison would answer a
 //! different question (with a different answer at 512²).
 
+use algebra_linear as native;
 use criterion::BatchSize;
 use criterion::BenchmarkId;
 use criterion::Criterion;
 use criterion::Throughput;
 use criterion::{criterion_group, criterion_main};
 use russell_lab::Complex64;
-use russell_lab::native;
 
 /// The external library's own entry points, through CBLAS: both OpenBLAS and MKL
 /// ship that interface (the crate's shim already includes `cblas.h` for both), so

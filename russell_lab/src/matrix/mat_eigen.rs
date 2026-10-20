@@ -131,7 +131,7 @@ pub fn mat_eigen(
     .map_err(|e| match e {
         // dlahqr exhausted its iteration limit. The eigenvalues in `wr`/`wi`
         // are partly converged, so this must not be reported as success.
-        crate::native::lapack::LapackError::Convergence => {
+        algebra_linear::lapack::LapackError::Convergence => {
             "LAPACK ERROR (dgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed"
         }
         _ => "LAPACK ERROR (dgeev): An argument had an illegal value",
@@ -287,7 +287,7 @@ pub fn mat_eigen_lr(
         m,
     )
     .map_err(|e| match e {
-        crate::native::lapack::LapackError::Convergence => {
+        algebra_linear::lapack::LapackError::Convergence => {
             "LAPACK ERROR (dgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed"
         }
         _ => "LAPACK ERROR (dgeev): An argument had an illegal value",

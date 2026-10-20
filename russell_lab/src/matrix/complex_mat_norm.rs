@@ -41,7 +41,7 @@ pub fn complex_mat_norm(a: &ComplexMatrix, kind: Norm) -> f64 {
     // `norm_char` is the one mapping from `Norm` to the BLAS character, and the
     // dispatch maps it back to the discriminant the shim expects; going through
     // the character keeps a single source for the translation.
-    let norm = crate::native::lapack::norm_char(kind as i32);
+    let norm = algebra_linear::lapack::norm_char(kind as i32);
     crate::base::blas_dispatch::zlange(norm, a.as_data(), m, n)
 }
 

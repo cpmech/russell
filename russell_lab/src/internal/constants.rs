@@ -7,9 +7,7 @@ pub(crate) const MAX_DIM_FOR_NATIVE_BLAS: usize = 16;
 // Represents the type of boolean flags interchanged with the C-code.
 // Only the C shim uses these three; a native build has no C layer, so they are
 // gated rather than left to warn as unused.
-// The `dev_lapack` feature is included because its C shim (and the parity tests
-// that use it) is the same kind of C-facing layer.
-#[cfg(any(feature = "open_blas", feature = "intel_mkl", feature = "dev_lapack"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 pub(crate) type CcBool = i32;
 
 // Boolean flags

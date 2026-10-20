@@ -124,9 +124,9 @@ pub fn complex_mat_eigen(l: &mut ComplexVector, v: &mut ComplexMatrix, a: &mut C
         // JOBVR='V', ...)`: `a` is destroyed, `l` receives the eigenvalues and
         // `v` the right eigenvectors as columns. No left eigenvectors are asked
         // for, so no buffer is supplied for them.
-        crate::native::lapack::zeig::zgeev(l.as_mut_data(), a.as_mut_data(), m, None, Some(v.as_mut_data()))
+        algebra_linear::lapack::zeig::zgeev(l.as_mut_data(), a.as_mut_data(), m, None, Some(v.as_mut_data()))
             .map_err(|e| match e {
-                crate::native::lapack::LapackError::Convergence => {
+                algebra_linear::lapack::LapackError::Convergence => {
                     "LAPACK ERROR (zgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed"
                 }
                 _ => "LAPACK ERROR (zgeev): An argument had an illegal value",
@@ -287,7 +287,7 @@ pub fn complex_mat_eigen_lr(
     {
         // `zgeev(JOBVL='V', JOBVR='V', ...)`: `u` and `v` receive the left and
         // right eigenvectors, computed from the one Schur factorization.
-        crate::native::lapack::zeig::zgeev(
+        algebra_linear::lapack::zeig::zgeev(
             l.as_mut_data(),
             a.as_mut_data(),
             m,
@@ -295,7 +295,7 @@ pub fn complex_mat_eigen_lr(
             Some(v.as_mut_data()),
         )
         .map_err(|e| match e {
-            crate::native::lapack::LapackError::Convergence => {
+            algebra_linear::lapack::LapackError::Convergence => {
                 "LAPACK ERROR (zgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed"
             }
             _ => "LAPACK ERROR (zgeev): An argument had an illegal value",

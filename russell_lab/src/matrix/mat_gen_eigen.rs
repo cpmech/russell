@@ -115,7 +115,7 @@ pub fn mat_gen_eigen(
         v.as_mut_data(),
     )
     .map_err(|e| match e {
-        crate::native::lapack::LapackError::BadShape => "LAPACK ERROR (dggev): An argument had an illegal value",
+        algebra_linear::lapack::LapackError::BadShape => "LAPACK ERROR (dggev): An argument had an illegal value",
         _ => "LAPACK ERROR (dggev): Iterations failed ",
     })?;
     Ok(())
@@ -259,7 +259,7 @@ pub fn mat_gen_eigen_lr(
         v.as_mut_data(),
     )
     .map_err(|e| match e {
-        crate::native::lapack::LapackError::BadShape => "LAPACK ERROR (dggev): An argument had an illegal value",
+        algebra_linear::lapack::LapackError::BadShape => "LAPACK ERROR (dggev): An argument had an illegal value",
         _ => "LAPACK ERROR (dggev): Iterations failed ",
     })?;
     Ok(())

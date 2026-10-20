@@ -81,7 +81,7 @@ pub fn mat_eigen_sym(l: &mut Vector, a: &mut Matrix, upper: bool) -> Result<(), 
     lapack_dispatch::dsyev(a.as_mut_data(), l.as_mut_data(), n, upper).map_err(|e| match e {
         // `dsteqr` exhausted its iteration limit; the accelerated path reports
         // the same variant for LAPACK's `info > 0`.
-        crate::native::lapack::LapackError::Convergence => "LAPACK ERROR (dsyev): The algorithm failed to converge",
+        algebra_linear::lapack::LapackError::Convergence => "LAPACK ERROR (dsyev): The algorithm failed to converge",
         _ => "LAPACK ERROR (dsyev): An argument had an illegal value",
     })
 }

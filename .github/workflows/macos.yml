@@ -7,6 +7,11 @@ jobs:
       RUST_BACKTRACE: 1
     steps:
       - uses: actions/checkout@v4
+      - name: Check out algebra_linear (the kernels this workspace depends on)
+        uses: actions/checkout@v4
+        with:
+          repository: cpmech/algebra_linear
+          path: algebra_linear
       - name: Configure environment
         run: |
           echo TMPDIR=/tmp | tee -a $GITHUB_ENV

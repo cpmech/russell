@@ -2,7 +2,7 @@
 //! linked library.
 //!
 //! Every function here has the same signature as its counterpart in
-//! [`crate::native::lapack`], so a call site names the *decomposition* rather
+//! [`algebra_linear::lapack`], so a call site names the *decomposition* rather
 //! than the backend: the default build forwards to the native Rust routine, and
 //! a build with an accelerator forwards to the C shim
 //! (`c_code/interface_blas.c`), which calls LAPACK.
@@ -61,7 +61,7 @@
 //! ## What counts as singular
 //!
 //! Both backends test a pivot against *exactly* zero: the native `dgetrf` uses
-//! [`crate::native::lapack::ZERO_DETERMINANT`], which is `0.0`, and LAPACK's
+//! [`algebra_linear::lapack::ZERO_DETERMINANT`], which is `0.0`, and LAPACK's
 //! `DGETRF` reports `info > 0` only for an exactly zero pivot. They used to
 //! disagree -- the native path called anything below `1e-15` singular -- which
 //! is what made routing `dgetrf` unsound: the two backends would have answered
@@ -144,7 +144,7 @@
 //! no place for it; that is the argument the reference uses for `zggbal`'s
 //! balancing norms.
 
-use crate::native::lapack::LapackError;
+use algebra_linear::lapack::LapackError;
 
 use crate::Complex64;
 #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
@@ -291,7 +291,7 @@ fn lapack_error(routine: &str, info: i32, positive: LapackError, detail: impl Fn
 ///
 /// `a` is `n x n` column-major and is destroyed; `b` is the right-hand side on
 /// entry and the solution on exit. Its length is the number of rows of `B`, as
-/// in [`crate::native::lapack::dgesv`].
+/// in [`algebra_linear::lapack::dgesv`].
 ///
 /// # Errors
 ///
@@ -335,13 +335,13 @@ pub fn dgesv(a: &mut [f64], b: &mut [f64]) -> Result<(), LapackError> {
         Ok(())
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::lapack::dgesv(a, b)
+    algebra_linear::lapack::dgesv(a, b)
 }
 
 /// `dpotrf`: Cholesky factorization `A = L L^T`, lower triangle, in place.
 ///
 /// Only the lower triangle of `a` is read and only the lower triangle is
-/// written, exactly as [`crate::native::lapack::dpotrf`] does. The upper factor
+/// written, exactly as [`algebra_linear::lapack::dpotrf`] does. The upper factor
 /// is the caller's business -- `mat_cholesky` mirrors and transposes -- because a
 /// driver signature that took an `upper` flag would not match the native one, and
 /// then the two backends would not be interchangeable.
@@ -376,7 +376,7 @@ pub fn dpotrf(a: &mut [f64], n: usize) -> Result<(), LapackError> {
         Ok(())
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::lapack::dpotrf(a, n)
+    algebra_linear::lapack::dpotrf(a, n)
 }
 
 /// `dsyev`: eigenvalues and eigenvectors of a symmetric matrix, `A V = V diag(w)`.
@@ -462,7 +462,7 @@ pub fn dsyev(a: &mut [f64], w: &mut [f64], n: usize, upper: bool) -> Result<(), 
         Ok(())
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::lapack::sym::dsyev(a, w, n, upper)
+    algebra_linear::lapack::sym::dsyev(a, w, n, upper)
 }
 
 /// `dgesvd`: singular value decomposition `A = U S V^T`.
@@ -470,7 +470,7 @@ pub fn dsyev(a: &mut [f64], w: &mut [f64], n: usize, upper: bool) -> Result<(), 
 /// `a` is `m x n` column-major and is destroyed; `s` has `min(m, n)` entries,
 /// `u` is `m x m` and `vt` is `n x n`. Both sets of singular vectors are
 /// computed (`JOBU = JOBVT = 'A'`), matching
-/// [`crate::native::lapack::svd::dgesvd`], which has no way to ask for less.
+/// [`algebra_linear::lapack::svd::dgesvd`], which has no way to ask for less.
 ///
 /// # Errors
 ///
@@ -567,7 +567,7 @@ pub fn dgesvd(
         Ok(())
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::lapack::svd::dgesvd(a, m, n, s, u, vt)
+    algebra_linear::lapack::svd::dgesvd(a, m, n, s, u, vt)
 }
 
 /// `dgeev` with the right eigenvectors: `A v = lambda v`.
@@ -682,13 +682,13 @@ pub fn dgeev(
         Ok((wr, wi))
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::lapack::eig::dgeev(v_real, v_imag, a, n)
+    algebra_linear::lapack::eig::dgeev(v_real, v_imag, a, n)
 }
 
 /// `dgeev` with both sets of eigenvectors: `A v = lambda v` and `u^H A = lambda u^H`.
 ///
 /// As [`dgeev`], with the left eigenvectors in `u_real`/`u_imag`
-/// (see [`crate::native::lapack::eig::dgeev_lr`]).
+/// (see [`algebra_linear::lapack::eig::dgeev_lr`]).
 ///
 /// # Panics
 ///
@@ -789,7 +789,7 @@ pub fn dgeev_lr(
         Ok((wr, wi))
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::lapack::eig::dgeev_lr(u_real, u_imag, v_real, v_imag, a, n)
+    algebra_linear::lapack::eig::dgeev_lr(u_real, u_imag, v_real, v_imag, a, n)
 }
 
 /// `dgeev` with no eigenvectors: the eigenvalues only (`JOBVL = JOBVR = 'N'`).
@@ -890,7 +890,7 @@ pub fn dgeev_eigenvalues(wr: &mut [f64], wi: &mut [f64], a: &mut [f64], n: usize
     {
         let mut v_real = vec![0.0; n * n];
         let mut v_imag = vec![0.0; n * n];
-        let (wr_native, wi_native) = crate::native::lapack::eig::dgeev(&mut v_real, &mut v_imag, a, n)?;
+        let (wr_native, wi_native) = algebra_linear::lapack::eig::dgeev(&mut v_real, &mut v_imag, a, n)?;
         wr.copy_from_slice(&wr_native);
         wi.copy_from_slice(&wi_native);
         Ok(())
@@ -899,7 +899,7 @@ pub fn dgeev_eigenvalues(wr: &mut [f64], wi: &mut [f64], a: &mut [f64], n: usize
 
 /// `dgetrf`: LU factorization with partial pivoting, in place.
 ///
-/// As [`crate::native::lapack::dgetrf`], it returns the pivot indices as
+/// As [`algebra_linear::lapack::dgetrf`], it returns the pivot indices as
 /// **0-based** row indices, and the determinant. LAPACK's `IPIV` is 1-based, so
 /// the accelerated path shifts it on the way in and on the way out; the
 /// determinant is the product of `U`'s diagonal with one sign flip per row
@@ -940,7 +940,7 @@ pub fn dgetrf(a: &mut [f64], n: usize) -> Result<(Vec<usize>, f64), LapackError>
         Ok((ipiv.iter().map(|&p| (p - 1) as usize).collect(), det))
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::lapack::dgetrf(a, n)
+    algebra_linear::lapack::dgetrf(a, n)
 }
 
 /// `dgetri`: inverse of a matrix from its [`dgetrf`] factorization, in place.
@@ -1012,12 +1012,12 @@ pub fn dgetri(lu: &mut [f64], n: usize, ipiv: &[usize]) -> Result<(), LapackErro
         Ok(())
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::lapack::dgetri(lu, n, ipiv)
+    algebra_linear::lapack::dgetri(lu, n, ipiv)
 }
 
 /// `dggev`: generalized eigenvalues and, optionally, eigenvectors of `(A, B)`.
 ///
-/// Same arguments and storage as [`crate::native::lapack::qz::dggev`]: `a` and
+/// Same arguments and storage as [`algebra_linear::lapack::qz::dggev`]: `a` and
 /// `b` are `n x n`, column-major and destroyed; the eigenvalues come back as
 /// `(alphar, alphai)` over `beta`; and the right eigenvectors, when requested,
 /// use LAPACK's compact layout, where columns `j` and `j + 1` of `vr` are the
@@ -1149,12 +1149,12 @@ pub fn dggev(
         Ok(())
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::lapack::qz::dggev(calc_vl, calc_vr, n, a, b, alphar, alphai, beta, vl, vr)
+    algebra_linear::lapack::qz::dggev(calc_vl, calc_vr, n, a, b, alphar, alphai, beta, vl, vr)
 }
 
 /// `zggev`: complex generalized eigenvalues and, optionally, eigenvectors.
 ///
-/// Same arguments as [`crate::native::lapack::qz::zggev`], with `alpha`/`beta`
+/// Same arguments as [`algebra_linear::lapack::qz::zggev`], with `alpha`/`beta`
 /// carrying the eigenvalues and the same compact eigenvector layout as
 /// [`dggev`].
 ///
@@ -1284,7 +1284,7 @@ pub fn zggev(
         Ok(())
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::lapack::qz::zggev(calc_vl, calc_vr, n, a, b, alpha, beta, vl, vr)
+    algebra_linear::lapack::qz::zggev(calc_vl, calc_vr, n, a, b, alpha, beta, vl, vr)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1322,7 +1322,7 @@ mod tests {
 
         let mut a_want = a.clone();
         let mut b_want = b.clone();
-        crate::native::lapack::dgesv(&mut a_want, &mut b_want).unwrap();
+        algebra_linear::lapack::dgesv(&mut a_want, &mut b_want).unwrap();
 
         for i in 0..4 {
             assert!((b_got[i] - x_true[i]).abs() < 1e-12, "x[{i}] = {}", b_got[i]);
@@ -1355,7 +1355,7 @@ mod tests {
         assert_eq!(got, Err(LapackError::Singular));
         let mut a = singular.clone();
         let mut b = b0.clone();
-        assert_eq!(got, crate::native::lapack::dgesv(&mut a, &mut b));
+        assert_eq!(got, algebra_linear::lapack::dgesv(&mut a, &mut b));
 
         let mut a = vec![1.0, 2.0, 3.0];
         assert_eq!(dgesv(&mut a, &mut [1.0, 2.0]), Err(LapackError::BadShape));
@@ -1370,7 +1370,7 @@ mod tests {
         let mut got = vec![4.0, 2.0, 2.0, 3.0];
         dpotrf(&mut got, 2).unwrap();
         let mut want = vec![4.0, 2.0, 2.0, 3.0];
-        crate::native::lapack::dpotrf(&mut want, 2).unwrap();
+        algebra_linear::lapack::dpotrf(&mut want, 2).unwrap();
         for i in 0..4 {
             assert!(
                 (got[i] - want[i]).abs() < 1e-14,
@@ -1392,7 +1392,7 @@ mod tests {
         }
         let (mut got, mut want) = (a.clone(), a.clone());
         dpotrf(&mut got, n).unwrap();
-        crate::native::lapack::dpotrf(&mut want, n).unwrap();
+        algebra_linear::lapack::dpotrf(&mut want, n).unwrap();
         for i in 0..n * n {
             assert!((got[i] - want[i]).abs() < 1e-13, "dpotrf n={n} [{i}]");
         }
@@ -1406,7 +1406,7 @@ mod tests {
         let mut b = vec![1.0, 2.0, 2.0, 1.0];
         assert_eq!(
             dpotrf(&mut b, 2),
-            crate::native::lapack::dpotrf(&mut [1.0, 2.0, 2.0, 1.0], 2)
+            algebra_linear::lapack::dpotrf(&mut [1.0, 2.0, 2.0, 1.0], 2)
         );
 
         let mut a = vec![1.0, 2.0, 3.0];
@@ -1441,7 +1441,7 @@ mod tests {
             dsyev(&mut a_got, &mut w_got, n, upper).unwrap();
             let mut a_want = a.clone();
             let mut w_want = vec![0.0; n];
-            crate::native::lapack::sym::dsyev(&mut a_want, &mut w_want, n, upper).unwrap();
+            algebra_linear::lapack::sym::dsyev(&mut a_want, &mut w_want, n, upper).unwrap();
             for i in 0..n {
                 assert!(
                     (w_got[i] - w_want[i]).abs() < 1e-11,
@@ -1498,7 +1498,7 @@ mod tests {
             let mut s_want = vec![0.0; minmn];
             let mut u_want = vec![0.0; m * m];
             let mut vt_want = vec![0.0; n * n];
-            crate::native::lapack::svd::dgesvd(&mut a_want, m, n, &mut s_want, &mut u_want, &mut vt_want).unwrap();
+            algebra_linear::lapack::svd::dgesvd(&mut a_want, m, n, &mut s_want, &mut u_want, &mut vt_want).unwrap();
 
             for i in 0..minmn {
                 assert!(
@@ -1691,8 +1691,8 @@ mod tests {
 
             // The native drivers, run on a second copy.
             let mut want = a.clone();
-            let (ipiv_want, det_want) = crate::native::lapack::dgetrf(&mut want, n).unwrap();
-            crate::native::lapack::dgetri(&mut want, n, &ipiv_want).unwrap();
+            let (ipiv_want, det_want) = algebra_linear::lapack::dgetrf(&mut want, n).unwrap();
+            algebra_linear::lapack::dgetri(&mut want, n, &ipiv_want).unwrap();
 
             assert_eq!(ipiv_got, ipiv_want, "dgetrf: pivots differ at n={n}");
             let det_scale = det_want.abs().max(1.0);
@@ -1722,13 +1722,13 @@ mod tests {
         let mut a = vec![1e-16, 0.0, 0.0, 1.0];
         assert!(dgetrf(&mut a, 2).is_ok());
         let mut b = vec![1e-16, 0.0, 0.0, 1.0];
-        assert!(crate::native::lapack::dgetrf(&mut b, 2).is_ok());
+        assert!(algebra_linear::lapack::dgetrf(&mut b, 2).is_ok());
 
         // column-major [[1, 2], [2, 4]]: exactly singular.
         let mut a = vec![1.0, 2.0, 2.0, 4.0];
         assert_eq!(dgetrf(&mut a, 2), Err(LapackError::Singular));
         let mut b = vec![1.0, 2.0, 2.0, 4.0];
-        assert_eq!(crate::native::lapack::dgetrf(&mut b, 2), Err(LapackError::Singular));
+        assert_eq!(algebra_linear::lapack::dgetrf(&mut b, 2), Err(LapackError::Singular));
     }
 
     #[test]
@@ -1740,7 +1740,7 @@ mod tests {
         let mut a = vec![1.0, 2.0, 3.0];
         assert_eq!(
             dgetrf(&mut a, 2),
-            crate::native::lapack::dgetrf(&mut [1.0, 2.0, 3.0], 2)
+            algebra_linear::lapack::dgetrf(&mut [1.0, 2.0, 3.0], 2)
         );
 
         // A factorized matrix with a zero diagonal of `U`: `dgetri` must report
@@ -1753,7 +1753,7 @@ mod tests {
         let mut b = lu;
         assert_eq!(
             dgetri(&mut b, 2, &ipiv),
-            crate::native::lapack::dgetri(&mut [1.0, 0.0, 0.0, 0.0], 2, &ipiv)
+            algebra_linear::lapack::dgetri(&mut [1.0, 0.0, 0.0, 0.0], 2, &ipiv)
         );
 
         let mut a = vec![1.0; 4];
@@ -1799,7 +1799,7 @@ mod tests {
             let (mut ar_want, mut ai_want, mut be_want) = (vec![0.0; n], vec![0.0; n], vec![0.0; n]);
             let mut vl_want = if calc_vl { vec![0.0; n * n] } else { Vec::new() };
             let mut vr_want = vec![0.0; n * n];
-            crate::native::lapack::qz::dggev(
+            algebra_linear::lapack::qz::dggev(
                 calc_vl,
                 calc_vr,
                 n,
@@ -1914,7 +1914,7 @@ mod tests {
                 Vec::new()
             };
             let mut vr_want = vec![Complex64::new(0.0, 0.0); n * n];
-            crate::native::lapack::qz::zggev(
+            algebra_linear::lapack::qz::zggev(
                 calc_vl,
                 calc_vr,
                 n,

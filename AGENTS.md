@@ -7,7 +7,7 @@ Notes for automated agents and contributors working in this repository.
 `russell_lab` has **two** BLAS/LAPACK backends, and the default needs nothing
 installed:
 
-- **Native Rust (default)** — `russell_lab/src/native/`, plain Rust, nothing to
+- **`algebra_linear` (default)** — a separate crate of pure Rust kernels, nothing to
   find and nothing to link. It builds for any target, including
   `wasm32-unknown-unknown`, which has no libc for the C shim and no BLAS to link.
   This is what `cargo build` and `cargo test` use with no extra flags.
@@ -31,24 +31,13 @@ force an external library, and Cargo cannot disable a dependency's default
 features from the outside, so a crate that wants one has to say so in the
 dependency declaration.
 
-### The `dev_lapack` feature (development only)
+### Reference parity lives in `algebra_linear`
 
-`--features dev_lapack` compiles the shim against a **locally built** LAPACK and links
-it, so the native routines can be tested for numerical parity against the
-reference. This is the only practicable way to check an eigenvalue or an SVD.
-
-It requires `RUSSELL_DEV_LAPACK_ROOT` pointing at a CMake build directory of LAPACK
-3.12.1 with `include/` and `lib/` holding `lapack.h`, `cblas.h`, `liblapack.so`
-and `libcblas.so`. There is **no default**, deliberately: hardcoding one would put
-a developer's directory layout into released source. `build.rs` checks for the
-files and fails with an explanation rather than a link error.
-
-```bash
-RUSSELL_DEV_LAPACK_ROOT=/path/to/lapack/build cargo test -p russell_lab --features dev_lapack
-```
-
-Anything the reference build links is a reference for the *tests*; the crate's own symbols
-come from the native or accelerator path.
+This crate has no reference-LAPACK harness any more: the `dev_lapack` feature moved
+with the kernels. To compare the kernels against a locally built LAPACK 3.12.1, run
+it there (`ALGEBRA_LINEAR_DEV_LAPACK_ROOT=... cargo test --features dev_lapack` in
+the `algebra_linear` checkout). Nothing here needs a reference build, and there is no
+`RUSSELL_DEV_LAPACK_ROOT` any more.
 
 Extra features:
 
@@ -60,172 +49,26 @@ Extra features:
   Without `local_umfpack` the UMFPACK comes from the package manager, found with
   pkg-config; UMFPACK is required in every configuration, `mumps` is optional.
 
-## Current state of the native backend
+## The BLAS/LAPACK kernels live in `algebra_linear`
 
-Work in progress on the `native-lapack` branch. Read this before adding to it.
+The port is no longer in this repository: it was extracted to
+[`algebra_linear`](https://crates.io/crates/algebra_linear) (`BSD-3-Clause`), which
+this crate depends on. Everything about the port — its conventions, its measured
+state, the bug history, the reference-parity harness (`dev_lapack` lives there, not
+here), and the traps it has already paid for — is in that crate's `AGENTS.md` and
+`README`. Read those before touching a kernel; nothing in this repository implements
+one.
 
-### Measured state
+What stays here: the dispatchers (`base::blas_dispatch`, `base::lapack_dispatch`),
+the C shim and `build.rs` that link OpenBLAS or MKL, `Matrix`/`Vector`, the `small_*`
+stack kernels, and every public API.
 
-```bash
-cargo test -p russell_lab --lib                     # 1258 pass, 0 fail, 0 ignored
-RUSSELL_DEV_LAPACK_ROOT=/home/dorival/01-Code/fortran/lapack-3.12.1/build-gfortran \
-  cargo test -p russell_lab --lib --features dev_lapack # 1271 pass, 0 fail
-```
-
-Both configurations are known-good on the current tree of `native-lapack`, with
-**zero** failures. The `dev_lapack` run adds the parity tests and is otherwise the same
-native path.
-
-The `dev_lapack` feature needs `RUSSELL_DEV_LAPACK_ROOT` set to a valid CMake build
-directory. The LAPACK *source* tree is not one -- it has no `include/` or `lib/`.
-For the tree on this machine that is
-`/home/dorival/01-Code/fortran/lapack-3.12.1/build-gfortran`.
-
-The default cargo target directory is not writable here; prefix commands with
-`CARGO_TARGET_DIR=/home/dorival/Documents/deepseek-harness/default-workspace/dsh-target`.
-
-Every LAPACK routine the crate's public API needs is implemented natively:
-`dgeev` (with balancing, and left eigenvectors), `dsyev`, `dgesvd`, `dggev`
-(with left eigenvectors), and the complex `zgetrf`/`zgetri`/`zgesv`/`zpotrf`,
-`zheev`, `zgeev`, `zgesvd`, `zggev`. `mat_pseudo_inverse` works through
-`dgesvd`. There are no `not_implemented` guards left on these paths.
-
-Two things that were *not* the whole story, recorded so they are not chased
-again:
-
-* The original 61 failures were not all `NotImplemented`. `mat_eigenvalues`,
-  `mat_eigen`, `mat_eigen_sym`, `mat_gen_eigen` and `mat_svd` declared their
-  `extern "C"` call behind `#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]`
-  with no `#[cfg(not(...))]` counterpart, so a native build fell through to
-  `Ok(())` with the outputs still zero -- 26 tests returning **silently wrong
-  results** rather than an error. Commit `4cc08ae1` added the missing branches.
-* Some tests assert on an exact error *string*, so a native path that reports
-  the same condition in different words still fails. Keep the wording identical
-  to the shim's.
-
-### Bugs found and fixed
-
-Two long-lived bugs produced *silently wrong numbers* rather than errors, and
-both were initially misdiagnosed:
-
-* `zherk_rank` conjugated the **second** index in the `A^H A` case; BLAS's
-  `zherk('C')` conjugates the **first**. The two give complex conjugates, so the
-  shape and real parts were right and only the imaginary parts were wrong, which
-  is why it survived inspection. Commit `dff1851e`.
-* `dgeev` looked inaccurate on defectively repeated eigenvalues and was
-  diagnosed as a `dlahqr` deflation bug -- wrongly. `dlahqr` is a faithful port;
-  at the entry in question reference `dlahqr` does not deflate it either, and raw
-  reference `dhseqr` on the unbalanced matrix is no more accurate. The cause was
-  the missing `dgebal`. **When `dgeev` looks inaccurate, check `dgebal` before
-  suspecting the QR iteration.**
-
-The same mistake recurred in different clothes across the ports — **an index,
-an extent, or a length taken from the wrong axis**:
-
-- `norm_char` mapped the `Norm` discriminants *by position* rather than by
-  constant, so every norm was wrong and `Norm::Max` returned the Frobenius norm.
-  `c_code/interface_blas.c` is the source of truth for that mapping.
-- `dsyrk_rank` contracted over `A`'s columns for both orientations, so
-  `C := A^T A` was wrong for non-square `A`.
-- `complex_mat_t_mat_mul` transposed `A` as if it were `(m, k)` when it is
-  `(k, m)`.
-- `zgebal` applied the row scaling as `a[t + k*n] *= ginv` over `t` -- column
-  `K`, rows `i..n` -- instead of row `i`, columns `K..n`. The complex twin of
-  `dgebal` then stopped being a similarity: the scaling loop diverged and
-  `scale` came out as `2e-292` instead of a power of two. Found by running the
-  complex routine over the real one's fixtures and comparing, which is the
-  cheapest way to test a twin.
-- `dlarfg`'s underflow branch scaled `X` and `ALPHA` *down* by `SAFMIN` and
-  returned `BETA = -0` for a subnormal tail. The reference multiplies by
-  `RSAFMN = 1/SAFMN` (`SAFMN = DLAMCH('S')/DLAMCH('E')` = 1e-292, not
-  `DLAMCH('S')`) and takes `BETA` back at the end by `SAFMN**KNT`, one
-  multiplication at a time because the power overflows.
-- `solve_lin_sys` reported a different singular error string from the shim's.
-- `mat_cholesky` with `upper = true` needed care twice: LAPACK's `'U'` *reads*
-  only the upper triangle (so the other half may be zeros and must be mirrored),
-  and *writes* only the upper triangle (so the rest must be left alone).
-- `dlange`/`zlange` rejected `'O'`, which is LAPACK's other spelling of the
-  one-norm and what the shim actually sends — a panic, not a wrong number.
-
-### What is verified
-
-`native::blas` and `native::lapack` are tested for parity against the reference
-LAPACK through the `dev_lapack` feature (see above): `dgesv`, `dgetrf`+`dgetri`,
-`dpotrf`, `dhseqr`'s eigenvalues, `dsyev`+`zheev`, `dgesvd`, `dggev`, and the
-complex `zpotrf`/`zgetrf`+`zgetri`/`zgesv`, at 1e-10 relative. Extend those parity
-tests as routines are added — they are what caught the `dpotrf` triangle
-misunderstanding.
-
-Where a result is not unique (eigenvectors, and the *order* of eigenvalues), the
-tests check the defining equation or a canonical order instead of comparing
-against the reference's output directly; where it is unique (singular values, an
-inverse, a Cholesky factor), they compare element-wise, because that is what
-catches a conjugation error, which an invariant-based check would miss.
-
-LAPACK's own suite (`TESTING/LIN`, `TESTING/EIG`) tests the routines we ported, not
-just the drivers, and its checks transfer directly: `dchkbl`/`dchkbk` for
-`dgebal`/`dgebak`, `dhst01` for `dgehrd`, `dsyt21` for `dsytrd` + `dorgtr`,
-`dstt21`/`dstt22` for `dsteqr`, `dbdt01`/`dbdt03` for `dgebd2`/`dorgbr`/`dbdsqr`.
-Each is a residual divided by the norms and by `n * eps` --
-`norm(A - Q H Q^T) / (norm(A) * n * eps)` -- with 20 as the pass threshold. Prefer
-that form to an absolute tolerance: it is a different assertion at n=1 and at
-n=20, and the measured values land between 0.1 and 12, so a wrong index (which
-shows up as `1e14`) cannot hide under a hand-set `1e-12`.
-
-Transcribe LAPACK's fixtures, but check them against the reference before trusting
-them: the fifth example of `TESTING/dbal.in` still states `dgebal`'s older
-permutation order (`(4,3,5)`, where 3.12.1 gives `(4,5,3)`), and `dchkbl` only
-*reports* its largest error instead of asserting it, so the drift has never been
-flagged -- its own run prints "example number having largest error = 5".
-
-Run the `dev_lapack` parity tests in the same target directory as the default build.
-Combining `--features dev_lapack` with an accelerator does link -- the reference
-copy's entry points are prefixed (`dev_lapack_c_*`) so they do not collide -- but
-the process then loads two BLAS implementations, which is a smoke test at best;
-run `dev_lapack` alone.
-
-### Hard constraints
-
-- **Everything is column-major**, indexing `data[i + j * n]`, matching `Matrix`.
-  **Never use `LAPACKE_*`** -- it is the row-major API and will silently
-  transpose every matrix. `lapack.h` binds directly to the Fortran routines and
-  is correctly column-major.
-- **No developer paths in source** -- not in code, not in defaults, not in doc
-  comments. Use environment variables, and prefer *requiring* one over supplying
-  a default.
-- **Migrate the dispatch before gating the `extern "C"` declaration**, one file
-  at a time. Gating first turns every unmigrated call site into a compile error
-  and leaves the tree unable to run tests.
-- **Preserve the headline property:** `cargo check --workspace` must pass with no
-  external BLAS present. Verify it after changes.
-- Keep the tree rustfmt-clean.
-- **American English everywhere** -- comments, documentation, identifiers, test
-  names and commit messages. Use `behavior`, `normalize`, `factorization`,
-  `center`, `modeling`, `toward`: the British variants (`-our` for `-or`, `-ise`
-  for `-ize`, `-re` for `-er`, `-ce` for `-se`, doubled `l`) are not used. The
-  workspace was cleaned once (139 occurrences in 26 files);
-- **Do not change the behavior of the `open_blas` / `intel_mkl` accelerated paths.** They
-  must stay consistent with the native ones, including error strings.
-
-### Reporting
-
-Report failures and uncertainty plainly. If you turn out to be wrong about
-something you said earlier, say so. Do not claim a verification you did not run
--- a previous session claimed the `dev_lapack` build worked when it had not compiled
-since a rename, and that had to be corrected.
-
-Two lessons from this work are worth more than the rest, because both cost hours:
-
-1. **Port the reference literally; do not re-derive an algorithm whose source is
-   available.** The two attempts to hand-derive (`dgehrd`, `dlahqr`) both
-   produced code that compiled, ran, looked orthogonal, and was wrong. Every
-   success came from transcription.
-2. **A test that cannot fail is worse than no test.** Four times in this
-   work a test passed while checking nothing: `mat_eigenvalues` and friends
-   returning zeros, `mat_eigen_lr`'s test never inspecting `u`, my `dggev`
-   acceptance test reading back the matrix `dggev` had overwritten, and
-   `dgeev_eigenvectors_satisfy_their_defining_equation` decomposing a zero
-   matrix. When adding a test, check that a deliberate mistake makes it fail.
+> **Historical, in part.** The rest of this section and the sections below
+> ("Performance: the blocking boundary", "Loose ends", "Deliberately uncovered
+> code", "BLAS/LAPACK invariants") describe the kernels, which now live in the
+> `algebra_linear` crate — the `src/native/...` paths in them no longer exist here.
+> Read them together with that crate's `AGENTS.md`; the dispatch rules below apply
+> to this repository.
 
 ### Performance: the blocking boundary
 
@@ -323,7 +166,8 @@ cargo test -p russell_lab --features open_blas
 cargo test -p russell_lab --features intel_mkl
 
 # Numerical parity of the native routines against the reference LAPACK.
-RUSSELL_DEV_LAPACK_ROOT=/path/to/lapack/build cargo test -p russell_lab --features dev_lapack
+# reference parity now runs in the algebra_linear checkout:
+ALGEBRA_LINEAR_DEV_LAPACK_ROOT=/path/to/lapack/build cargo test --features dev_lapack
 
 # Whole workspace (sparse crates need the locally compiled libraries)
 RUSSELL_LOCAL_PREFIX=/usr/local cargo test --workspace --features local_umfpack,mumps
@@ -486,9 +330,10 @@ call site:
 - `base::blas_dispatch` -- dgemm (+tn/nt/tt), dgemv (+trans), ddot, dnrm2, dasum,
   idamax, dlange, zgemm (+tn/nt/tt), dger, zger, dsyrk, zherk, daxpy, zaxpy,
   zscal, dznrm2, zgemv (+trans), zsyrk.
-- `base::lapack_dispatch` -- dgesv, dpotrf, dsyev, dgesvd, dgeev.
+- `base::lapack_dispatch` -- dgesv, dgetrf, dgetri, dgeev (+ left vectors, and
+  eigenvalues only), dpotrf, dsyev, dgesvd, dggev, zggev.
 
-Both mirror the `native::*` signatures (`usize` lengths, no workspace argument,
+Both mirror `algebra_linear`'s signatures (`usize` lengths, no workspace argument,
 `Result<(), LapackError>`), so a call site reads the same in every configuration.
 Add an entry there, not a branch in the caller. `intel_mkl` wins when both
 features are on; there is no `compile_error!` for the pair, so `--all-features`
@@ -496,9 +341,8 @@ is a valid build and exercises the MKL path.
 
 **A routine stays on the old per-file path when it has no twin to mirror or no
 measured gain.** That is a decision per routine, documented where it is made, not
-a TODO: `dgetrf`/`dgetri`, the complex routines, `dggev`/`zggev`, `dlange` and
-`small_mat_svd` (a stack array, which a LAPACK workspace defeats); and on the
-BLAS side `dcopy`/`zcopy` (one `memmove`), `dscal` and `zlange` (measured slower
+a TODO: the complex routines and `small_mat_svd` (a stack array, which a LAPACK
+workspace defeats); and on the BLAS side `dcopy`/`zcopy` (one `memmove`), `dscal` and `zlange` (measured slower
 through the library at the sizes that matter). Those keep this shape:
 
 ```rust
@@ -519,7 +363,7 @@ Before adding to either path:
    the files that still hold one. If it is not, a native-only build fails to
    link. If it *is* but the call site is not dispatched, the build fails to
    compile, so migrate the dispatch **first** and gate the declaration second,
-   one file at a time.
+   one file at a time. The native arm calls `algebra_linear`.
 3. **Routines without a native implementation return
    `LapackError::NotImplemented`** rather than being left to fail at link time. A
    runtime error can name the feature to enable; a link error about a mangled
@@ -532,7 +376,7 @@ Before adding to either path:
    should show.
 5. **The function-scope `lda`/`ldu`/`lwork`/`work`/`info` declarations and their
    `#[cfg_attr(... allow(unused_variables, ...))]` belong only to the files still
-   on the per-file path.** The five dispatched drivers keep their scratch arrays
+   on the per-file path.** The nine dispatched drivers keep their scratch arrays
    inside `lapack_dispatch`, which sizes the workspace from LAPACK's
    `lwork = -1` query instead of the hard-coded minimum two call sites used.
 

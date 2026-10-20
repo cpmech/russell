@@ -1,6 +1,6 @@
 [package]
 name = "russell_sparse"
-version = "3.3.1"
+version = "4.0.0"
 edition = "2024"
 license = "MIT"
 description = "Sparse matrix calculations and solvers for linear systems"
@@ -24,7 +24,7 @@ mumps = []
 
 [dependencies]
 num-traits = "0.2"
-russell_lab = { path = "../russell_lab", version = "3" }
+russell_lab = { path = "../russell_lab", version = "4" }
 structopt = "0.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

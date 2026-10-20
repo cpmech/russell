@@ -1,6 +1,6 @@
 [package]
 name = "russell_tensor"
-version = "3.3.1"
+version = "4.0.0"
 edition = "2024"
 license = "MIT"
 description = "Tensor analysis, calculus, and functions for continuum mechanics"
@@ -24,7 +24,7 @@ intel_mkl = ["russell_lab/intel_mkl"]
 # Opt out of `russell_lab`'s defaults. Today its default is empty, so this
 # changes nothing in the build; it is here so this crate cannot silently inherit
 # a default feature if `russell_lab` ever gains one.
-russell_lab = { path = "../russell_lab", version = "3", default-features = false }
+russell_lab = { path = "../russell_lab", version = "4", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 

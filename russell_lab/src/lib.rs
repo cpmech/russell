@@ -148,14 +148,16 @@
 //!
 //! # BLAS/LAPACK backends
 //!
-//! The default backend is **native Rust** (`src/native/`): plain Rust code, no
+//! The default backend is the **[`algebra_linear`]** crate: plain Rust code, no
 //! external library to find and nothing to link, so it builds for any target
 //! including `wasm32-unknown-unknown`. The eigen-decompositions, the SVD, the
 //! pseudo-inverse, Cholesky, the linear solvers and the complex routines all work
-//! in this configuration; their numerical parity with reference LAPACK is tested
-//! through the development-only `dev_lapack` feature (see `build.rs`).
+//! in this configuration, and `algebra_linear`'s own `dev_lapack` feature is where
+//! their numerical parity with reference LAPACK is tested.
 //!
-//! Two opt-in features replace the native routines with an external library,
+//! [`algebra_linear`]: https://crates.io/crates/algebra_linear
+//!
+//! Two opt-in features replace those kernels with an external library,
 //! through the C shim in `c_code/interface_blas.c`:
 //!
 //! * `open_blas` -- OpenBLAS, resolved via `pkg-config` (also needs its development
@@ -168,7 +170,7 @@
 //!
 //! The `small::*` kernels for stack-allocated matrices are plain Rust in every
 //! configuration. The level-1/2/3 operations go through
-//! `crate::base::blas_dispatch`, which reaches the native Rust kernels when no
+//! `crate::base::blas_dispatch`, which reaches `algebra_linear`'s kernels when no
 //! external library is linked -- so they too are plain Rust on every target,
 //! wasm32 included.
 
@@ -182,13 +184,10 @@ pub use num_complex::ComplexFloat;
 pub mod algo;
 pub mod base;
 pub mod check;
-#[cfg(feature = "dev_lapack")]
-pub mod dev_lapack;
 mod internal;
 pub mod math;
 pub mod matrix;
 pub mod matvec;
-pub mod native;
 pub mod small;
 pub mod vector;
 

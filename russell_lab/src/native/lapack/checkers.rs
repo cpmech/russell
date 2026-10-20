@@ -167,6 +167,89 @@ pub fn pot03(a: &[f64], ainv: &[f64], n: usize) -> (f64, f64) {
     (resid * rcond / eps / n as f64, rcond)
 }
 
+/// Port of `DGET22`, the eigenvector checker: `(RESULT(1), RESULT(2))`.
+///
+/// `e` holds the right eigenvectors of `a` in the layout `dgeev` returns — column
+/// `j` is the real part of the vector for `wr[j] + i wi[j]`, and for a complex pair
+/// the next column carries the imaginary part. The two results are
+///
+/// - `||A E - E W||_1 / (norm(A) norm(E) ulp)` — does `E` solve the eigenproblem;
+/// - `max(|max col norm - 1|, |min col norm - 1|) / (n ulp)` — are the vectors
+///   normalized, where a complex pair counts as one column with the norm
+///   `max_j (|re_j| + |im_j|)`.
+///
+/// The second is the one nothing else in this repository was asking: an eigenvector
+/// that satisfies the equation but comes back with norm 2 would pass every residual
+/// test written so far.
+pub fn get22(a: &[f64], e: &[f64], wr: &[f64], wi: &[f64], n: usize) -> (f64, f64) {
+    if n == 0 {
+        return (0.0, 0.0);
+    }
+    let ulp = f64::EPSILON;
+    let unfl = f64::MIN_POSITIVE;
+    // Normalization: one entry per column, or per pair.
+    let mut enrmin = 1.0 / ulp;
+    let mut enrmax = 0.0f64;
+    let mut jvec = 0;
+    while jvec < n {
+        let pair = wi[jvec] != 0.0 && jvec + 1 < n;
+        let mut temp1 = 0.0f64;
+        for j in 0..n {
+            let v = if pair {
+                e[j + jvec * n].abs() + e[j + (jvec + 1) * n].abs()
+            } else {
+                e[j + jvec * n].abs()
+            };
+            temp1 = temp1.max(v);
+        }
+        enrmin = enrmin.min(temp1);
+        enrmax = enrmax.max(temp1);
+        jvec += if pair { 2 } else { 1 };
+    }
+    let anorm = crate::native::blas::dlange('1', a, n, n).max(unfl);
+    let enorm = crate::native::blas::dlange('1', e, n, n).max(ulp);
+    // Error = A E - E W, with W block diagonal: a 2x2 rotation block per pair,
+    // the diagonal entry otherwise.
+    let mut werr = vec![0.0f64; n * n];
+    for j in 0..n {
+        for i in 0..n {
+            let mut sum = 0.0;
+            for k in 0..n {
+                sum += a[i + k * n] * e[k + j * n];
+            }
+            werr[i + j * n] = sum;
+        }
+    }
+    let mut jcol = 0;
+    while jcol < n {
+        let pair = wi[jcol] != 0.0 && jcol + 1 < n;
+        if pair {
+            // E W for the pair: column j gets wr*e_j - wi*e_{j+1},
+            // column j+1 gets wr*e_{j+1} + wi*e_j.
+            for i in 0..n {
+                werr[i + jcol * n] -= wr[jcol] * e[i + jcol * n] - wi[jcol] * e[i + (jcol + 1) * n];
+                werr[i + (jcol + 1) * n] -= wr[jcol] * e[i + (jcol + 1) * n] + wi[jcol] * e[i + jcol * n];
+            }
+            jcol += 2;
+        } else {
+            for i in 0..n {
+                werr[i + jcol * n] -= wr[jcol] * e[i + jcol * n];
+            }
+            jcol += 1;
+        }
+    }
+    let errnrm = crate::native::blas::dlange('1', &werr, n, n) / enorm;
+    let r1 = if anorm > errnrm {
+        (errnrm / anorm) / ulp
+    } else if anorm < 1.0 {
+        1.0 / ulp
+    } else {
+        (errnrm / anorm).min(1.0) / ulp
+    };
+    let r2 = (enrmax - 1.0).abs().max((enrmin - 1.0).abs()) / (n as f64 * ulp);
+    (r1, r2)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -316,5 +399,98 @@ mod tests {
         let lu = [1.0f64, 0.0, 0.0, 1.0];
         let ipiv = [0usize, 1];
         assert_eq!(get01(&a, &lu, &ipiv, 2, 2), 1.0 / eps);
+    }
+    /// `DGET22` on the eigenpairs of a matrix with two complex pairs.
+    ///
+    /// The checker is a faithful port, so it wants LAPACK's *packed* eigenvector
+    /// layout: a pair occupies two adjacent columns holding the real and the
+    /// imaginary part. This port's `dgeev` returns a real and an imaginary matrix
+    /// instead, one eigenvector per column, both members of a conjugate pair
+    /// included — the packing below bridges the two.
+    #[test]
+    fn the_eigenvector_checker_bounds_both_quantities() {
+        use crate::native::lapack::eig::dgeev;
+
+        let n = 4usize;
+        // Two rotation blocks: eigenvalues 1 +- 2i and -0.5 +- 0.25i.
+        let mut a0 = vec![0.0f64; n * n];
+        a0[0] = 1.0;
+        a0[0 + n] = 2.0;
+        a0[1] = -2.0;
+        a0[1 + n] = 1.0;
+        a0[2 + 2 * n] = -0.5;
+        a0[2 + 3 * n] = 0.25;
+        a0[3 + 2 * n] = -0.25;
+        a0[3 + 3 * n] = -0.5;
+        let mut a = a0.clone();
+        let mut vr = vec![0.0f64; n * n];
+        let mut vi = vec![0.0f64; n * n];
+        let (wr, wi) = dgeev(&mut vr, &mut vi, &mut a, n).expect("dgeev");
+
+        let pack = |vr: &[f64], vi: &[f64]| {
+            let mut e = vec![0.0f64; n * n];
+            let mut j = 0;
+            while j < n {
+                if wi[j] != 0.0 && j + 1 < n {
+                    for i in 0..n {
+                        e[i + j * n] = vr[i + j * n];
+                        e[i + (j + 1) * n] = vi[i + j * n];
+                    }
+                    j += 2;
+                } else {
+                    for i in 0..n {
+                        e[i + j * n] = vr[i + j * n];
+                    }
+                    j += 1;
+                }
+            }
+            e
+        };
+        let e = pack(&vr, &vi);
+        // LAPACK normalizes an eigenvector so its largest component (modulus) is
+        // one, which makes `max_i (|re_i| + |im_i|)` equal to one for every pair;
+        // this port normalizes to unit 2-norm instead. Rescaling here is what makes
+        // the reference's normalization metric applicable.
+        let mut e = e;
+        let mut j = 0;
+        while j < n {
+            let pair = wi[j] != 0.0 && j + 1 < n;
+            let mut m = 0.0f64;
+            for i in 0..n {
+                let v = if pair {
+                    e[i + j * n].abs() + e[i + (j + 1) * n].abs()
+                } else {
+                    e[i + j * n].abs()
+                };
+                m = m.max(v);
+            }
+            if m > 0.0 {
+                for i in 0..n {
+                    e[i + j * n] /= m;
+                    if pair {
+                        e[i + (j + 1) * n] /= m;
+                    }
+                }
+            }
+            j += if pair { 2 } else { 1 };
+        }
+        let (r1, r2) = get22(&a0, &e, &wr, &wi, n);
+        println!("get22: residual = {r1:e}, normalization = {r2:e}");
+        assert!(r1 <= 20.0, "residual: {r1:e}");
+        assert!(r2 <= 20.0, "normalization: {r2:e}");
+
+        // A column scaled by two still satisfies the equation -- every residual
+        // test written so far would pass -- but not the normalization.
+        let mut e_bad = e.clone();
+        for i in 0..n {
+            // Both columns of the pair, so the vector is the same one scaled -- it
+            // still solves the equation, which is exactly why the residual check
+            // cannot see the problem.
+            e_bad[i] *= 2.0;
+            e_bad[i + n] *= 2.0;
+        }
+        let (r1_bad, r2_bad) = get22(&a0, &e_bad, &wr, &wi, n);
+        assert!(r1_bad <= 20.0, "the scaled vector still solves: {r1_bad:e}");
+        assert!(r2_bad > 1e14, "the scaled vector is not normalized: {r2_bad:e}");
     }
 }

@@ -67,7 +67,7 @@
 //! is what made routing `dgetrf` unsound: the two backends would have answered
 //! differently for a matrix that is singular to working precision but not
 //! exactly. The boundary is now pinned by
-//! `native::lapack::zero_determinant_tests::pivot_threshold_matches_lapack`, in
+//! `algebra_linear`'s `lapack::tests::pivot_threshold_matches_lapack`, in
 //! both directions.
 //!
 //! The one conversion this costs is `dgetrf`'s pivots: LAPACK's `IPIV` is
@@ -122,7 +122,7 @@
 //! BLAS-3 to offer and only the inner `dgemv`/`zgemv` calls improve. They are
 //! still faster at every size measured (the control moved 1-7% between the two
 //! runs, against a 20-33% gap), so they are routed. A build that wants the native
-//! QZ can still call `native::lapack::qz` directly, as the parity tests do.
+//! QZ can still call `algebra_linear::lapack::qz` directly, as the parity tests do.
 //!
 //! `mat_eigenvalues` is quoted separately from `mat_eigen` because it asks
 //! `dgeev` for a different job: `'N'`/`'N'` skips `dtrevc3`, which is 28% of the
@@ -144,7 +144,9 @@
 //! no place for it; that is the argument the reference uses for `zggbal`'s
 //! balancing norms.
 
-use algebra_linear::lapack::LapackError;
+/// The error type every driver in this module returns, re-exported so a caller can
+/// name it without depending on `algebra_linear` directly.
+pub use algebra_linear::lapack::LapackError;
 
 use crate::Complex64;
 #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]

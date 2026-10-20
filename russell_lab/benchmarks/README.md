@@ -37,11 +37,13 @@ library's own CBLAS entry point** — `dgemm`, `dgemv`, `ddot`, `dnrm2`, at size
 from 64 to 8192 — with threads pinned to one, because the native kernels are
 single-threaded.
 
-It is written that way because the `open_blas` and `intel_mkl` features do not
-route the crate's math: `mat_mat_mul` calls `native::blas::dgemm`
-unconditionally, and the C shim only wraps thread control and `idamax`. So all
-three builds run the same Rust kernels, and the honest question the benchmark can
-answer is *what routing would buy*.
+The `native` column of every group calls `algebra_linear` directly, so it is the
+control and cannot move between runs. The column beside it is the same operation
+through the crate's own entry point -- `base::blas_dispatch` for the BLAS groups,
+the public `russell_lab` call for the `lapack_*` groups -- which reaches the linked
+library when `open_blas` or `intel_mkl` is on and the Rust kernel when neither is.
+Read the control as "the machine did not change" and the other column as what the
+dispatch delivers.
 
 ```text
 cargo bench --features bench --bench backends_benchmark

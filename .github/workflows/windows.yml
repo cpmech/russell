@@ -5,12 +5,6 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check out algebra_linear (the kernels this workspace depends on)
-        uses: actions/checkout@v4
-        with:
-          repository: cpmech/algebra_linear
-          path: algebra_linear
-      
       # 1. Setup MSYS2 with UCRT64 and required libraries
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2

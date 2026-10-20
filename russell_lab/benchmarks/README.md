@@ -44,9 +44,9 @@ three builds run the same Rust kernels, and the honest question the benchmark ca
 answer is *what routing would buy*.
 
 ```text
-cargo bench --bench backends_benchmark
-cargo bench --features open_blas --bench backends_benchmark
-cargo bench --features intel_mkl --bench backends_benchmark    # source setvars.sh first
+cargo bench --features bench --bench backends_benchmark
+cargo bench --features bench --features open_blas --bench backends_benchmark
+cargo bench --features bench --features intel_mkl --bench backends_benchmark    # source setvars.sh first
 ```
 
 The `native` group appears in every run and doubles as the control: if it moves
@@ -205,13 +205,13 @@ cargo install cargo-criterion
 Run a single benchmark (from the `russell_lab` directory):
 
 ```bash
-cargo bench --bench small_mat_inv_benchmark --all-features
+cargo bench --features bench --bench small_mat_inv_benchmark --all-features
 ```
 
 Run only a given size (e.g., 3×3) using a Criterion filter:
 
 ```bash
-cargo bench --bench small_mat_inv_benchmark --all-features -- '3'
+cargo bench --features bench --bench small_mat_inv_benchmark --all-features -- '3'
 ```
 
 > **Note:** `--all-features` selects Intel MKL (when available) instead of OpenBLAS.

@@ -12,6 +12,11 @@ categories = ["mathematics", "science"]
 keywords = ["matrix", "vector", "linspace"]
 
 [features]
+# Benchmark harness only. Optional so that `cargo test` on a wasm target does not
+# build it: criterion pulls rayon, which cannot compile for wasi or wasm32.
+# Benches therefore need `cargo bench --features bench`.
+bench = ["dep:criterion"]
+
 # Native Rust BLAS/LAPACK is the default, so no feature is enabled unless asked
 # for. There is no external library to find, nothing to link, and the crate builds anywhere --
 # including `wasm32-unknown-unknown`, which has no libc for the C shim and no BLAS
@@ -46,12 +51,15 @@ intel_mkl = []
 dev_lapack = []
 
 [dependencies]
+# Optional, feature-gated: only the benches use it. It lives here rather than in
+# [dev-dependencies] because cargo forbids optional dev-dependencies, and an
+# unconditional dev-dependency drags rayon into every wasm test build.
+criterion = { version = "0.8", optional = true }
 num-complex = { version = "0.4", features = ["serde"] }
 num-traits = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 
 [dev-dependencies]
-criterion = "0.8"
 plotpy = "1.24"
 serde_json = "1.0"
 serial_test = "4.0"
@@ -63,36 +71,43 @@ pkg-config = "0.3"
 [[bench]]
 name = "backends_benchmark"
 harness = false
+required-features = ["bench"]
 path = "benchmarks/backends_benchmark.rs"
 
 [[bench]]
 name = "algo_chebyshev"
 harness = false
+required-features = ["bench"]
 path = "benchmarks/algo_chebyshev.rs"
 
 [[bench]]
 name = "decomp_benchmark"
 harness = false
+required-features = ["bench"]
 path = "benchmarks/decomp_benchmark.rs"
 
 [[bench]]
 name = "matmul_benchmark"
 harness = false
+required-features = ["bench"]
 path = "benchmarks/matmul_benchmark.rs"
 
 [[bench]]
 name = "matvec_benchmark"
 harness = false
+required-features = ["bench"]
 path = "benchmarks/matvec_benchmark.rs"
 
 [[bench]]
 name = "small_mat_inv_benchmark"
 harness = false
+required-features = ["bench"]
 path = "benchmarks/small_mat_inv_benchmark.rs"
 
 [[bench]]
 name = "small_ops_benchmark"
 harness = false
+required-features = ["bench"]
 path = "benchmarks/small_ops_benchmark.rs"
 
 [lints]

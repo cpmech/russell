@@ -24,15 +24,15 @@
 //! The third configuration (`--all-features`, which is MKL) is the one the
 //! level-1 decisions recorded in `src/base/blas_dispatch.rs` were made on.
 //!
-//! The `lapack_*` groups are the same question for the five LAPACK drivers
+//! The `lapack_*` groups are the same question for the LAPACK drivers
 //! `src/base/lapack_dispatch.rs` routes. They cannot call the dispatch module --
 //! it is `pub(crate)` -- so each row is the public entry point a user calls
-//! (`solve_lin_sys`, `mat_cholesky`, `mat_eigen_sym`, `mat_svd`, `mat_eigen`,
-//! `mat_eigenvalues`), and the `native` row beside it is the Rust driver the
-//! same call reaches in a default build. Read the `native` row as the control
-//! (it is identical in both runs) and the `public` row as what the dispatch
-//! actually delivers; the plain-vs-`--all-features` comparison is the `public`
-//! row across the two runs.
+//! (`solve_lin_sys`, `mat_inverse`, `mat_cholesky`, `mat_eigen_sym`, `mat_svd`,
+//! `mat_eigen`, `mat_eigenvalues`, `mat_gen_eigen`, `complex_mat_gen_eigen`),
+//! and the `native` row beside it is the Rust driver the same call reaches in a
+//! default build. Read the `native` row as the control (it is identical in both
+//! runs) and the `public` row as what the dispatch actually delivers; the
+//! plain-vs-`--all-features` comparison is the `public` row across the two runs.
 //!
 //! Only the decomposition is timed: `iter_batched` takes a fresh copy of the
 //! input per iteration and leaves the copy out of the measurement, so an
@@ -48,6 +48,7 @@ use criterion::BenchmarkId;
 use criterion::Criterion;
 use criterion::Throughput;
 use criterion::{criterion_group, criterion_main};
+use russell_lab::Complex64;
 use russell_lab::native;
 
 /// The external library's own entry points, through CBLAS: both OpenBLAS and MKL
@@ -546,7 +547,25 @@ fn general(n: usize) -> Vec<f64> {
     a
 }
 
-/// The five LAPACK drivers, at the sizes the call sites see them.
+/// The complex twin of `general`, with a nonzero imaginary part off the
+/// diagonal so the complex QZ path is not accidentally a real problem.
+fn general_complex(n: usize) -> Vec<Complex64> {
+    let mut a = vec![Complex64::new(0.0, 0.0); n * n];
+    for j in 0..n {
+        for i in 0..n {
+            if i == j {
+                a[i + j * n] = Complex64::new((n as f64) + 1.0 + (i as f64) * 0.25, 0.5);
+            } else {
+                let re = (((i * 7 + j * 13) % 11) as f64) - 5.0;
+                let im = (((i * 5 + j * 3) % 7) as f64) - 3.0;
+                a[i + j * n] = Complex64::new(re, im * 0.1);
+            }
+        }
+    }
+    a
+}
+
+/// The routed drivers, at the sizes the call sites see them.
 ///
 /// Each pair is one operation on the same data: `native` is the Rust driver, and
 /// `public` is the crate function that reaches it through
@@ -555,7 +574,11 @@ fn general(n: usize) -> Vec<f64> {
 /// `native` row is the control: if it moves between the two runs, the machine
 /// did.
 fn bench_lapack(c: &mut Criterion) {
-    use russell_lab::{Matrix, Vector, mat_cholesky, mat_eigen, mat_eigen_sym, mat_svd, solve_lin_sys};
+    use russell_lab::{ComplexMatrix, ComplexVector};
+    use russell_lab::{
+        Matrix, Vector, complex_mat_gen_eigen, mat_cholesky, mat_eigen, mat_eigen_sym, mat_gen_eigen, mat_inverse,
+        mat_svd, solve_lin_sys,
+    };
 
     // These are O(n^3) in the native kernels and take hundreds of milliseconds at
     // n = 512, so ten samples is what fits: criterion still reports a mean and an
@@ -664,6 +687,154 @@ fn bench_lapack(c: &mut Criterion) {
                     (ma, Vector::new(n), Matrix::new(n, n), Matrix::new(n, n))
                 },
                 |(mut ma, mut s, mut u, mut vt)| mat_svd(&mut s, &mut u, &mut vt, &mut ma).unwrap(),
+                BatchSize::SmallInput,
+            );
+        });
+        group.finish();
+
+        // dgetrf + dgetri: the pair `mat_inverse` runs back to back. The native
+        // row is the same two drivers, because the call site's cost is both.
+        let mut group = c.benchmark_group("lapack_dgetrf_dgetri");
+        group.sample_size(10);
+        let a_base = general(n);
+        group.bench_with_input(BenchmarkId::new("native", n), &n, |bench, _| {
+            let a = a_base.clone();
+            bench.iter_batched(
+                || a.clone(),
+                |mut a| {
+                    let (ipiv, det) = native::lapack::dgetrf(&mut a, n).unwrap();
+                    native::lapack::dgetri(&mut a, n, &ipiv).unwrap();
+                    det
+                },
+                BatchSize::SmallInput,
+            );
+        });
+        group.bench_with_input(BenchmarkId::new("public", n), &n, |bench, _| {
+            let a = a_base.clone();
+            bench.iter_batched(
+                || {
+                    let mut ma = Matrix::new(n, n);
+                    ma.as_mut_data().copy_from_slice(&a);
+                    (ma, Matrix::new(n, n))
+                },
+                |(ma, mut ai)| mat_inverse(&mut ai, &ma).unwrap(),
+                BatchSize::SmallInput,
+            );
+        });
+        group.finish();
+
+        // dggev: generalized eigenvalues and right eigenvectors.
+        let mut group = c.benchmark_group("lapack_dggev");
+        group.sample_size(10);
+        let (a_base, b_base) = (general(n), dominant(n));
+        group.bench_with_input(BenchmarkId::new("native", n), &n, |bench, _| {
+            let (a, b) = (a_base.clone(), b_base.clone());
+            bench.iter_batched(
+                || {
+                    (
+                        a.clone(),
+                        b.clone(),
+                        vec![0.0; n],
+                        vec![0.0; n],
+                        vec![0.0; n],
+                        vec![0.0; n * n],
+                    )
+                },
+                |(mut a, mut b, mut ar, mut ai, mut be, mut vr)| {
+                    native::lapack::qz::dggev(
+                        false,
+                        true,
+                        n,
+                        &mut a,
+                        &mut b,
+                        &mut ar,
+                        &mut ai,
+                        &mut be,
+                        &mut [],
+                        &mut vr,
+                    )
+                    .unwrap()
+                },
+                BatchSize::SmallInput,
+            );
+        });
+        group.bench_with_input(BenchmarkId::new("public", n), &n, |bench, _| {
+            let (a, b) = (a_base.clone(), b_base.clone());
+            bench.iter_batched(
+                || {
+                    let mut ma = Matrix::new(n, n);
+                    ma.as_mut_data().copy_from_slice(&a);
+                    let mut mb = Matrix::new(n, n);
+                    mb.as_mut_data().copy_from_slice(&b);
+                    (
+                        ma,
+                        mb,
+                        Vector::new(n),
+                        Vector::new(n),
+                        Vector::new(n),
+                        Matrix::new(n, n),
+                    )
+                },
+                |(mut ma, mut mb, mut ar, mut ai, mut be, mut v)| {
+                    mat_gen_eigen(&mut ar, &mut ai, &mut be, &mut v, &mut ma, &mut mb).unwrap()
+                },
+                BatchSize::SmallInput,
+            );
+        });
+        group.finish();
+
+        // zggev: the complex twin, which needs a real `rwork` inside the
+        // dispatch. The native row performs the same job through the native QZ.
+        let mut group = c.benchmark_group("lapack_zggev");
+        group.sample_size(10);
+        let a_base = general_complex(n);
+        let b_base: Vec<Complex64> = (0..n * n)
+            .map(|i| {
+                if i % (n + 1) == 0 {
+                    Complex64::new(1.0, 0.0)
+                } else {
+                    Complex64::new(0.0, 0.0)
+                }
+            })
+            .collect();
+        group.bench_with_input(BenchmarkId::new("native", n), &n, |bench, _| {
+            let (a, b) = (a_base.clone(), b_base.clone());
+            bench.iter_batched(
+                || {
+                    (
+                        a.clone(),
+                        b.clone(),
+                        vec![Complex64::new(0.0, 0.0); n],
+                        vec![Complex64::new(0.0, 0.0); n],
+                        vec![Complex64::new(0.0, 0.0); n * n],
+                    )
+                },
+                |(mut a, mut b, mut alpha, mut beta, mut vr)| {
+                    native::lapack::qz::zggev(false, true, n, &mut a, &mut b, &mut alpha, &mut beta, &mut [], &mut vr)
+                        .unwrap()
+                },
+                BatchSize::SmallInput,
+            );
+        });
+        group.bench_with_input(BenchmarkId::new("public", n), &n, |bench, _| {
+            let (a, b) = (a_base.clone(), b_base.clone());
+            bench.iter_batched(
+                || {
+                    let mut ma = ComplexMatrix::new(n, n);
+                    ma.as_mut_data().copy_from_slice(&a);
+                    let mut mb = ComplexMatrix::new(n, n);
+                    mb.as_mut_data().copy_from_slice(&b);
+                    (
+                        ma,
+                        mb,
+                        ComplexVector::new(n),
+                        ComplexVector::new(n),
+                        ComplexMatrix::new(n, n),
+                    )
+                },
+                |(mut ma, mut mb, mut alpha, mut beta, mut v)| {
+                    complex_mat_gen_eigen(&mut alpha, &mut beta, &mut v, &mut ma, &mut mb).unwrap()
+                },
                 BatchSize::SmallInput,
             );
         });

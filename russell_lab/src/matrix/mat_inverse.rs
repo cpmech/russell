@@ -1,27 +1,7 @@
 use super::{Matrix, mat_copy};
 use crate::StrError;
-use crate::native::lapack::ZERO_DETERMINANT;
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-use crate::to_i32;
-
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-unsafe extern "C" {
-    // Computes the LU factorization of a general (m,n) matrix
-    /// <https://www.netlib.org/lapack/explore-html/d3/d6a/dgetrf_8f.html>
-    fn c_dgetrf(m: *const i32, n: *const i32, a: *mut f64, lda: *const i32, ipiv: *mut i32, info: *mut i32);
-
-    // Computes the inverse of a matrix using the LU factorization computed by dgetrf
-    /// <https://www.netlib.org/lapack/explore-html/df/da4/dgetri_8f.html>
-    fn c_dgetri(
-        n: *const i32,
-        a: *mut f64,
-        lda: *const i32,
-        ipiv: *const i32,
-        work: *mut f64,
-        lwork: *const i32,
-        info: *mut i32,
-    );
-}
+use crate::base::lapack_dispatch::{dgetrf, dgetri};
+use crate::native::lapack::{LapackError, ZERO_DETERMINANT};
 
 // constants
 
@@ -203,83 +183,21 @@ pub fn mat_inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, StrError> {
     mat_copy(ai, a).unwrap();
 
     // LU with partial pivoting, then one back-substitution per column of the
-    // identity: the native `dgetrf`/`dgetri`, which are tested for parity against
-    // the reference LAPACK. The strings below are the ones the shim reports, so a
-    // singular matrix is described the same way in both configurations.
-    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    {
-        use crate::native::lapack::{LapackError, dgetrf, dgetri};
-        let (ipiv, det) = dgetrf(ai.as_mut_data(), m).map_err(|e| match e {
-            LapackError::Singular => {
-                "LAPACK ERROR (dgetrf): The factorization has been completed, but the factor U is exactly singular"
-            }
-            _ => "LAPACK ERROR (dgetrf): An argument had an illegal value",
-        })?;
-        dgetri(ai.as_mut_data(), m, &ipiv).map_err(|e| match e {
-            LapackError::Singular => {
-                "LAPACK ERROR (dgetri): U is exactly singular and the inverse could not be computed"
-            }
-            _ => "LAPACK ERROR (dgetri): An argument had an illegal value",
-        })?;
-        Ok(det)
-    }
-
-    // Fast path through LAPACK.
-    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-    {
-        // compute LU factorization
-        let m_i32 = to_i32(m);
-        let lda = m_i32;
-        let mut ipiv = vec![0; m];
-        let mut info = 0;
-        unsafe {
-            c_dgetrf(
-                &m_i32,
-                &m_i32,
-                ai.as_mut_data().as_mut_ptr(),
-                &lda,
-                ipiv.as_mut_ptr(),
-                &mut info,
-            );
+    // identity, through `base::lapack_dispatch`: the native `dgetrf`/`dgetri` by
+    // default, the linked LAPACK under an accelerator. The strings below are the
+    // ones both backends report, so a singular matrix is described the same way
+    // in every configuration.
+    let (ipiv, det) = dgetrf(ai.as_mut_data(), m).map_err(|e| match e {
+        LapackError::Singular => {
+            "LAPACK ERROR (dgetrf): The factorization has been completed, but the factor U is exactly singular"
         }
-        if info < 0 {
-            println!("LAPACK ERROR (dgetrf): Argument #{} had an illegal value", -info);
-            return Err("LAPACK ERROR (dgetrf): An argument had an illegal value");
-        } else if info > 0 {
-            println!("LAPACK ERROR (dgetrf): U({},{}) is exactly zero", info - 1, info - 1);
-            return Err(
-                "LAPACK ERROR (dgetrf): The factorization has been completed, but the factor U is exactly singular",
-            );
-        }
-
-        // first, compute the determinant ai.data from dgetrf
-        let mut det = 1.0;
-        for i in 0..m_i32 {
-            let iu = i as usize;
-            // NOTE: ipiv are 1-based indices
-            if ipiv[iu] - 1 == i {
-                det *= ai.get(iu, iu);
-            } else {
-                det = -det * ai.get(iu, iu);
-            }
-        }
-        // second, perform the inversion
-        let lwork = m_i32;
-        let mut work = vec![0.0; lwork as usize];
-        unsafe {
-            c_dgetri(
-                &m_i32,
-                ai.as_mut_data().as_mut_ptr(),
-                &lda,
-                ipiv.as_mut_ptr(),
-                work.as_mut_ptr(),
-                &lwork,
-                &mut info,
-            );
-        }
-
-        Ok(det)
-    }
+        _ => "LAPACK ERROR (dgetrf): An argument had an illegal value",
+    })?;
+    dgetri(ai.as_mut_data(), m, &ipiv).map_err(|e| match e {
+        LapackError::Singular => "LAPACK ERROR (dgetri): U is exactly singular and the inverse could not be computed",
+        _ => "LAPACK ERROR (dgetri): An argument had an illegal value",
+    })?;
+    Ok(det)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

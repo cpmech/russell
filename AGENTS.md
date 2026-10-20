@@ -358,7 +358,7 @@ Measured 2026-10-19 with the command above: workspace **74,192 / 76,273 lines =
 
 | where | missed | why |
 |---|---|---|
-| `russell_lab/src/native/lapack/qz.rs` | 547 | `dhgeqz`'s and `dggbal_p`'s rescue and permutation arms, `dtgevc`'s guard paths. Sweeping `dgeev` and `dggev` over the reference's own spectra — including a singular `B` — moved this file by zero lines, because those families are built to be *solvable* and cannot reach code whose job is to refuse or rescue |
+| `russell_lab/src/native/lapack/qz.rs` | 547 | `dhgeqz`'s and `dggbal_p`'s rescue and permutation arms, `dtgevc`'s guard paths. Sweeping `dgeev` and `dggev` over the reference's own spectra — including a singular `B` — moved this file by zero lines, because those families are built to be *solvable* and cannot reach code whose job is to refuse or rescue. `dget54`, the checker for those factors, needs `Q` and `Z` out of `dggev`; the owner decided the port's API does not grow for it, so that check is not writable here |
 | `native/lapack/zeig.rs` | 303 | `zsteqr`'s deflation and QR-section arms, `zlarfg`'s underflow rescue |
 | `native/lapack/eig.rs` | 203 | `dlaln2` and `dlanv2`: 2x2 blocks whose entries force a rescale |
 | `native/lapack/sym.rs`, `svd.rs`, `zsvd.rs` | 102, 76, 68 | `dsteqr`'s remaining arms, `dbdsqr`/`zbdsqr` convergence for repeated and zero singular values |

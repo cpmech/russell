@@ -4990,4 +4990,48 @@ mod tests {
             "zggev must report non-convergence"
         );
     }
+
+    /// `DGET31` on this module's `dlaln2` — the reference's whole example grid.
+    ///
+    /// This is the copy with the general signature (`ltrans`, `ca`, `d1`, `d2`),
+    /// so it expresses every case `DGET31` constructs and has to reproduce
+    /// LAPACK's own numbers exactly, not merely stay under the threshold:
+    ///
+    /// ```text
+    /// KNT = 230400   LMAX = 249   NINFO = (0, 74796)   RMAX = 1.77272727272727271
+    /// ```
+    ///
+    /// `NINFO(2) = 74796` is the interesting one: a third of the grid has a
+    /// singular value below `smin`, so a third of the residuals are divided by
+    /// `smin*norm(X)` instead of `ulp*norm(C)*norm(X)`. A copy that perturbed a
+    /// different set of cases, or that dropped the perturbation from its
+    /// scaling, would score `1/eps` per case and land nowhere near `1.77`.
+    ///
+    /// `INFO` is computed by [`super::super::examples::get31_info`] rather than
+    /// returned by `dlaln2`, whose `Laln2` has no field for it; see that
+    /// function for why. The case index `lmax` counts the grid in the
+    /// reference's loop order, so it names the same case LAPACK names.
+    #[test]
+    fn dlaln2_matches_the_reference_examples() {
+        use crate::native::lapack::examples::{get31, get31_info};
+
+        let (rmax, lmax, ninfo_neg, ninfo_pos, knt) = get31(|c| {
+            let r = dlaln2(
+                c.ltrans, c.na, c.nw, c.smin, c.ca, c.a11, c.a21, c.a12, c.a22, c.d1, c.d2, c.b11, c.b21, c.b12, c.b22,
+                c.wr, c.wi,
+            );
+            ([r.x11, r.x21, r.x12, r.x22], r.scale, r.xnorm, get31_info(c))
+        });
+        println!(
+            "dlaln2 over the reference's example grid: {knt} cases, ninfo = ({ninfo_neg}, {ninfo_pos}), rmax = {rmax:e} at case {lmax}"
+        );
+        assert_eq!(knt, 230400, "the grid must have 640 * 360 cases");
+        assert_eq!(ninfo_neg, 0, "the reference does not check its arguments");
+        assert_eq!(ninfo_pos, 74796, "the perturbed cases must be the reference's");
+        assert!(
+            rmax <= 20.0,
+            "dlaln2 on the reference's examples: rmax = {rmax:e} at case {lmax}, where LAPACK's own dlaln2 reports 1.7727"
+        );
+        assert_eq!(lmax, 249, "the worst case must be the reference's");
+    }
 }

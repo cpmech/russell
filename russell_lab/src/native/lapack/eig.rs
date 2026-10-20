@@ -4251,4 +4251,58 @@ mod tests {
             }
         }
     }
+
+    /// `DGET31` on this module's `dlaln2`, restricted to the cases its signature
+    /// expresses.
+    ///
+    /// This copy is the one `dtrevc3` and the Hessenberg iteration need, so it is
+    /// specialized to `ltrans = .FALSE.`, `ca = 1`, `d1 = d2 = 1`: it solves
+    /// `(A - w I) X = s B` and never sees a transpose, a scaled `A`, or a
+    /// diagonal `D`. The other 79 of the reference's 80 `(d1, d2, ca)`
+    /// combinations and all of its `ltrans = .TRUE.` cases are therefore not
+    /// ordinary `DGET31` cases *for this copy* — running them would mean
+    /// emulating `ca`, `D` and the transpose by rewriting the arguments, which is
+    /// a different computation feeding the reference's residual formulas, and a
+    /// different computation is what the residual would then be measuring.
+    /// [`super::examples::get31_where`] exists so the test can run the part the
+    /// signature does express instead of pretending to run the whole grid.
+    ///
+    /// That leaves 1,440 cases: four `smin` values over the four `(na, nw)`
+    /// blocks, `a`/`b` from `{sqrt(smlnum), 1, sqrt(bignum)}` and `w` from
+    /// `{0, 1/2, 2, 1}` (`wr` and `wi` both multiplied by `a(1,1)`, the
+    /// reference's special case). LAPACK 3.12.1's `dget31.f` restricted to the
+    /// same loops reports
+    ///
+    /// ```text
+    /// KNT = 1440   LMAX = 541   NINFO = (0, 549)   RMAX = 1.50000000000000000
+    /// ```
+    ///
+    /// and the port matches all four, so the specialization agrees with the
+    /// reference on the cases it claims to implement. The whole grid is covered
+    /// by [`super::super::qz`]'s copy, which has the general signature.
+    #[test]
+    fn dlaln2_matches_the_reference_examples() {
+        use crate::native::lapack::examples::{get31_info, get31_where};
+
+        let (rmax, lmax, ninfo_neg, ninfo_pos, knt) = get31_where(
+            |c| c.ca == 1.0 && c.d1 == 1.0 && c.d2 == 1.0 && !c.ltrans,
+            |c| {
+                let r = dlaln2(
+                    c.na, c.nw, c.smin, c.a11, c.a21, c.a12, c.a22, c.b11, c.b21, c.b12, c.b22, c.wr, c.wi,
+                );
+                ([r.x11, r.x21, r.x12, r.x22], r.scale, r.xnorm, get31_info(c))
+            },
+        );
+        println!(
+            "dlaln2 (ca = 1, d1 = d2 = 1, no transpose) over the reference's example grid: {knt} cases, ninfo = ({ninfo_neg}, {ninfo_pos}), rmax = {rmax:e} at case {lmax}"
+        );
+        assert_eq!(knt, 1440, "the specialized grid must have 4 * 360 cases");
+        assert_eq!(ninfo_neg, 0, "the reference does not check its arguments");
+        assert_eq!(ninfo_pos, 549, "the perturbed cases must be the reference's");
+        assert!(
+            rmax <= 20.0,
+            "dlaln2 on the reference's examples: rmax = {rmax:e} at case {lmax}, where LAPACK's own dlaln2 reports 1.5"
+        );
+        assert_eq!(lmax, 541, "the worst case must be the reference's");
+    }
 }

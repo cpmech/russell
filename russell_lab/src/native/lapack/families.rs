@@ -595,10 +595,235 @@ pub fn latme(p: &Latme, n: usize, a: &mut [f64], d: &mut [f64], seed: &mut [u32;
     Ok(())
 }
 
+/// Port of `DLARND`: one number from the chosen distribution, drawn through
+/// [`laran`] two at a time for the normal case, exactly as the reference does.
+pub fn larnd(dist: Dist, seed: &mut [u32; 4]) -> f64 {
+    let t1 = laran(seed);
+    match dist {
+        Dist::Uniform => t1,
+        Dist::Symmetric => 2.0 * t1 - 1.0,
+        Dist::Normal => {
+            let t2 = laran(seed);
+            (-2.0 * t1.ln()).sqrt() * (std::f64::consts::TAU * t2).cos()
+        }
+    }
+}
+
+/// The arguments of `DLATM4`, the generalized problem's matrix generator.
+pub struct Latm4 {
+    /// `ITYPE`: the shape of the matrix — identity, Jordan blocks, or a diagonal
+    /// with one of the spectra `1..10`. A negative value reverses it.
+    pub itype: i32,
+    /// `NZ1`, `NZ2`: for `|itype| >= 4`, how many leading and trailing zeros the
+    /// diagonal gets.
+    pub nz1: i32,
+    pub nz2: i32,
+    /// `RCOND`: the ratio of the smallest to the largest diagonal entry.
+    pub rcond: f64,
+    /// `AMAGN`: the magnitude every entry is scaled to.
+    pub amagn: f64,
+    /// `ISIGN`: `0` no signs, `1` random signs, `2` random signs *and* random
+    /// rotations that turn adjacent pairs into 2x2 blocks.
+    pub isign: i32,
+    /// `DIST`: the distribution for the random entries.
+    pub dist: Dist,
+    /// `TRIANG`: scale of the random upper triangle; zero leaves it empty.
+    pub triang: f64,
+}
+
+/// Port of `DLATM4`: one of the matrices `dchkgg` builds the generalized problem
+/// `(A, B)` from.
+///
+/// The reference is a single `GO TO` dispatch over `|ITYPE| = 1..10`; the cases are
+/// written here as a `match`, and the rest of the routine (the `AMAGN` scaling, the
+/// random signs, the reversal for a negative `ITYPE`, the rotations for `ISIGN = 2`,
+/// and the upper triangle) follows in the same order.
+pub fn latm4(p: &Latm4, n: usize, a: &mut [f64], seed: &mut [u32; 4]) {
+    assert_eq!(a.len(), n * n, "latm4: a must be n*n");
+    if n == 0 {
+        return;
+    }
+    a.fill(0.0);
+    if seed[3] % 2 != 1 {
+        seed[3] += 1;
+    }
+    let itype = p.itype;
+    if itype != 0 {
+        let (kbeg, kend, klen) = if itype.abs() >= 4 {
+            let kbeg = 1usize.max(n.min((p.nz1 + 1).max(0) as usize));
+            let kend = kbeg.max(n.min((n as i32 - p.nz2).max(0) as usize));
+            (kbeg, kend, kend + 1 - kbeg)
+        } else {
+            (1, n, n)
+        };
+        let isdb = 1usize;
+        let mut isde = 0usize;
+        // Zero-based helpers: the reference's JD is our jd - 1.
+        let at = |a: &mut [f64], i: usize, j: usize, v: f64| a[(i - 1) + (j - 1) * n] = v;
+        let get = |a: &[f64], i: usize, j: usize| a[(i - 1) + (j - 1) * n];
+        match itype.abs() {
+            1 => {
+                for jd in 1..=n {
+                    at(a, jd, jd, 1.0);
+                }
+            }
+            2 => {
+                for jd in 1..n {
+                    at(a, jd + 1, jd, 1.0);
+                }
+                isde = n - 1;
+            }
+            3 => {
+                let k = (n - 1) / 2;
+                for jd in 1..=k {
+                    at(a, jd + 1, jd, 1.0);
+                }
+                isde = k;
+                for jd in (k + 2)..=(2 * k + 1) {
+                    at(a, jd, jd, 1.0);
+                }
+            }
+            4 => {
+                for jd in kbeg..=kend {
+                    at(a, jd, jd, jd as f64 - p.nz1 as f64);
+                }
+            }
+            5 => {
+                for jd in (kbeg + 1)..=kend {
+                    at(a, jd, jd, p.rcond);
+                }
+                at(a, kbeg, kbeg, 1.0);
+            }
+            6 => {
+                for jd in kbeg..kend {
+                    at(a, jd, jd, 1.0);
+                }
+                at(a, kend, kend, p.rcond);
+            }
+            7 => {
+                at(a, kbeg, kbeg, 1.0);
+                if klen > 1 {
+                    let alpha = p.rcond.powf(1.0 / (klen - 1) as f64);
+                    for i in 2..=klen {
+                        at(a, p.nz1 as usize + i, p.nz1 as usize + i, alpha.powi(i as i32 - 1));
+                    }
+                }
+            }
+            8 => {
+                at(a, kbeg, kbeg, 1.0);
+                if klen > 1 {
+                    let alpha = (1.0 - p.rcond) / (klen - 1) as f64;
+                    for i in 2..=klen {
+                        let v = (klen - i) as f64 * alpha + p.rcond;
+                        at(a, p.nz1 as usize + i, p.nz1 as usize + i, v);
+                    }
+                }
+            }
+            9 => {
+                let alpha = p.rcond.ln();
+                for jd in kbeg..=kend {
+                    at(a, jd, jd, (alpha * laran(seed)).exp());
+                }
+            }
+            _ => {
+                for jd in kbeg..=kend {
+                    at(a, jd, jd, larnd(p.dist, seed));
+                }
+            }
+        }
+        // Scale by AMAGN.
+        for jd in kbeg..=kend {
+            let v = get(a, jd, jd);
+            at(a, jd, jd, p.amagn * v);
+        }
+        for jd in isdb..=isde {
+            let v = get(a, jd + 1, jd);
+            at(a, jd + 1, jd, p.amagn * v);
+        }
+        // Random signs on the diagonal and the subdiagonal.
+        if p.isign > 0 {
+            for jd in kbeg..=kend {
+                let v = get(a, jd, jd);
+                if v != 0.0 && laran(seed) > 0.5 {
+                    at(a, jd, jd, -v);
+                }
+            }
+            for jd in isdb..=isde {
+                let v = get(a, jd + 1, jd);
+                if v != 0.0 && laran(seed) > 0.5 {
+                    at(a, jd + 1, jd, -v);
+                }
+            }
+        }
+        // Reverse for a negative ITYPE.
+        if itype < 0 {
+            for jd in kbeg..=((kbeg + kend - 1) / 2) {
+                let lo = get(a, jd, jd);
+                let hi = get(a, kbeg + kend - jd, kbeg + kend - jd);
+                at(a, jd, jd, hi);
+                at(a, kbeg + kend - jd, kbeg + kend - jd, lo);
+            }
+            for jd in 1..=((n - 1) / 2) {
+                let lo = get(a, jd + 1, jd);
+                let hi = get(a, n + 1 - jd, n - jd);
+                at(a, jd + 1, jd, hi);
+                at(a, n + 1 - jd, n - jd, lo);
+            }
+        }
+        // ISIGN = 2: random rotations that make adjacent pairs into 2x2 blocks.
+        if p.isign == 2 && itype != 2 && itype != 3 {
+            let safmin = f64::MIN_POSITIVE;
+            let mut jd = kbeg;
+            while jd < kend {
+                if laran(seed) > 0.5 {
+                    let (mut cl, mut sl) = (2.0 * laran(seed) - 1.0, 2.0 * laran(seed) - 1.0);
+                    let temp = 1.0 / safmin.max((cl * cl + sl * sl).sqrt());
+                    cl *= temp;
+                    sl *= temp;
+                    let (mut cr, mut sr) = (2.0 * laran(seed) - 1.0, 2.0 * laran(seed) - 1.0);
+                    let temp = 1.0 / safmin.max((cr * cr + sr * sr).sqrt());
+                    cr *= temp;
+                    sr *= temp;
+                    let sv1 = get(a, jd, jd);
+                    let sv2 = get(a, jd + 1, jd + 1);
+                    at(a, jd, jd, cl * cr * sv1 + sl * sr * sv2);
+                    at(a, jd + 1, jd, -sl * cr * sv1 + cl * sr * sv2);
+                    at(a, jd, jd + 1, -cl * sr * sv1 + sl * cr * sv2);
+                    at(a, jd + 1, jd + 1, sl * sr * sv1 + cl * cr * sv2);
+                }
+                jd += 2;
+            }
+        }
+    }
+    // Fill in the upper triangle, leaving 2x2 blocks alone.
+    if p.triang != 0.0 {
+        let ioff = if p.isign != 2 || itype == 2 || itype == 3 {
+            1
+        } else {
+            for jr in 1..n {
+                // The reference tests the subdiagonal, A(JR+1, JR), and fills
+                // A(JR, JR+1) only where the pair is not a 2x2 block.
+                if a[jr + (jr - 1) * n] == 0.0 {
+                    let v = p.triang * larnd(p.dist, seed);
+                    a[(jr - 1) + jr * n] = v;
+                }
+            }
+            2
+        };
+        for jc in 2..=n {
+            for jr in 1..=(jc - ioff) {
+                let v = p.triang * larnd(p.dist, seed);
+                a[(jr - 1) + (jc - 1) * n] = v;
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::native::lapack::eig::dgeev;
+    use crate::native::lapack::qz::dggev;
 
     /// The seed every LAPACK test starts from (`ISEEDY` in the reference drivers).
     const SEEDY: [u32; 4] = [1988, 1989, 1990, 1991];
@@ -1200,5 +1425,446 @@ mod tests {
             }
         }
         println!("worst ratio over the families: {worst_ratio:e}");
+    }
+
+    /// `DLATM4` pinned against the reference build, one case per mechanism.
+    ///
+    /// The five cases cover the identity and the Jordan shapes, the `NZ1`/`NZ2`
+    /// offsets of `|ITYPE| = 4`, the `ISIGN = 2` rotations that turn adjacent pairs
+    /// into 2x2 blocks, and the reversal a negative `ITYPE` performs. Values captured
+    /// from `dlatm4_` compiled from `TESTING/EIG/dlatm4.f`; the seed is compared
+    /// exactly, which also pins how many draws each branch makes -- the two cases
+    /// with no random entries leave it untouched.
+    #[test]
+    fn latm4_matches_the_reference_matrices() {
+        // (params, n, reference in column-major order, seed after)
+        let cases: [(Latm4, usize, &[f64], [u32; 4]); 5] = [
+            // identity, scaled to AMAGN = 2, with a random upper triangle
+            (
+                Latm4 {
+                    itype: 1,
+                    nz1: 0,
+                    nz2: 0,
+                    rcond: 0.001,
+                    amagn: 2.0,
+                    isign: 0,
+                    dist: Dist::Uniform,
+                    triang: 0.5,
+                },
+                4,
+                &[
+                    2.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    1.1955430528198541e-01,
+                    2.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    2.2985247319277671e-01,
+                    1.3372535374326411e-01,
+                    2.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    2.6874046055494988e-01,
+                    6.3590717018547238e-02,
+                    1.8887492339621131e-01,
+                    2.0000000000000000e+00,
+                ],
+                [1547, 1078, 3168, 2783],
+            ),
+            // transposed Jordan block with random signs
+            (
+                Latm4 {
+                    itype: 2,
+                    nz1: 0,
+                    nz2: 0,
+                    rcond: 0.001,
+                    amagn: 1.0,
+                    isign: 1,
+                    dist: Dist::Uniform,
+                    triang: 0.3,
+                },
+                5,
+                &[
+                    0.0000000000000000e+00,
+                    1.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    3.8154430211128340e-02,
+                    0.0000000000000000e+00,
+                    1.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    1.1332495403772670e-01,
+                    5.0340413313393027e-02,
+                    0.0000000000000000e+00,
+                    1.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    8.6700393073097709e-02,
+                    1.2992872283554990e-01,
+                    1.5643160117456392e-02,
+                    0.0000000000000000e+00,
+                    -1.0000000000000000e+00,
+                    2.8901042272559069e-01,
+                    1.1122261542160640e-01,
+                    1.6502349860833510e-01,
+                    2.6983865223542020e-01,
+                    0.0000000000000000e+00,
+                ],
+                [3684, 807, 733, 895],
+            ),
+            // diagonal 1..k with NZ1 leading and NZ2 trailing zeros
+            (
+                Latm4 {
+                    itype: 4,
+                    nz1: 1,
+                    nz2: 2,
+                    rcond: 0.001,
+                    amagn: 1.0,
+                    isign: 0,
+                    dist: Dist::Uniform,
+                    triang: 0.0,
+                },
+                7,
+                &[
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    1.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    2.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    3.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    4.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                ],
+                [1988, 1989, 1990, 1991],
+            ),
+            // log-uniform diagonal with ISIGN = 2 rotations turning pairs into 2x2 blocks
+            (
+                Latm4 {
+                    itype: 9,
+                    nz1: 0,
+                    nz2: 0,
+                    rcond: 0.01,
+                    amagn: 1.0,
+                    isign: 2,
+                    dist: Dist::Uniform,
+                    triang: 0.25,
+                },
+                4,
+                &[
+                    3.3249320852543812e-01,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    2.4084201893799231e-01,
+                    1.2038991483484360e-01,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    2.2486554352951679e-01,
+                    9.2685512851338636e-02,
+                    2.9180893463115148e-01,
+                    0.0000000000000000e+00,
+                    1.3779487170530569e-01,
+                    2.6125389868645321e-02,
+                    1.3751958217361260e-01,
+                    8.4146907116234765e-02,
+                ],
+                [428, 157, 965, 775],
+            ),
+            // one large value, reversed by the negative ITYPE
+            (
+                Latm4 {
+                    itype: -5,
+                    nz1: 0,
+                    nz2: 0,
+                    rcond: 0.1,
+                    amagn: 3.0,
+                    isign: 0,
+                    dist: Dist::Uniform,
+                    triang: 0.0,
+                },
+                5,
+                &[
+                    2.9999999999999999e-01,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    2.9999999999999999e-01,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    2.9999999999999999e-01,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    2.9999999999999999e-01,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    0.0000000000000000e+00,
+                    3.0000000000000000e+00,
+                ],
+                [1988, 1989, 1990, 1991],
+            ),
+        ];
+        for (k, (params, n, want, want_seed)) in cases.into_iter().enumerate() {
+            let mut seed = SEEDY;
+            let mut a = vec![0.0f64; n * n];
+            latm4(&params, n, &mut a, &mut seed);
+            for idx in 0..n * n {
+                let got = a[idx];
+                let w = want[idx];
+                let tol = 1e-13 * w.abs().max(1.0);
+                assert!((got - w).abs() <= tol, "case {k}: a[{idx}] = {got:e}, reference {w:e}");
+            }
+            assert_eq!(seed, want_seed, "case {k}: seed after the call");
+        }
+    }
+    /// The generalized sweep: `dggev` over the pairs `dchkgg` builds.
+    ///
+    /// `dchkgg`'s 26 types are `(ITYPE1, ITYPE2, ISIGN, RMOD)`; what is reproduced
+    /// here is the grid of `ITYPE` values for `A` (1..10, in both sign conventions
+    /// where the spectrum is a diagonal) against a fixed `B` that is the identity,
+    /// with every `ISIGN` level including the rotations that make 2x2 blocks.
+    ///
+    /// The residual is the reference's own generalized form,
+    /// `||A v - lambda B v|| / ((||A|| + |lambda| ||B||) n eps) <= 20`.
+    #[test]
+    fn dggev_solves_the_reference_generalized_families() {
+        let n = 5usize;
+        let eps = f64::EPSILON;
+        let mut worst_ratio = 0.0f64;
+        for itype in [1i32, -1, 2, 3, 4, -4, 5, -5, 6, -6, 7, -7, 8, 9, -9, 10] {
+            for isign in [0i32, 1, 2] {
+                if (itype == 2 || itype == 3) && isign == 2 {
+                    // The reference skips the rotations for the Jordan shapes.
+                    continue;
+                }
+                let pa = Latm4 {
+                    itype,
+                    nz1: 0,
+                    nz2: 0,
+                    rcond: 1e-3,
+                    amagn: 1.0,
+                    isign,
+                    dist: Dist::Uniform,
+                    triang: if isign == 2 { 0.25 } else { 0.0 },
+                };
+                let pb = Latm4 {
+                    itype: 1,
+                    nz1: 0,
+                    nz2: 0,
+                    rcond: 1.0,
+                    amagn: 1.0,
+                    isign: 0,
+                    dist: Dist::Uniform,
+                    triang: 0.0,
+                };
+                let mut seed = SEEDY;
+                let mut a0 = vec![0.0f64; n * n];
+                let mut b0 = vec![0.0f64; n * n];
+                latm4(&pa, n, &mut a0, &mut seed);
+                latm4(&pb, n, &mut b0, &mut seed);
+
+                let mut a = a0.clone();
+                let mut b = b0.clone();
+                let mut alphar = vec![0.0; n];
+                let mut alphai = vec![0.0; n];
+                let mut beta = vec![0.0; n];
+                let mut vl = vec![0.0; n * n];
+                let mut vr = vec![0.0; n * n];
+                dggev(
+                    false,
+                    true,
+                    n,
+                    &mut a,
+                    &mut b,
+                    &mut alphar,
+                    &mut alphai,
+                    &mut beta,
+                    &mut vl,
+                    &mut vr,
+                )
+                .unwrap_or_else(|e| panic!("itype {itype}, isign {isign}: {e:?}"));
+
+                let anorm = a0.iter().fold(0.0f64, |m, x| m.max(x.abs()));
+                let bnorm = b0.iter().fold(0.0f64, |m, x| m.max(x.abs()));
+                for j in 0..n {
+                    assert!(
+                        beta[j].is_finite() && alphar[j].is_finite(),
+                        "itype {itype}, isign {isign}: alpha/beta {j} is not finite"
+                    );
+                }
+                let mut j = 0usize;
+                while j < n {
+                    let complex = alphai[j] != 0.0;
+                    let (lr, li) = (alphar[j], alphai[j]);
+                    let be = beta[j];
+                    let mut worst = 0.0f64;
+                    for i in 0..n {
+                        // beta*A*v - alpha*B*v
+                        let mut pa_r = 0.0;
+                        let mut pa_i = 0.0;
+                        let mut pb_r = 0.0;
+                        let mut pb_i = 0.0;
+                        for k in 0..n {
+                            pa_r += a0[i + k * n] * vr[k + j * n];
+                            pa_i += a0[i + k * n] * vr[k + (j + if complex { 1 } else { 0 }) * n];
+                            pb_r += b0[i + k * n] * vr[k + j * n];
+                            pb_i += b0[i + k * n] * vr[k + (j + if complex { 1 } else { 0 }) * n];
+                        }
+                        let dr = be * pa_r - (lr * pb_r - li * pb_i);
+                        let di = be * pa_i - (lr * pb_i + li * pb_r);
+                        worst = worst.max(dr.abs().max(di.abs()));
+                    }
+                    let scale = (n as f64) * eps * (anorm + (lr.hypot(li)) * bnorm);
+                    let ratio = worst / scale;
+                    worst_ratio = worst_ratio.max(ratio);
+                    assert!(ratio <= 20.0, "itype {itype}, isign {isign}, j {j}: ratio = {ratio:e}");
+                    j += if complex { 2 } else { 1 };
+                }
+            }
+        }
+        println!("worst generalized ratio: {worst_ratio:e}");
+    }
+    /// The generalized problem where `B` is singular, so some eigenvalues are
+    /// infinite and `dggev` has to deflate rather than divide.
+    ///
+    /// The families above always pair `A` with a nonsingular `B`; that leaves the
+    /// infinite-eigenvalue path alone. Here `B` carries trailing zeros on its
+    /// diagonal (`NZ2`), which is a singular pencil, and the check is that the
+    /// finite eigenpairs still satisfy `beta A v = alpha B v` while the rest come
+    /// back as `beta = 0` with a finite `alpha`.
+    #[test]
+    fn dggev_handles_a_singular_b() {
+        let n = 5usize;
+        let eps = f64::EPSILON;
+        let pa = Latm4 {
+            itype: -4,
+            nz1: 0,
+            nz2: 0,
+            rcond: 1e-3,
+            amagn: 1.0,
+            isign: 1,
+            dist: Dist::Uniform,
+            triang: 0.25,
+        };
+        // B must be the diagonal family (`itype = 4`): `itype = 1` sets the whole
+        // diagonal and ignores NZ1/NZ2, so it stays nonsingular.
+        let pb = Latm4 {
+            itype: 4,
+            nz1: 0,
+            nz2: 2,
+            rcond: 1.0,
+            amagn: 1.0,
+            isign: 0,
+            dist: Dist::Uniform,
+            triang: 0.0,
+        };
+        let mut seed = SEEDY;
+        let mut a0 = vec![0.0f64; n * n];
+        let mut b0 = vec![0.0f64; n * n];
+        latm4(&pa, n, &mut a0, &mut seed);
+        latm4(&pb, n, &mut b0, &mut seed);
+
+        let mut a = a0.clone();
+        let mut b = b0.clone();
+        let mut alphar = vec![0.0; n];
+        let mut alphai = vec![0.0; n];
+        let mut beta = vec![0.0; n];
+        let mut vl = vec![0.0; n * n];
+        let mut vr = vec![0.0; n * n];
+        dggev(
+            false,
+            true,
+            n,
+            &mut a,
+            &mut b,
+            &mut alphar,
+            &mut alphai,
+            &mut beta,
+            &mut vl,
+            &mut vr,
+        )
+        .expect("dggev");
+
+        let anorm = a0.iter().fold(0.0f64, |m, x| m.max(x.abs()));
+        let bnorm = b0.iter().fold(0.0f64, |m, x| m.max(x.abs()));
+        let infinite = (0..n).filter(|&j| beta[j] == 0.0).count();
+        assert_eq!(
+            infinite, 2,
+            "the two zero diagonal entries of B give two infinite eigenvalues"
+        );
+        for j in 0..n {
+            assert!(
+                alphar[j].is_finite() && alphai[j].is_finite() && beta[j].is_finite(),
+                "eigenpair {j} is not finite"
+            );
+            if beta[j] == 0.0 {
+                continue;
+            }
+            let mut worst = 0.0f64;
+            for i in 0..n {
+                let mut pa_r = 0.0;
+                let mut pb_r = 0.0;
+                for k in 0..n {
+                    pa_r += a0[i + k * n] * vr[k + j * n];
+                    pb_r += b0[i + k * n] * vr[k + j * n];
+                }
+                worst = worst.max((beta[j] * pa_r - alphar[j] * pb_r).abs());
+            }
+            let scale = n as f64 * eps * (anorm + alphar[j].abs() * bnorm);
+            let ratio = worst / scale;
+            assert!(ratio <= 20.0, "j {j}: ratio = {ratio:e}");
+        }
     }
 }

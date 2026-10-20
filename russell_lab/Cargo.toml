@@ -60,6 +60,11 @@ cc = "1.4"
 pkg-config = "0.3"
 
 [[bench]]
+name = "backends_benchmark"
+harness = false
+path = "benchmarks/backends_benchmark.rs"
+
+[[bench]]
 name = "algo_chebyshev"
 harness = false
 path = "benchmarks/algo_chebyshev.rs"

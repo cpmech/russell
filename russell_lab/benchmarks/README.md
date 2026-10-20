@@ -30,6 +30,28 @@ This directory contains the [Criterion](https://github.com/bheisler/criterion.rs
 
 `matvec_benchmark.rs` — benchmarks `vec_add`, `mat_eigen_sym` (LAPACK DSYEV) and `mat_eigen_sym_jacobi` (Jacobi rotation).
 
+### Backends: native vs OpenBLAS vs MKL
+
+`backends_benchmark.rs` measures the native Rust kernels against the **linked
+library's own CBLAS entry point** — `dgemm`, `dgemv`, `ddot`, `dnrm2`, at sizes
+from 64 to 8192 — with threads pinned to one, because the native kernels are
+single-threaded.
+
+It is written that way because the `open_blas` and `intel_mkl` features do not
+route the crate's math: `mat_mat_mul` calls `native::blas::dgemm`
+unconditionally, and the C shim only wraps thread control and `idamax`. So all
+three builds run the same Rust kernels, and the honest question the benchmark can
+answer is *what routing would buy*.
+
+```text
+cargo bench --bench backends_benchmark
+cargo bench --features open_blas --bench backends_benchmark
+cargo bench --features intel_mkl --bench backends_benchmark    # source setvars.sh first
+```
+
+The `native` group appears in every run and doubles as the control: if it moves
+between runs, the machine did.
+
 ### Small matrix inversion
 
 `small_mat_inv_benchmark.rs` — compares three approaches to inverting an (n×n) matrix, for n = 3 … 9:

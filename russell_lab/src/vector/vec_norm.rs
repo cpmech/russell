@@ -1,22 +1,5 @@
 use super::Vector;
 use crate::Norm;
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-use crate::to_i32;
-
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-unsafe extern "C" {
-    // Computes the sum of the absolute values (1-norm or taxicab norm)
-    // <https://www.netlib.org/lapack/explore-html/de/d05/dasum_8f.html>
-    fn cblas_dasum(n: i32, x: *const f64, incx: i32) -> f64;
-
-    // Computes the Euclidean norm
-    // <https://www.netlib.org/lapack/explore-html/d6/de0/dnrm2_8f90.html>
-    fn cblas_dnrm2(n: i32, x: *const f64, incx: i32) -> f64;
-
-    // Finds the index of the maximum absolute value
-    // <https://www.netlib.org/lapack/explore-html/dd/de0/idamax_8f.html>
-    fn cblas_idamax(n: i32, x: *const f64, incx: i32) -> i32;
-}
 
 /// Returns the vector norm
 ///
@@ -37,25 +20,14 @@ unsafe extern "C" {
 /// }
 /// ```
 pub fn vec_norm(v: &Vector, kind: Norm) -> f64 {
-    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-    {
-        let n = to_i32(v.dim());
-        if n == 0 {
-            return 0.0;
-        }
-        unsafe {
-            match kind {
-                Norm::Euc | Norm::Fro => cblas_dnrm2(n, v.as_data().as_ptr(), 1),
-                Norm::Inf | Norm::Max => {
-                    let idx = cblas_idamax(n, v.as_data().as_ptr(), 1);
-                    f64::abs(v.get(idx as usize))
-                }
-                Norm::One => cblas_dasum(n, v.as_data().as_ptr(), 1),
-            }
-        }
+    if v.dim() == 0 {
+        return 0.0;
     }
-    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::portable::vec_norm_data(v.as_data(), kind)
+    match kind {
+        Norm::Euc | Norm::Fro => crate::base::blas_dispatch::dnrm2(v.as_data()),
+        Norm::Inf | Norm::Max => f64::abs(v.get(crate::base::blas_dispatch::idamax(v.as_data()))),
+        Norm::One => crate::base::blas_dispatch::dasum(v.as_data()),
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

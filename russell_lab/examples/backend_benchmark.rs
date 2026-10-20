@@ -46,10 +46,12 @@ fn best_of<F: FnMut()>(reps: usize, mut f: F) -> f64 {
 }
 
 fn main() {
-    let backend = if cfg!(feature = "open_blas") {
-        "open_blas"
-    } else if cfg!(feature = "intel_mkl") {
+    // `intel_mkl` first: when both features are enabled MKL is what is linked, so
+    // reporting `open_blas` there would mislabel the run.
+    let backend = if cfg!(feature = "intel_mkl") {
         "intel_mkl"
+    } else if cfg!(feature = "open_blas") {
+        "open_blas"
     } else {
         "native"
     };

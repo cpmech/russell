@@ -2,6 +2,7 @@
 
 mod as_array;
 mod auxiliary_blas;
+pub(crate) mod blas_dispatch;
 mod enums;
 mod find_min_max;
 mod find_valleys_and_peaks;

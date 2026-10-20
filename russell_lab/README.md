@@ -114,7 +114,8 @@ library to install, nothing to link. The following (Rust) features are available
 * `dev_lapack`: development only -- compiles the C shim against a locally built LAPACK
   so the native routines can be tested for numerical parity against the reference
 
-`open_blas` and `intel_mkl` are mutually exclusive. Note that the
+`intel_mkl` takes precedence over `open_blas`: enabling both is allowed and
+links MKL. Note that the
 [main README file](https://github.com/cpmech/russell) presents the steps to
 compile the required libraries according to each feature.
 

@@ -7,8 +7,12 @@
 //! against -- `inttypes.h` is missing).
 //!
 //! Two optional accelerators replace those routines with an external library,
-//! through the C shim `c_code/interface_blas.c`. They provide the same symbols, so
-//! enabling both is rejected while this script compiles:
+//! through the C shim `c_code/interface_blas.c`. They provide the same symbols,
+//! so only one library is ever linked: `intel_mkl` takes precedence, and
+//! `open_blas` is used only when it is enabled and `intel_mkl` is not. Enabling
+//! both is therefore MKL, not an error, and the same rule is written on every
+//! gate in the crate as
+//! `all(feature = "open_blas", not(feature = "intel_mkl"))`:
 //!
 //! * `open_blas` -- OpenBLAS, resolved through `pkg-config` with a fallback to
 //!   hard-coded paths (mainly Homebrew, where the `.pc` files are keg-only);
@@ -27,15 +31,12 @@
 const SHIM: &str = "c_code/interface_blas.c";
 
 fn main() {
-    // Both accelerators define the same `c_*` entry points. Rejecting the
-    // combination while the build script compiles gives an ordinary `error:` with
-    // the explanation, instead of a panic at build-script runtime or a wall of
-    // duplicate-symbol output at link time.
+    // Both accelerators define the same `c_*` entry points, so exactly one is
+    // compiled: MKL when `intel_mkl` is on, OpenBLAS only when it is the only
+    // accelerator. Saying so in the log is worthwhile, because a build with both
+    // features is legal and the choice is otherwise invisible.
     #[cfg(all(feature = "open_blas", feature = "intel_mkl"))]
-    compile_error!(
-        "russell_lab: features `open_blas` and `intel_mkl` are mutually exclusive; \
-         enable exactly one accelerator, or neither for the native Rust routines"
-    );
+    println!("cargo:warning=russell_lab: both `open_blas` and `intel_mkl` are enabled -- linking MKL");
 
     // The reference build exists so the *native* routines can be tested against
     // it; it is independent of the accelerators, so it comes first.
@@ -49,7 +50,7 @@ fn main() {
     println!("cargo:warning=russell_lab: using the native Rust BLAS/LAPACK (no external library)");
 }
 
-/// The external BLAS/LAPACK accelerators; at most one is enabled (see `main`).
+/// The external BLAS/LAPACK accelerators; MKL wins if both are enabled.
 #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 mod accelerator {
     use super::SHIM;

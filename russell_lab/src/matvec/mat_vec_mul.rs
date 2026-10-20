@@ -1,28 +1,6 @@
 use crate::StrError;
 use crate::matrix::Matrix;
 use crate::vector::Vector;
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-use crate::{CBLAS_COL_MAJOR, CBLAS_NO_TRANS, to_i32};
-
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-unsafe extern "C" {
-    // Performs one of the matrix-vector multiplication
-    // <https://www.netlib.org/lapack/explore-html/dc/da8/dgemv_8f.html>
-    fn cblas_dgemv(
-        layout: i32,
-        transa: i32,
-        m: i32,
-        n: i32,
-        alpha: f64,
-        a: *const f64,
-        lda: i32,
-        x: *const f64,
-        incx: i32,
-        beta: f64,
-        y: *mut f64,
-        incy: i32,
-    );
-}
 
 /// (dgemv) Performs the matrix-vector multiplication
 ///
@@ -76,32 +54,7 @@ pub fn mat_vec_mul(v: &mut Vector, alpha: f64, a: &Matrix, u: &Vector) -> Result
         v.fill(0.0);
         return Ok(());
     }
-    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-    {
-        let m_i32: i32 = to_i32(m);
-        let n_i32: i32 = to_i32(n);
-        let incx = 1;
-        let incy = 1;
-        let beta = 0.0;
-        unsafe {
-            cblas_dgemv(
-                CBLAS_COL_MAJOR,
-                CBLAS_NO_TRANS,
-                m_i32,
-                n_i32,
-                alpha,
-                a.as_data().as_ptr(),
-                m_i32,
-                u.as_data().as_ptr(),
-                incx,
-                beta,
-                v.as_mut_data().as_mut_ptr(),
-                incy,
-            );
-        }
-    }
-    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::portable::mat_vec_mul_data(v.as_mut_data(), alpha, a.as_data(), m, n, u.as_data());
+    crate::base::blas_dispatch::dgemv(alpha, a.as_data(), u.as_data(), 0.0, v.as_mut_data(), m, n);
     Ok(())
 }
 

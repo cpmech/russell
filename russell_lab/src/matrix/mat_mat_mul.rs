@@ -1,29 +1,5 @@
 use super::Matrix;
 use crate::StrError;
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-use crate::{CBLAS_COL_MAJOR, CBLAS_NO_TRANS, to_i32};
-
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-unsafe extern "C" {
-    // Performs the matrix-matrix multiplication
-    // <https://www.netlib.org/lapack/explore-html/d7/d2b/dgemm_8f.html>
-    fn cblas_dgemm(
-        layout: i32,
-        transa: i32,
-        transb: i32,
-        m: i32,
-        n: i32,
-        k: i32,
-        alpha: f64,
-        a: *const f64,
-        lda: i32,
-        b: *const f64,
-        ldb: i32,
-        beta: f64,
-        c: *mut f64,
-        ldc: i32,
-    );
-}
 
 /// (dgemm) Performs the matrix-matrix multiplication
 ///
@@ -75,45 +51,13 @@ pub fn mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix, beta: f64
         c.fill(0.0);
         return Ok(());
     }
-    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-    {
-        let m_i32: i32 = to_i32(m);
-        let n_i32: i32 = to_i32(n);
-        let k_i32: i32 = to_i32(k);
-        let lda = m_i32;
-        let ldb = k_i32;
-        unsafe {
-            cblas_dgemm(
-                CBLAS_COL_MAJOR,
-                CBLAS_NO_TRANS,
-                CBLAS_NO_TRANS,
-                m_i32,
-                n_i32,
-                k_i32,
-                alpha,
-                a.as_data().as_ptr(),
-                lda,
-                b.as_data().as_ptr(),
-                ldb,
-                beta,
-                c.as_mut_data().as_mut_ptr(),
-                m_i32,
-            );
-        }
-    }
-    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    {
-        // The blocked, AVX2-accelerated `dgemm`, not `portable`'s plain triple
-        // loop: `portable` exists for targets with no libc and no BLAS (wasm),
-        // where the matrices are small and a tuned kernel would not pay. On a
-        // native target it left the default build four to seven times slower
-        // than it needed to be, which is what a benchmark showed. `portable`
-        // remains for the wasm target below.
-        #[cfg(target_arch = "wasm32")]
-        crate::portable::mat_mat_mul_data(c.as_mut_data(), alpha, a.as_data(), b.as_data(), beta, m, n, k);
-        #[cfg(not(target_arch = "wasm32"))]
-        crate::native::blas::dgemm(alpha, a.as_data(), b.as_data(), beta, c.as_mut_data(), m, n, k);
-    }
+    // The blocked, AVX2-accelerated `dgemm` in the default build, or the linked
+    // library's through the shim; `portable` remains for wasm32, which has no
+    // libc for the shim and no BLAS to link.
+    #[cfg(target_arch = "wasm32")]
+    crate::portable::mat_mat_mul_data(c.as_mut_data(), alpha, a.as_data(), b.as_data(), beta, m, n, k);
+    #[cfg(not(target_arch = "wasm32"))]
+    crate::base::blas_dispatch::dgemm(alpha, a.as_data(), b.as_data(), beta, c.as_mut_data(), m, n, k);
     Ok(())
 }
 

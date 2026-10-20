@@ -1,14 +1,5 @@
 use super::Matrix;
 use crate::Norm;
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-use crate::to_i32;
-
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-unsafe extern "C" {
-    // Computes the matrix norm
-    // <https://www.netlib.org/lapack/explore-html/dc/d09/dlange_8f.html>
-    fn c_dlange(norm_code: i32, m: *const i32, n: *const i32, a: *const f64, lda: *const i32, work: *mut f64) -> f64;
-}
 
 /// (dlange) Computes the matrix norm
 ///
@@ -47,21 +38,17 @@ pub fn mat_norm(a: &Matrix, kind: Norm) -> f64 {
     if m == 0 || n == 0 {
         return 0.0;
     }
-    let norm_code = kind as i32;
-
-    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-    {
-        let m_i32 = to_i32(m);
-        let n_i32 = to_i32(n);
-        let lda = m_i32;
-        let mut work = if kind == Norm::Inf { vec![0.0; m] } else { Vec::new() };
-        // Safety: the shim is linked in this configuration.
-        unsafe { c_dlange(norm_code, &m_i32, &n_i32, a.as_data().as_ptr(), &lda, work.as_mut_ptr()) }
-    }
-    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    {
-        crate::native::lapack::dlange_by_code(norm_code, a.as_data(), m, n)
-    }
+    // These are the characters LAPACK's `dlange` takes; `'O'` is its other
+    // spelling of the one-norm, and `Euc` and `Fro` are both the Frobenius norm
+    // for a matrix (see `Norm`). The mapping is stated here rather than in the
+    // C shim so the native and accelerated paths resolve the same norm.
+    let norm = match kind {
+        Norm::Euc | Norm::Fro => 'F',
+        Norm::Inf => 'I',
+        Norm::Max => 'M',
+        Norm::One => 'O',
+    };
+    crate::base::blas_dispatch::dlange(norm, a.as_data(), m, n)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

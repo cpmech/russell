@@ -146,7 +146,7 @@ The following crates are not part of `russell` but are associated with it and re
 
 This project employs [SuiteSparse](https://github.com/DrTimothyAldenDavis/SuiteSparse) (or [MUMPS](https://mumps-solver.org)) for the solution of large (sparse) linear systems of equations. Dense linear algebra comes from `russell_lab`'s own Rust implementation, and [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) or [Intel MKL](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html) may be selected as accelerators. See the [Installation](#installation) section for instructions on how to install these libraries on different platforms.
 
-The default build needs no external BLAS: `russell_lab` ships its own Rust implementation. To use an external one instead, select `open_blas` (OpenBLAS) or `intel_mkl` (Intel oneAPI MKL); the two are mutually exclusive and the build fails if both are enabled.
+The default build needs no external BLAS: `russell_lab` ships its own Rust implementation. To use an external one instead, select `open_blas` (OpenBLAS) or `intel_mkl` (Intel oneAPI MKL); if both are enabled, `intel_mkl` takes precedence and OpenBLAS is not linked.
 
 `russell_sparse` cannot work without UMFPACK: the crate always has a direct solver, and the features only choose where it comes from and whether MUMPS joins it:
 

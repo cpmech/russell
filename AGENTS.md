@@ -354,22 +354,41 @@ can reach adds it here in the same PR** — otherwise the next person spends a d
 rediscovering why a file sits at 84%.
 
 Measured 2026-10-19 with the command above: workspace **74,192 / 76,273 lines =
-97.27%**, 2,081 missed.
+97.27%**, 2,081 missed. The native/LAPACK rows were refreshed on 2026-10-20 from the
+lib-only run quoted below, which reports the same counts for those files; every other
+row is unchanged from the workspace measurement.
 
 | where | missed | why |
 |---|---|---|
 | `russell_lab/src/native/lapack/qz.rs` | 547 | `dhgeqz`'s and `dggbal_p`'s rescue and permutation arms, `dtgevc`'s guard paths. Sweeping `dgeev` and `dggev` over the reference's own spectra — including a singular `B` — moved this file by zero lines, because those families are built to be *solvable* and cannot reach code whose job is to refuse or rescue. `dget54`, the checker for those factors, needs `Q` and `Z` out of `dggev`; the owner decided the port's API does not grow for it, so that check is not writable here |
-| `native/lapack/zeig.rs` | 303 | `zsteqr`'s deflation and QR-section arms, `zlarfg`'s underflow rescue |
+| `native/lapack/zeig.rs` | 204 | `zsteqr`'s remaining deflation arms, `zlarfg`'s underflow rescue, `zlatrs_upper`'s rescaling |
 | `native/lapack/eig.rs` | 203 | `dlaln2` and `dlanv2`: 2x2 blocks whose entries force a rescale |
-| `native/lapack/sym.rs`, `svd.rs`, `zsvd.rs` | 102, 76, 68 | `dsteqr`'s remaining arms, `dbdsqr`/`zbdsqr` convergence for repeated and zero singular values |
+| `native/lapack/sym.rs`, `svd.rs`, `zsvd.rs` | 96, 76, 51 | `dsteqr`'s remaining arms, `dbdsqr`/`zbdsqr` convergence for repeated and zero singular values |
 | `russell_pde/src/transfinite_samples.rs`, `russell_lab/src/algo/bspline.rs` | 79, 50 | `if SAVE_FIGURE { ... }` blocks: plotting code that writes SVG to a developer's disk |
 | `russell_tensor/src/polar_higham.rs` | 67 | the `dd2 == 0` branch, which needs an isotropic spectrum, and the ill-conditioned fallbacks |
 | `russell_nonlin/src/solver.rs`, `solver_arclength.rs` | 33, 27 | scenario code: the `dlambda/ds` guard needs a turning point reached while the listed step is still legal, the precise-stop redo needs `Stop::UComp`, and the failure limits need a deliberately failing system |
 | `russell_sparse/src/util.rs` | 31 | the `nvidia-smi` probe without a GPU, the `/proc/cpuinfo` fallback that `lscpu` pre-empts, and the false arms of `cfg!(feature = ...)` in a build that has the feature |
-| `native/lapack/families.rs` | 32 | harness argument checks that the tests do not exercise |
+| `native/lapack/families.rs` | 43 | harness argument checks the tests do not exercise, the `wn == 0` arm of a reflector built from a zero random vector in `dlagge`/`dlagsy` (probability zero), `dlatms`'s `INFO = 2` guard for an all-zero spectrum (unreachable: `latm1` always scales the maximum to one), and the assertion-failure lines of the fixture tests |
 | `russell_tensor/src/eigen_projectors.rs` | 26 | `if VERBOSE { ... }` diagnostics |
 
 The remaining ~400 lines are spread over many files, none above 25.
+
+**Measured 2026-10-20 for the SEP and SVD sweeps** (`cargo llvm-cov -p russell_lab
+--lib --lcov`, 39,065 / 40,559 lines = 96.32%, 1,494 missed): the four sweeps moved
+**122 production lines**, and they were not evenly distributed:
+
+| sweep | moved | where |
+|---|---|---|
+| `dsyev` | 6 | `dsteqr` |
+| `zheev` | 99 | `zsteqr` 93, `zlasr_v` 6 |
+| `dgesvd` | **0** | — |
+| `zgesvd` | 17 | `zbdsqr` |
+
+So the value here is not the line count. `dgesvd` moved nothing because `dbdsqr`'s
+convergence and rescue arms were already reached by the hand-written shapes in
+`svd.rs`; the family grid adds cases, not branches. The complex twins moved the most
+for the opposite reason — `zsteqr` had almost no coverage before, so an ordinary
+well-conditioned spectrum was enough.
 
 Two rules that follow:
 

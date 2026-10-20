@@ -819,9 +819,356 @@ pub fn latm4(p: &Latm4, n: usize, a: &mut [f64], seed: &mut [u32; 4]) {
     }
 }
 
+/// Which symmetry `DLATMS` builds into the matrix: its `SYM`.
+///
+/// `SYM = 'H'`, the Hermitian spelling the reference's complex twin uses, means
+/// the same thing as `'S'` for a real matrix and is not a variant of its own.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum DlatmsSym {
+    /// `SYM = 'N'`: nonsymmetric, `A = U D V`, with the singular values in `D`.
+    NonSymmetric,
+    /// `SYM = 'P'`: symmetric, `A = U D U^T`, with non-negative eigenvalues in `D`.
+    PositiveSymmetric,
+    /// `SYM = 'S'`: symmetric, `A = U D U^T`, with random signs on `D` when `mode`
+    /// is neither `0`, `6` nor `-6`.
+    Symmetric,
+}
+
+/// How `DLATMS` stores the result: its `PACK`.
+///
+/// The triangular spellings `'U'` and `'L'` are `PACK` values, not `SYM` ones --
+/// the reference's `SYM` takes `'N'`, `'P'`, `'S'` and `'H'` only -- so the two
+/// half-matrix requests live here.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum DlatmsPack {
+    /// `PACK = 'N'`: the whole matrix.
+    Full,
+    /// `PACK = 'U'`: symmetric, the strictly lower triangle zeroed.
+    Upper,
+    /// `PACK = 'L'`: symmetric, the strictly upper triangle zeroed.
+    Lower,
+}
+
+/// The arguments of `DLATMS`.
+///
+/// `kl`, `ku` and `lda` are absent on purpose: the port builds the **dense**
+/// matrix only, which is the case the SEP and bidiagonal families ask for
+/// (`KL = KU = N`, clamped by the reference to the full bandwidth), and there the
+/// bandwidth reduction runs zero iterations — neither `DLAGGE`'s nor `DLAGSY`'s
+/// annihilation loop is entered. What that leaves out is everything the bandwidth
+/// would otherwise decide:
+///
+/// - **Method B, the Givens rotations.** The reference switches to `DLAROT` when
+///   the bandwidth is under `0.3 (m + n)` and `LDA >= M`, or when `LDA < M`. That
+///   is the only route to the banded formats (`PACK = 'B'`, `'Q'`, `'Z'`) and to
+///   `'C'`/`'R'`, so none of those are built here, and `DLAROT` is not ported.
+/// - **The banded general case**, `KL < M-1` or `KU < N-1` under Method A. It is
+///   reachable through `DLAGGE`'s annihilation loop, which is written for the
+///   banded shapes the SVD and generalized sweeps do not need.
+/// - **The diagonal shortcut** the reference takes before choosing a method
+///   (`KL = KU = 0`), which only fires for a dense call when `m == n == 1`: the
+///   condition is `LLB == 0 && UUB == 0` with `LLB = M-1` and `UUB = N-1`. That
+///   case is handled here, because drawing a reflection for a `1 x 1` matrix
+///   would disagree with the reference; `M x 1` and `1 x N` with `M, N > 1` do
+///   not shortcut, and take the dense generation like any other matrix.
+pub struct Dlatms {
+    /// Distribution of the random entries: `DIST`.
+    pub dist: Dist,
+    /// `SYM`.
+    pub sym: DlatmsSym,
+    /// `MODE`: the shape of `D`, as in [`latm1`]. `0` keeps the `d` given by the
+    /// caller.
+    pub mode: i32,
+    /// `COND`: condition number of the spectrum.
+    pub cond: f64,
+    /// `DMAX`: target magnitude of the largest entry of `D`.
+    pub dmax: f64,
+    /// `PACK`: the storage written.
+    pub pack: DlatmsPack,
+}
+
+/// Port of `DLATMS`: a random matrix with a prescribed spectrum — the singular
+/// values, or the eigenvalues when it is symmetric.
+///
+/// `a` is the `m x n` matrix in column-major order and `d` the `min(m, n)`-entry
+/// spectrum, which is read when `mode == 0` and overwritten otherwise. The steps
+/// are the reference's: the spectrum from [`latm1`], its scaling to `dmax`, the
+/// random orthogonal factors by [`dlagge`] (nonsymmetric) or [`dlagsy`]
+/// (symmetric), and the triangular zeroing `pack` asks for.
+///
+/// Returns the reference's `INFO` on failure: `-1` for `m != n` with a symmetric
+/// `sym`, `-7` for `|mode| > 6`, `-8` for `cond < 1` where `mode` takes a
+/// condition number, `-12` for a triangular `pack` with a nonsymmetric `sym`, `1`
+/// when [`latm1`] rejects the mode, and `2` when the spectrum is all zeros.
+pub fn dlatms(p: &Dlatms, m: usize, n: usize, a: &mut [f64], d: &mut [f64], seed: &mut [u32; 4]) -> Result<(), i32> {
+    assert_eq!(a.len(), m * n, "dlatms: a must be m*n");
+    let mnmin = m.min(n);
+    assert_eq!(d.len(), mnmin, "dlatms: d must have min(m, n) entries");
+    if m == 0 || n == 0 {
+        return Ok(());
+    }
+
+    // 1) Decode and test the input parameters. The reference's negative lengths
+    // (`INFO = -1`, `-2`) are unrepresentable in `usize`, so M != N is the only
+    // shape check left; `INFO = -3`, `-5`, `-10`, `-11`, `-14` belong to `dist`,
+    // `sym`, `kl`, `ku` and `lda`, which are enums or absent here.
+    if p.sym != DlatmsSym::NonSymmetric && m != n {
+        return Err(-1);
+    }
+    if p.mode.abs() > 6 {
+        return Err(-7);
+    }
+    if p.mode != 0 && p.mode.abs() != 6 && p.cond < 1.0 {
+        return Err(-8);
+    }
+    if p.sym == DlatmsSym::NonSymmetric && p.pack != DlatmsPack::Full {
+        return Err(-12);
+    }
+
+    // The seed is normalized the reference's way: four 12-bit words, the last odd.
+    for s in seed.iter_mut() {
+        *s %= 4096;
+    }
+    if seed[3] % 2 != 1 {
+        seed[3] += 1;
+    }
+
+    // 2) Set up D. Only `SYM = 'S'` and `'H'` sign it randomly.
+    let irsign = if p.sym == DlatmsSym::Symmetric { 1 } else { 0 };
+    latm1(p.mode, p.cond, irsign, p.dist, seed, d).map_err(|_| 1)?;
+    if p.mode != 0 && p.mode.abs() != 6 {
+        let temp = d.iter().fold(0.0f64, |mx, v| mx.max(v.abs()));
+        if temp > 0.0 {
+            let alpha = p.dmax / temp;
+            for v in d.iter_mut() {
+                *v *= alpha;
+            }
+        } else {
+            return Err(2);
+        }
+    }
+
+    // 3) Generate the dense matrix. `m == n == 1` is the reference's diagonal
+    // shortcut (`LLB = UUB = 0`): it copies D and returns before choosing a
+    // method. For a 1 x 1 the dense generation would otherwise draw a reflection
+    // the reference never draws.
+    if m == 1 && n == 1 {
+        a.fill(0.0);
+        for i in 0..mnmin {
+            a[i + i * m] = d[i];
+        }
+    } else if p.sym == DlatmsSym::NonSymmetric {
+        dlagge(m, n, d, a, seed);
+    } else {
+        dlagsy(m, d, a, seed);
+    }
+
+    // 4) Pack: zero the triangle the caller said to ignore. The reference packs
+    // here because Method A always generates the full matrix (`IPACKG = 0`).
+    match p.pack {
+        DlatmsPack::Full => {}
+        DlatmsPack::Upper => {
+            for j in 0..n {
+                for i in (j + 1)..n {
+                    a[i + j * n] = 0.0;
+                }
+            }
+        }
+        DlatmsPack::Lower => {
+            for j in 1..n {
+                for i in 0..j {
+                    a[i + j * n] = 0.0;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Port of `DLAGGE` for the dense case: `A = U D V` with `U` and `V` random
+/// orthogonal, built as one Householder reflection at a time from both sides.
+///
+/// The reference's bandwidth reduction (`DO 70 I = 1, MAX(M-1-KL, N-1-KU)`) is
+/// not part of this port — with `KL = M-1` and `KU = N-1` its trip count is zero,
+/// which is the only bandwidth the family sweeps ask for.
+fn dlagge(m: usize, n: usize, d: &[f64], a: &mut [f64], seed: &mut [u32; 4]) {
+    assert_eq!(a.len(), m * n, "dlagge: a must be m*n");
+    assert!(d.len() >= m.min(n), "dlagge: d is too short");
+    a.fill(0.0);
+    for i in 0..m.min(n) {
+        a[i + i * m] = d[i];
+    }
+
+    // The reference's WORK holds both the reflector and its image; they are kept
+    // apart here, which changes no arithmetic.
+    let lw = m.max(n);
+    let mut w = vec![0.0f64; lw];
+    let mut y = vec![0.0f64; lw];
+
+    // `DO 40 I = MIN(M, N), 1, -1`, with the two blocks guarded by `I < M` and
+    // `I < N` -- that is `i + 1 < m` and `i + 1 < n` in zero-based terms, so the
+    // first iteration draws nothing when the matrix is square.
+    for i in (0..m.min(n)).rev() {
+        if i + 1 < m {
+            // A(i:m, i:n) -= tau * w * (w^T A(i:m, i:n))
+            let len = m - i;
+            larnv(Dist::Normal, seed, len, &mut w[..len]);
+            let wn = dnrm2_reference(&w[..len]);
+            let wa = if w[0] < 0.0 { -wn } else { wn };
+            let tau = if wn == 0.0 {
+                0.0
+            } else {
+                let wb = w[0] + wa;
+                let inv = 1.0 / wb;
+                for v in w[1..len].iter_mut() {
+                    *v *= inv;
+                }
+                w[0] = 1.0;
+                wb / wa
+            };
+            if tau != 0.0 {
+                let ncols = n - i;
+                for j in 0..ncols {
+                    let mut sum = 0.0;
+                    for k in 0..len {
+                        sum += a[(i + k) + (i + j) * m] * w[k];
+                    }
+                    y[j] = sum;
+                }
+                for j in 0..ncols {
+                    for k in 0..len {
+                        a[(i + k) + (i + j) * m] -= tau * w[k] * y[j];
+                    }
+                }
+            }
+        }
+        if i + 1 < n {
+            // A(i:m, i:n) -= tau * (A(i:m, i:n) w) * w^T
+            let len = n - i;
+            larnv(Dist::Normal, seed, len, &mut w[..len]);
+            let wn = dnrm2_reference(&w[..len]);
+            let wa = if w[0] < 0.0 { -wn } else { wn };
+            let tau = if wn == 0.0 {
+                0.0
+            } else {
+                let wb = w[0] + wa;
+                let inv = 1.0 / wb;
+                for v in w[1..len].iter_mut() {
+                    *v *= inv;
+                }
+                w[0] = 1.0;
+                wb / wa
+            };
+            if tau != 0.0 {
+                let nrows = m - i;
+                for k in 0..nrows {
+                    let mut sum = 0.0;
+                    for j in 0..len {
+                        sum += a[(i + k) + (i + j) * m] * w[j];
+                    }
+                    y[k] = sum;
+                }
+                for j in 0..len {
+                    for k in 0..nrows {
+                        a[(i + k) + (i + j) * m] -= tau * y[k] * w[j];
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Port of `DLAGSY` for the dense case: `A = U D U^T` on the lower triangle, one
+/// symmetric rank-2 update at a time, then mirrored into the upper one.
+///
+/// The reference's bandwidth reduction (`DO 60 I = 1, N-1-K`) is not part of this
+/// port: with `K = N-1` its trip count is zero. The `DSYMV` product is written in
+/// the reference BLAS's order, column by column, because the running `t2` sum is
+/// what makes the result bit-identical rather than merely accurate.
+fn dlagsy(n: usize, d: &[f64], a: &mut [f64], seed: &mut [u32; 4]) {
+    assert_eq!(a.len(), n * n, "dlagsy: a must be n*n");
+    assert!(d.len() >= n, "dlagsy: d is too short");
+    a.fill(0.0);
+    for i in 0..n {
+        a[i + i * n] = d[i];
+    }
+    let mut w = vec![0.0f64; n];
+    let mut y = vec![0.0f64; n];
+
+    for i in (0..n.saturating_sub(1)).rev() {
+        let len = n - i;
+        larnv(Dist::Normal, seed, len, &mut w[..len]);
+        let wn = dnrm2_reference(&w[..len]);
+        let wa = if w[0] < 0.0 { -wn } else { wn };
+        let tau = if wn == 0.0 {
+            0.0
+        } else {
+            let wb = w[0] + wa;
+            let inv = 1.0 / wb;
+            for v in w[1..len].iter_mut() {
+                *v *= inv;
+            }
+            w[0] = 1.0;
+            wb / wa
+        };
+        if tau == 0.0 {
+            continue;
+        }
+        // y := tau * A(i:n, i:n) * w, DSYMV('Lower') with beta = 0.
+        //
+        // The reference takes the diagonal term out of the inner loop and adds it
+        // to `y[j]` on its own: the loop runs over `i = j+1..n` and the running
+        // `t2` gathers the row-`j` contributions from the columns to its right.
+        // Keeping the diagonal inside the loop doubles it -- measured, and it was
+        // this port's first bug in the routine.
+        for v in y[..len].iter_mut() {
+            *v = 0.0;
+        }
+        for j in 0..len {
+            let t1 = tau * w[j];
+            let mut t2 = 0.0;
+            y[j] += t1 * a[(i + j) + (i + j) * n];
+            for k in (j + 1)..len {
+                let akj = a[(i + k) + (i + j) * n];
+                y[k] += t1 * akj;
+                t2 += akj * w[k];
+            }
+            y[j] += tau * t2;
+        }
+        // v := y - 1/2 tau (y, w) w
+        let mut dot = 0.0;
+        for k in 0..len {
+            dot += y[k] * w[k];
+        }
+        let alpha = -0.5 * tau * dot;
+        for k in 0..len {
+            y[k] += alpha * w[k];
+        }
+        // A(i:n, i:n) -= w v^T + v w^T, DSYR2('Lower', -1).
+        for j in 0..len {
+            if w[j] != 0.0 || y[j] != 0.0 {
+                let t1 = -y[j];
+                let t2 = -w[j];
+                for k in j..len {
+                    a[(i + k) + (i + j) * n] += w[k] * t1 + y[k] * t2;
+                }
+            }
+        }
+    }
+
+    // The reference finishes by mirroring the lower triangle into the upper one.
+    for j in 0..n {
+        for i in (j + 1)..n {
+            a[j + i * n] = a[i + j * n];
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Complex64;
+    use crate::native::lapack::checkers::get22;
     use crate::native::lapack::eig::dgeev;
     use crate::native::lapack::qz::dggev;
 
@@ -1669,6 +2016,1090 @@ mod tests {
             assert_eq!(seed, want_seed, "case {k}: seed after the call");
         }
     }
+    /// `DLATMS` pinned against the reference build, case by case.
+    ///
+    /// Twelve cases: the dense general matrix at three aspect ratios, `MODE = 0`
+    /// with a prescribed spectrum and `MODE = 6` with a random one, the symmetric
+    /// forms with `SYM = 'S'` (random signs on the spectrum) and `'P'` (none), the
+    /// two triangular packings, the `MODE < 0` reversal at `COND = 1e14`, the `1 x 1`
+    /// and `N x 1` diagonal shortcuts, and a `2 x 2`.
+    ///
+    /// The seed after each call is compared exactly, which pins not just the values
+    /// but the order and the count of the draws: a port that draws the right numbers
+    /// in the wrong order still fails here, and that was the shape of every
+    /// transcription bug in this module so far.
+    ///
+    /// `d` is passed in as the expected spectrum, which is correct for both halves:
+    /// `MODE = 0` keeps what the caller gave it, and every other mode overwrites it.
+    #[test]
+    fn dlatms_matches_the_reference_matrices() {
+        let d1: [f64; 5] = [
+            1.0,
+            0.1778279410038923,
+            0.0316227766016838,
+            0.005623413251903492,
+            0.0010000000000000002,
+        ];
+        let a1: [f64; 25] = [
+            0.34947618210725895,
+            -0.3500407307662794,
+            -0.03623859928904221,
+            0.43458919724104705,
+            0.10093006686815045, // column 1
+            -0.19482004171386136,
+            0.18008528903496984,
+            0.0805346482341642,
+            -0.20992597033142693,
+            0.005061242779380713, // column 2
+            0.11228271868242527,
+            -0.14514089638932967,
+            -0.06662409001525742,
+            0.10039693313409319,
+            -0.028125422974753077, // column 3
+            0.06296619045603738,
+            -0.07004807981653652,
+            -0.06915579720032988,
+            0.052560479319858786,
+            -0.039047188007593395, // column 4
+            -0.31983077789978837,
+            0.2929893692413704,
+            -0.025744238239034135,
+            -0.4337853075195523,
+            -0.15089266867457166, // column 5
+        ];
+        let d2: [f64; 4] = [10000000000.0, 10000.0, 10000.0, 10000.0];
+        let a2: [f64; 24] = [
+            4770788363.882683,
+            -3744274313.070016,
+            3644115892.749751,
+            393935677.41646165,
+            -4664894687.688498,
+            -1067619599.4919305, // column 1
+            -2410165637.096653,
+            1891591976.769024,
+            -1840982637.7584848,
+            -199014075.53301436,
+            2356670435.6023116,
+            539354053.8868693, // column 2
+            1425033288.1263006,
+            -1118415774.6655731,
+            1088499984.60656,
+            117660701.9353508,
+            -1393402549.5862982,
+            -318903942.75177187, // column 3
+            727459536.6919003,
+            -570937601.4896286,
+            555656053.0636292,
+            60066514.71434181,
+            -711319957.3847727,
+            -162795640.34023362, // column 4
+        ];
+        let d3: [f64; 4] = [1e-10, 1e-10, 1e-10, 1e-12];
+        let a3: [f64; 24] = [
+            2.966176059666874e-11,
+            -7.409087611884273e-11,
+            1.2564656051463384e-11,
+            -7.97982345360008e-12, // column 1
+            1.0119741518886153e-11,
+            -7.562612347112737e-12,
+            7.500852201627117e-12,
+            4.3324435176892676e-12, // column 2
+            4.320032230366921e-11,
+            -3.1894751767464455e-11,
+            3.4809759603949126e-11,
+            -3.996993823592404e-12, // column 3
+            -3.9655960639169344e-11,
+            -4.432825200894596e-11,
+            -5.859436410627548e-11,
+            2.2838921699193816e-11, // column 4
+            2.1854777550169392e-11,
+            -3.4972646349609665e-12,
+            -4.982356013041861e-12,
+            8.999131751407973e-11, // column 5
+            2.1809074497100447e-11,
+            3.35755697073258e-11,
+            2.158486885254907e-11,
+            2.982969927986295e-11, // column 6
+        ];
+        let d4: [f64; 4] = [4.0, 3.0, 2.0, 1.0];
+        let a4: [f64; 16] = [
+            -1.7633691453242482,
+            1.3132480164870701,
+            0.5797952918176301,
+            1.9353518466185577, // column 1
+            -2.052796122607038,
+            -0.29560147731796005,
+            -1.2801078303810702,
+            -1.6610302269006387, // column 2
+            -0.33918311392703726,
+            -2.2589766479821485,
+            0.9308219576414839,
+            -0.9407789376876112, // column 3
+            -1.0140108188642079,
+            -1.5885226168245183,
+            -1.1987593064306756,
+            -0.653413192709643, // column 4
+        ];
+        let d5: [f64; 3] = [0.2391086105639708, 0.45970494638555337, 0.2674507074865282];
+        let a5: [f64; 15] = [
+            0.258216593237514,
+            0.2128668781174073,
+            0.09248150521675896,
+            -0.1472347627783297,
+            0.03443799166011409, // column 1
+            -0.003981287109794673,
+            0.238810312801468,
+            -0.06552669724068982,
+            0.10477341450825534,
+            0.005757511298218453, // column 2
+            0.16316934662674026,
+            0.07135166514880575,
+            -0.1318972108790163,
+            -0.10790891438831977,
+            0.25203048363142855, // column 3
+        ];
+        let d6: [f64; 5] = [
+            1.0,
+            0.1778279410038923,
+            0.0316227766016838,
+            -0.005623413251903492,
+            0.0010000000000000002,
+        ];
+        let a6: [f64; 25] = [
+            0.029461178707149482,
+            -0.058684604527388134,
+            0.047267964073456,
+            0.06054036628673165,
+            -0.14194140890920703, // column 1
+            -0.058684604527388134,
+            0.34046962988745094,
+            -0.10273822060751979,
+            -0.08740629969433211,
+            0.2981651759031996, // column 2
+            0.047267964073456,
+            -0.10273822060751979,
+            0.11195299968752104,
+            0.07975112004832606,
+            -0.23732203652927125, // column 3
+            0.06054036628673165,
+            -0.08740629969433211,
+            0.07975112004832606,
+            0.10589819888840743,
+            -0.23752352675576444, // column 4
+            -0.14194140890920703,
+            0.2981651759031996,
+            -0.23732203652927125,
+            -0.23752352675576444,
+            0.6170452971831442, // column 5
+        ];
+        let d7: [f64; 5] = [
+            3.566902957270166e-11,
+            4.6763386106029544e-12,
+            2.7474064038836372e-11,
+            2.284557281309629e-12,
+            1e-10,
+        ];
+        let a7: [f64; 25] = [
+            1.403402819047037e-11,
+            0.0,
+            0.0,
+            0.0,
+            0.0, // column 1
+            -5.491868229251435e-12,
+            4.1727887558099137e-11,
+            0.0,
+            0.0,
+            0.0, // column 2
+            -1.4724665225103058e-11,
+            9.318370403439242e-12,
+            2.4657826981078578e-11,
+            0.0,
+            0.0, // column 3
+            5.5815670100303985e-12,
+            -2.453470804881488e-11,
+            -1.795058393446134e-11,
+            8.110087671056663e-11,
+            0.0, // column 4
+            7.319355632171069e-12,
+            -5.78509811993597e-12,
+            -6.902161207076551e-12,
+            -2.162192019870387e-12,
+            8.583370063235891e-12, // column 5
+        ];
+        let d8: [f64; 5] = [10000000000.0, 10000000000.0, 10000000000.0, 10000000000.0, 100000000.0];
+        let a8: [f64; 25] = [
+            8236041978.022697,
+            -246282033.88396597,
+            2068179110.815214,
+            -2738970491.3992305,
+            1584820963.6722574, // column 1
+            0.0,
+            9965614351.669193,
+            288757074.4325004,
+            -382412288.1415422,
+            221271099.0920438, // column 2
+            0.0,
+            0.0,
+            7575132298.433214,
+            3211347143.681659,
+            -1858147172.7852542, // column 3
+            0.0,
+            0.0,
+            0.0,
+            5747087368.696882,
+            2460816980.6577473, // column 4
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            8576124003.178024, // column 5
+        ];
+        let d9: [f64; 4] = [
+            -1.0000000000000019e-14,
+            4.6415888336127846e-10,
+            2.154434690031885e-05,
+            1.0,
+        ];
+        let a9: [f64; 16] = [
+            6.141026689124035e-05,
+            0.004435301378412105,
+            0.0019516794995135562,
+            -0.005743219274588545, // column 1
+            0.004435301378412105,
+            0.34829925058264555,
+            0.15395786782475163,
+            -0.45084825568525666, // column 2
+            0.0019516794995135562,
+            0.15395786782475163,
+            0.06806949182007169,
+            -0.19928369170791307, // column 3
+            -0.005743219274588545,
+            -0.45084825568525666,
+            -0.19928369170791307,
+            0.5835913921414408, // column 4
+        ];
+        let d10: [f64; 1] = [1.0];
+        let a10: [f64; 1] = [
+            1.0, // column 1
+        ];
+        let d11: [f64; 1] = [1.0];
+        let a11: [f64; 3] = [
+            -0.6057510633139085,
+            -0.5841258437395268,
+            -0.5402431378274554, // column 1
+        ];
+        let d12: [f64; 2] = [1.0, 0.1];
+        let a12: [f64; 4] = [
+            0.585072443172995,
+            0.4486311666947325, // column 1
+            0.4486311666947325,
+            0.5149275568270046, // column 2
+        ];
+
+        let cases: [(Dlatms, usize, usize, [u32; 4], &[f64], &[f64]); 12] = [
+            (
+                Dlatms {
+                    dist: Dist::Uniform,
+                    sym: DlatmsSym::NonSymmetric,
+                    mode: 3,
+                    cond: 1000.0,
+                    dmax: 1.0,
+                    pack: DlatmsPack::Full,
+                },
+                5,
+                5,
+                [3609, 4014, 839, 2343],
+                &d1,
+                &a1,
+            ),
+            (
+                Dlatms {
+                    dist: Dist::Symmetric,
+                    sym: DlatmsSym::NonSymmetric,
+                    mode: 1,
+                    cond: 1000000.0,
+                    dmax: 10000000000.0,
+                    pack: DlatmsPack::Full,
+                },
+                6,
+                4,
+                [1205, 1950, 294, 671],
+                &d2,
+                &a2,
+            ),
+            (
+                Dlatms {
+                    dist: Dist::Normal,
+                    sym: DlatmsSym::NonSymmetric,
+                    mode: 2,
+                    cond: 100.0,
+                    dmax: 1e-10,
+                    pack: DlatmsPack::Full,
+                },
+                4,
+                6,
+                [1205, 1950, 294, 671],
+                &d3,
+                &a3,
+            ),
+            (
+                Dlatms {
+                    dist: Dist::Uniform,
+                    sym: DlatmsSym::NonSymmetric,
+                    mode: 0,
+                    cond: 1.0,
+                    dmax: 1.0,
+                    pack: DlatmsPack::Full,
+                },
+                4,
+                4,
+                [585, 644, 3246, 663],
+                &d4,
+                &a4,
+            ),
+            (
+                Dlatms {
+                    dist: Dist::Uniform,
+                    sym: DlatmsSym::NonSymmetric,
+                    mode: 6,
+                    cond: 1.0,
+                    dmax: 1.0,
+                    pack: DlatmsPack::Full,
+                },
+                5,
+                3,
+                [468, 100, 374, 2435],
+                &d5,
+                &a5,
+            ),
+            (
+                Dlatms {
+                    dist: Dist::Uniform,
+                    sym: DlatmsSym::Symmetric,
+                    mode: 3,
+                    cond: 1000.0,
+                    dmax: 1.0,
+                    pack: DlatmsPack::Full,
+                },
+                5,
+                5,
+                [1819, 1031, 2352, 2291],
+                &d6,
+                &a6,
+            ),
+            (
+                Dlatms {
+                    dist: Dist::Symmetric,
+                    sym: DlatmsSym::Symmetric,
+                    mode: 5,
+                    cond: 10000.0,
+                    dmax: 1e-10,
+                    pack: DlatmsPack::Upper,
+                },
+                5,
+                5,
+                [2733, 318, 317, 1375],
+                &d7,
+                &a7,
+            ),
+            (
+                Dlatms {
+                    dist: Dist::Normal,
+                    sym: DlatmsSym::PositiveSymmetric,
+                    mode: 2,
+                    cond: 100.0,
+                    dmax: 10000000000.0,
+                    pack: DlatmsPack::Lower,
+                },
+                5,
+                5,
+                [875, 1624, 2364, 2295],
+                &d8,
+                &a8,
+            ),
+            (
+                Dlatms {
+                    dist: Dist::Uniform,
+                    sym: DlatmsSym::Symmetric,
+                    mode: -3,
+                    cond: 100000000000000.0,
+                    dmax: 1.0,
+                    pack: DlatmsPack::Full,
+                },
+                4,
+                4,
+                [3186, 2038, 187, 2079],
+                &d9,
+                &a9,
+            ),
+            (
+                Dlatms {
+                    dist: Dist::Uniform,
+                    sym: DlatmsSym::NonSymmetric,
+                    mode: 3,
+                    cond: 10.0,
+                    dmax: 1.0,
+                    pack: DlatmsPack::Full,
+                },
+                1,
+                1,
+                [1988, 1989, 1990, 1991],
+                &d10,
+                &a10,
+            ),
+            (
+                Dlatms {
+                    dist: Dist::Uniform,
+                    sym: DlatmsSym::NonSymmetric,
+                    mode: 1,
+                    cond: 100.0,
+                    dmax: 1.0,
+                    pack: DlatmsPack::Full,
+                },
+                3,
+                1,
+                [1547, 1078, 3168, 2783],
+                &d11,
+                &a11,
+            ),
+            (
+                Dlatms {
+                    dist: Dist::Uniform,
+                    sym: DlatmsSym::Symmetric,
+                    mode: 1,
+                    cond: 10.0,
+                    dmax: 1.0,
+                    pack: DlatmsPack::Full,
+                },
+                2,
+                2,
+                [1547, 1078, 3168, 2783],
+                &d12,
+                &a12,
+            ),
+        ];
+        let mut worst = 0.0f64;
+        for (k, (params, m, n, want_seed, want_d, want_a)) in cases.iter().enumerate() {
+            let mut seed = SEEDY;
+            let mut a = vec![0.0f64; m * n];
+            let mut d = want_d.to_vec();
+            dlatms(params, *m, *n, &mut a, &mut d, &mut seed).expect("dlatms");
+            assert_eq!(seed, *want_seed, "case {}: seed after the call", k + 1);
+            for (i, (got, want)) in d.iter().zip(want_d.iter()).enumerate() {
+                if *want == 0.0 {
+                    assert_eq!(*got, 0.0, "case {}, d[{}]", k + 1, i);
+                } else {
+                    let rel = (got - want).abs() / want.abs();
+                    worst = worst.max(rel);
+                    assert!(
+                        rel <= 1e-13,
+                        "case {}, d[{}] = {:e}, reference {:e}",
+                        k + 1,
+                        i,
+                        got,
+                        want
+                    );
+                }
+            }
+            for (i, (got, want)) in a.iter().zip(want_a.iter()).enumerate() {
+                if *want == 0.0 {
+                    assert_eq!(
+                        *got,
+                        0.0,
+                        "case {}, a[{}] = {:e} where the reference has zero",
+                        k + 1,
+                        i,
+                        got
+                    );
+                } else {
+                    let rel = (got - want).abs() / want.abs();
+                    worst = worst.max(rel);
+                    assert!(
+                        rel <= 1e-13,
+                        "case {}, a[{}] = {:e}, reference {:e}",
+                        k + 1,
+                        i,
+                        got,
+                        want
+                    );
+                }
+            }
+        }
+        println!("worst relative difference over the DLATMS cases: {worst:e}");
+    }
+
+    /// The `INFO` values `DLATMS` returns for the arguments this port can still get
+    /// wrong: a symmetric request with `M != N` (`-1`), a mode out of range (`-7`), a
+    /// condition number below one (`-8`), and a triangular `PACK` with a
+    /// nonsymmetric `SYM` (`-12`).
+    #[test]
+    fn dlatms_reports_what_the_reference_reports() {
+        let mut seed = SEEDY;
+        let mut a = vec![0.0f64; 9];
+        let mut d = vec![1.0f64; 3];
+        let mut p = Dlatms {
+            dist: Dist::Uniform,
+            sym: DlatmsSym::Symmetric,
+            mode: 3,
+            cond: 1e3,
+            dmax: 1.0,
+            pack: DlatmsPack::Full,
+        };
+        assert_eq!(
+            dlatms(&p, 3, 2, &mut a[..6], &mut d[..2], &mut seed),
+            Err(-1),
+            "symmetric with m != n"
+        );
+        p.mode = 7;
+        assert_eq!(dlatms(&p, 3, 3, &mut a, &mut d, &mut seed), Err(-7), "|mode| > 6");
+        p.mode = 3;
+        p.cond = 0.5;
+        assert_eq!(dlatms(&p, 3, 3, &mut a, &mut d, &mut seed), Err(-8), "cond < 1");
+        p.cond = 1e3;
+        p.sym = DlatmsSym::NonSymmetric;
+        p.pack = DlatmsPack::Upper;
+        assert_eq!(
+            dlatms(&p, 3, 3, &mut a, &mut d, &mut seed),
+            Err(-12),
+            "packed nonsymmetric"
+        );
+
+        // The quick return for an empty matrix, and the seed normalization the
+        // reference applies before every call: four 12-bit words, the last odd.
+        p.pack = DlatmsPack::Full;
+        assert_eq!(dlatms(&p, 0, 0, &mut [], &mut [], &mut seed), Ok(()), "empty matrix");
+        let mut seed = [1u32, 2, 3, 4];
+        dlatms(&p, 3, 3, &mut a, &mut d, &mut seed).expect("dlatms");
+        assert_eq!(seed[3] % 2, 1, "the last seed word is made odd");
+    }
+
+    /// One column-major matrix with the triangle the generator zeroed restored, so
+    /// the residual can be formed against the full symmetric matrix.
+    fn full_symmetric(a: &[f64], n: usize, upper: bool) -> Vec<f64> {
+        let mut f = a.to_vec();
+        for j in 0..n {
+            for i in 0..n {
+                let stored = if upper { i <= j } else { i >= j };
+                if !stored {
+                    f[i + j * n] = a[j + i * n];
+                }
+            }
+        }
+        f
+    }
+
+    /// `||I - Q^T Q||_1 / (n eps)`: the orthonormality of a column-major matrix of
+    /// vectors, as `DSYT21` and `DORT01` report it.
+    fn orthonormality(q: &[f64], n: usize) -> f64 {
+        let eps = f64::EPSILON;
+        let mut w = vec![0.0f64; n * n];
+        for j in 0..n {
+            for i in 0..n {
+                let mut sum = 0.0;
+                for k in 0..n {
+                    sum += q[k + i * n] * q[k + j * n];
+                }
+                w[i + j * n] = if i == j { 1.0 - sum } else { -sum };
+            }
+        }
+        crate::native::blas::dlange('1', &w, n, n) / (n as f64 * eps)
+    }
+
+    /// The complex 1-norm of an `m x n` matrix: the largest column sum of
+    /// `|re| + |im|`, which is what `ZLANGE('1')` and the checkers use.
+    fn clange1(a: &[Complex64], m: usize, n: usize) -> f64 {
+        let mut best = 0.0f64;
+        for j in 0..n {
+            let mut sum = 0.0;
+            for i in 0..m {
+                sum += a[i + j * m].re.abs() + a[i + j * m].im.abs();
+            }
+            best = best.max(sum);
+        }
+        best
+    }
+
+    /// `||I - Q^H Q||_1 / (n eps)` for a complex `n x n` matrix of vectors.
+    fn orthonormality_h(q: &[Complex64], n: usize) -> f64 {
+        let eps = f64::EPSILON;
+        let one = Complex64::new(1.0, 0.0);
+        let zero = Complex64::new(0.0, 0.0);
+        let mut w = vec![0.0f64; n * n];
+        for j in 0..n {
+            for i in 0..n {
+                let mut sum = zero;
+                for k in 0..n {
+                    sum += q[k + i * n].conj() * q[k + j * n];
+                }
+                let d = if i == j { one } else { zero };
+                let e = d - sum;
+                w[i + j * n] = e.re.abs() + e.im.abs();
+            }
+        }
+        let mut best = 0.0f64;
+        for j in 0..n {
+            let mut sum = 0.0;
+            for i in 0..n {
+                sum += w[i + j * n];
+            }
+            best = best.max(sum);
+        }
+        best / (n as f64 * eps)
+    }
+
+    /// The SEP sweep: `dsyev` over the reference's symmetric family.
+    ///
+    /// `SYM = 'S'` (random signs on the spectrum, so negative eigenvalues are
+    /// exercised) and `PACK = 'U'`/`'L'`, which is what makes the `UPLO` argument
+    /// matter: the half of the matrix the driver is told to ignore holds zeros, so
+    /// a driver that reads the wrong triangle solves a different problem. Modes
+    /// `0..6` at the three magnitudes the reference's `KMAGN` table uses, `n = 7`,
+    /// `COND = 1e3` where the mode takes one.
+    ///
+    /// Three assertions, each normalized by `n ||A||_1 eps` so that one means "as
+    /// accurate as the arithmetic allows" and the reference's own bound applies:
+    ///
+    /// 1. the eigenvalues against `D`, the spectrum the matrix was built from;
+    /// 2. the residual `||A U - U W||_1 / (||A||_1 ||U||_1 ulp)`, which is
+    ///    [`get22`]'s first result with `W` diagonal;
+    /// 3. `||I - U^T U||_1 / (n ulp)`, the orthonormality — `DSYT21`'s second
+    ///    result, and the quantity that plays the role `get22`'s second result
+    ///    plays for a dense eigenproblem.
+    ///
+    /// `get22`'s second result does *not* transfer, and the measurement is the
+    /// reason rather than a preference: it compares the largest entry of each
+    /// column with one, which is `dgeev`'s convention of scaling an eigenvector so
+    /// its largest component is one. `dsyev` returns unit-2-norm vectors, whose
+    /// largest entry is below one by construction, so the metric reports
+    /// `|0.5 - 1| / (n ulp) ~ 3e14` on *every* case here — the reference's own
+    /// `dsyev` included. It is constant, so it carries no information about the
+    /// answer; the orthonormality is what is left to check once the vectors are
+    /// unit length. The same test on this grid, run on LAPACK 3.12.1's own
+    /// `dsyev`, reports at most 3.1 for the residual, 2.3 for the orthonormality
+    /// and 0.37 for the eigenvalues.
+    #[test]
+    fn dsyev_solves_the_reference_symmetric_families() {
+        let n = 7usize;
+        let eps = f64::EPSILON;
+        let mut worst_ev = 0.0f64;
+        let mut worst_res = 0.0f64;
+        let mut worst_orth = 0.0f64;
+        for mode in 0..=6i32 {
+            for dmax in [1.0f64, 1e10, 1e-10] {
+                for upper in [true, false] {
+                    let p = Dlatms {
+                        dist: Dist::Symmetric,
+                        sym: DlatmsSym::Symmetric,
+                        mode,
+                        cond: 1e3,
+                        dmax,
+                        pack: if upper { DlatmsPack::Upper } else { DlatmsPack::Lower },
+                    };
+                    // MODE = 0 keeps the caller's spectrum, which is where the
+                    // signed eigenvalues come from when the mode does not sign them.
+                    let mut d: Vec<f64> = if mode == 0 {
+                        (0..n)
+                            .map(|i| {
+                                let sign = if i % 2 == 0 { -1.0 } else { 1.0 };
+                                sign * dmax / 2f64.powi(i as i32)
+                            })
+                            .collect()
+                    } else {
+                        vec![0.0; n]
+                    };
+                    let mut seed = SEEDY;
+                    let mut a = vec![0.0f64; n * n];
+                    dlatms(&p, n, n, &mut a, &mut d, &mut seed).expect("dlatms");
+                    let full = full_symmetric(&a, n, upper);
+                    let anorm = crate::native::blas::dlange('1', &full, n, n);
+
+                    let mut u = a;
+                    let mut w = vec![0.0f64; n];
+                    crate::native::lapack::sym::dsyev(&mut u, &mut w, n, upper).expect("dsyev");
+
+                    // 1) The spectrum, sorted on both sides: dsyev ascends, latm1
+                    //    descends, and neither order is part of the contract here.
+                    let mut ws = w.clone();
+                    let mut ds = d.clone();
+                    ws.sort_by(|x, y| x.partial_cmp(y).unwrap());
+                    ds.sort_by(|x, y| x.partial_cmp(y).unwrap());
+                    let mut ev = 0.0f64;
+                    for (x, y) in ws.iter().zip(ds.iter()) {
+                        ev = ev.max((x - y).abs());
+                    }
+                    let ev = ev / (n as f64 * anorm * eps);
+
+                    // 2) The residual, in get22's form, with W diagonal.
+                    let zeros = vec![0.0f64; n];
+                    let (res, _) = get22(&full, &u, &w, &zeros, n);
+
+                    // 3) The orthonormality.
+                    let orth = orthonormality(&u, n);
+
+                    worst_ev = worst_ev.max(ev);
+                    worst_res = worst_res.max(res);
+                    worst_orth = worst_orth.max(orth);
+                    assert!(
+                        ev <= 20.0,
+                        "mode {mode}, dmax {dmax:e}, upper {upper}: eigenvalue ratio {ev:e}"
+                    );
+                    assert!(
+                        res <= 20.0,
+                        "mode {mode}, dmax {dmax:e}, upper {upper}: residual {res:e}"
+                    );
+                    assert!(
+                        orth <= 20.0,
+                        "mode {mode}, dmax {dmax:e}, upper {upper}: orthonormality {orth:e}"
+                    );
+                }
+            }
+        }
+        println!(
+            "dsyev over the family: eigenvalues {worst_ev:e}, residual {worst_res:e}, orthonormality {worst_orth:e}"
+        );
+    }
+
+    /// The same sweep through `zheev`, which is fed the same real matrix as a
+    /// Hermitian one with a zero imaginary part.
+    ///
+    /// That is a weaker test than a genuinely complex matrix would be, and the
+    /// reason is that the reference's complex generator (`CLATMS`) is not part of
+    /// this port, so there is no reference-built complex spectrum to compare
+    /// against. What it does test is everything the complex path does differently:
+    /// the reflectors, the tridiagonal reduction and the QR iteration all run in
+    /// complex arithmetic and must leave the vectors real and the residual at the
+    /// same order as `dsyev`'s. The quantities are the complex forms of the three
+    /// above, and `ZGET22` is not ported, so the residual is formed here in the
+    /// checker's own normalized shape.
+    #[test]
+    fn zheev_solves_the_reference_symmetric_families() {
+        let n = 7usize;
+        let eps = f64::EPSILON;
+        let zero = Complex64::new(0.0, 0.0);
+        let mut worst_ev = 0.0f64;
+        let mut worst_res = 0.0f64;
+        let mut worst_orth = 0.0f64;
+        for mode in 0..=6i32 {
+            for dmax in [1.0f64, 1e10, 1e-10] {
+                for upper in [true, false] {
+                    let p = Dlatms {
+                        dist: Dist::Symmetric,
+                        sym: DlatmsSym::Symmetric,
+                        mode,
+                        cond: 1e3,
+                        dmax,
+                        pack: if upper { DlatmsPack::Upper } else { DlatmsPack::Lower },
+                    };
+                    let mut d: Vec<f64> = if mode == 0 {
+                        (0..n)
+                            .map(|i| {
+                                let sign = if i % 2 == 0 { -1.0 } else { 1.0 };
+                                sign * dmax / 2f64.powi(i as i32)
+                            })
+                            .collect()
+                    } else {
+                        vec![0.0f64; n]
+                    };
+                    let mut seed = SEEDY;
+                    let mut a = vec![0.0f64; n * n];
+                    dlatms(&p, n, n, &mut a, &mut d, &mut seed).expect("dlatms");
+                    let full: Vec<Complex64> = full_symmetric(&a, n, upper)
+                        .iter()
+                        .map(|&v| Complex64::new(v, 0.0))
+                        .collect();
+                    let anorm = clange1(&full, n, n);
+                    let mut h: Vec<Complex64> = a.iter().map(|&v| Complex64::new(v, 0.0)).collect();
+                    let mut w = vec![0.0f64; n];
+                    crate::native::lapack::zeig::zheev(&mut h, &mut w, n, upper).expect("zheev");
+
+                    let mut ws = w.clone();
+                    let mut ds = d.clone();
+                    ws.sort_by(|x, y| x.partial_cmp(y).unwrap());
+                    ds.sort_by(|x, y| x.partial_cmp(y).unwrap());
+                    let mut ev = 0.0f64;
+                    for (x, y) in ws.iter().zip(ds.iter()) {
+                        ev = ev.max((x - y).abs());
+                    }
+                    let ev = ev / (n as f64 * anorm * eps);
+
+                    // E W, then A E - E W, with W diagonal and real.
+                    let mut werr = vec![zero; n * n];
+                    for j in 0..n {
+                        for i in 0..n {
+                            let mut sum = zero;
+                            for k in 0..n {
+                                sum += full[i + k * n] * h[k + j * n];
+                            }
+                            werr[i + j * n] = sum - h[i + j * n] * w[j];
+                        }
+                    }
+                    let enorm = clange1(&h, n, n);
+                    let res = (clange1(&werr, n, n) / enorm / anorm) / eps;
+                    let orth = orthonormality_h(&h, n);
+
+                    worst_ev = worst_ev.max(ev);
+                    worst_res = worst_res.max(res);
+                    worst_orth = worst_orth.max(orth);
+                    assert!(
+                        ev <= 20.0,
+                        "mode {mode}, dmax {dmax:e}, upper {upper}: eigenvalue ratio {ev:e}"
+                    );
+                    assert!(
+                        res <= 20.0,
+                        "mode {mode}, dmax {dmax:e}, upper {upper}: residual {res:e}"
+                    );
+                    assert!(
+                        orth <= 20.0,
+                        "mode {mode}, dmax {dmax:e}, upper {upper}: orthonormality {orth:e}"
+                    );
+                }
+            }
+        }
+        println!(
+            "zheev over the family: eigenvalues {worst_ev:e}, residual {worst_res:e}, orthonormality {worst_orth:e}"
+        );
+    }
+
+    /// The SVD sweep: `dgesvd` over the reference's bidiagonal family.
+    ///
+    /// `SYM = 'N'` with `MODE 0..6` at the three magnitudes, on four rectangular
+    /// shapes — `6x4`, `7x3` and their transposes — because `m < n` is the case the
+    /// driver has a separate path for (`m >= n` reduces A directly, `m < n` the
+    /// same way on the transpose with `VT` and `U` swapped back).
+    ///
+    /// The three assertions are the reference's:
+    ///
+    /// 1. `||U^T A V - S||_1 / (max(m, n) ||A||_1 eps)` — `DBDT01`'s quantity with
+    ///    `KD = 0`, which is the reconstruction `A = U S V^T` in the factors'
+    ///    coordinates;
+    /// 2. `||I - U^T U||_1 / (m eps)` and `||I - V^T V||_1 / (n eps)`, `DORT01`'s
+    ///    number for each factor separately — reconstruction and orthogonality are
+    ///    independent failures, as `dchkbd`'s two checkers assume;
+    /// 3. the singular values against the spectrum the matrix was built from,
+    ///    sorted on both sides since only the values are ordered, not `D`.
+    ///
+    /// Measured on LAPACK 3.12.1's own `dgesvd` over this grid: at most 4.5 for the
+    /// reconstruction, 2.0 for either orthogonality and 0.43 for the values. The
+    /// bound of 20 is the reference's own.
+    #[test]
+    fn dgesvd_solves_the_reference_bidiagonal_families() {
+        let eps = f64::EPSILON;
+        let mut worst_recon = 0.0f64;
+        let mut worst_orth = 0.0f64;
+        let mut worst_sv = 0.0f64;
+        for (m, n) in [(6usize, 4usize), (4, 6), (7, 3), (3, 7)] {
+            let mnmin = m.min(n);
+            for mode in 0..=6i32 {
+                for dmax in [1.0f64, 1e10, 1e-10] {
+                    let p = Dlatms {
+                        dist: Dist::Symmetric,
+                        sym: DlatmsSym::NonSymmetric,
+                        mode,
+                        cond: 1e3,
+                        dmax,
+                        pack: DlatmsPack::Full,
+                    };
+                    let mut d: Vec<f64> = if mode == 0 {
+                        (0..mnmin).map(|i| dmax / 2f64.powi(i as i32)).collect()
+                    } else {
+                        vec![0.0; mnmin]
+                    };
+                    let mut seed = SEEDY;
+                    let mut a = vec![0.0f64; m * n];
+                    dlatms(&p, m, n, &mut a, &mut d, &mut seed).expect("dlatms");
+                    let a0 = a.clone();
+                    let anorm = crate::native::blas::dlange('1', &a0, m, n);
+
+                    let mut s = vec![0.0f64; mnmin];
+                    let mut u = vec![0.0f64; m * m];
+                    let mut vt = vec![0.0f64; n * n];
+                    crate::native::lapack::svd::dgesvd(&mut a, m, n, &mut s, &mut u, &mut vt).expect("dgesvd");
+
+                    // 1) U^T A V - S, formed in two passes to avoid transposing V.
+                    let mut tmp = vec![0.0f64; m * n];
+                    for j in 0..n {
+                        for i in 0..m {
+                            let mut sum = 0.0;
+                            for k in 0..n {
+                                sum += a0[i + k * m] * vt[j + k * n];
+                            }
+                            tmp[i + j * m] = sum;
+                        }
+                    }
+                    let mut r = vec![0.0f64; m * n];
+                    for j in 0..n {
+                        for i in 0..m {
+                            let mut sum = 0.0;
+                            for k in 0..m {
+                                sum += u[k + i * m] * tmp[k + j * m];
+                            }
+                            r[i + j * m] = sum;
+                        }
+                    }
+                    for k in 0..mnmin {
+                        r[k + k * m] -= s[k];
+                    }
+                    let recon = crate::native::blas::dlange('1', &r, m, n) / (m.max(n) as f64 * anorm * eps);
+
+                    // 2) Both factors, orthonormality each.
+                    let orth_u = orthonormality(&u, m);
+                    let mut v = vec![0.0f64; n * n];
+                    for j in 0..n {
+                        for i in 0..n {
+                            v[i + j * n] = vt[j + i * n];
+                        }
+                    }
+                    let orth_v = orthonormality(&v, n);
+                    let orth = orth_u.max(orth_v);
+
+                    // 3) The singular values, both sides sorted descending.
+                    let mut ss = s.clone();
+                    let mut ds: Vec<f64> = d.iter().map(|v| v.abs()).collect();
+                    ss.sort_by(|x, y| y.partial_cmp(x).unwrap());
+                    ds.sort_by(|x, y| y.partial_cmp(x).unwrap());
+                    let mut sv = 0.0f64;
+                    for (x, y) in ss.iter().zip(ds.iter()) {
+                        sv = sv.max((x - y).abs());
+                    }
+                    let sv = sv / (m.max(n) as f64 * anorm * eps);
+
+                    worst_recon = worst_recon.max(recon);
+                    worst_orth = worst_orth.max(orth);
+                    worst_sv = worst_sv.max(sv);
+                    assert!(
+                        recon <= 20.0,
+                        "{m}x{n}, mode {mode}, dmax {dmax:e}: reconstruction {recon:e}"
+                    );
+                    assert!(
+                        orth <= 20.0,
+                        "{m}x{n}, mode {mode}, dmax {dmax:e}: orthogonality {orth:e}"
+                    );
+                    assert!(
+                        sv <= 20.0,
+                        "{m}x{n}, mode {mode}, dmax {dmax:e}: singular values {sv:e}"
+                    );
+                }
+            }
+        }
+        println!(
+            "dgesvd over the family: reconstruction {worst_recon:e}, orthogonality {worst_orth:e}, singular values {worst_sv:e}"
+        );
+    }
+
+    /// The same sweep through `zgesvd`, on the same real matrices held as complex
+    /// numbers with a zero imaginary part.
+    ///
+    /// Same caveat and same reason as [`zheev_solves_the_reference_symmetric_families`]:
+    /// the reference's complex generator is not ported, so the value here is that
+    /// the complex bidiagonal reduction, the complex QR iteration and both sets of
+    /// singular vectors carry the real problem unchanged. The reconstruction is
+    /// formed with the complex inner products, since that is where a wrong
+    /// conjugation shows up.
+    #[test]
+    fn zgesvd_solves_the_reference_bidiagonal_families() {
+        let eps = f64::EPSILON;
+        let zero = Complex64::new(0.0, 0.0);
+        let mut worst_recon = 0.0f64;
+        let mut worst_orth = 0.0f64;
+        let mut worst_sv = 0.0f64;
+        for (m, n) in [(6usize, 4usize), (4, 6), (7, 3), (3, 7)] {
+            let mnmin = m.min(n);
+            for mode in 0..=6i32 {
+                for dmax in [1.0f64, 1e10, 1e-10] {
+                    let p = Dlatms {
+                        dist: Dist::Symmetric,
+                        sym: DlatmsSym::NonSymmetric,
+                        mode,
+                        cond: 1e3,
+                        dmax,
+                        pack: DlatmsPack::Full,
+                    };
+                    let mut d: Vec<f64> = if mode == 0 {
+                        (0..mnmin).map(|i| dmax / 2f64.powi(i as i32)).collect()
+                    } else {
+                        vec![0.0; mnmin]
+                    };
+                    let mut seed = SEEDY;
+                    let mut ar = vec![0.0f64; m * n];
+                    dlatms(&p, m, n, &mut ar, &mut d, &mut seed).expect("dlatms");
+                    let a0: Vec<Complex64> = ar.iter().map(|&v| Complex64::new(v, 0.0)).collect();
+                    let anorm = clange1(&a0, m, n);
+
+                    let mut a = a0.clone();
+                    let mut s = vec![0.0f64; mnmin];
+                    let mut u = vec![zero; m * m];
+                    let mut vt = vec![zero; n * n];
+                    crate::native::lapack::zsvd::zgesvd(&mut a, m, n, &mut s, &mut u, &mut vt).expect("zgesvd");
+
+                    // U^H A V - S, V recovered as VT^H on the fly.
+                    let mut tmp = vec![zero; m * n];
+                    for j in 0..n {
+                        for i in 0..m {
+                            let mut sum = zero;
+                            for k in 0..n {
+                                sum += a0[i + k * m] * vt[j + k * n].conj();
+                            }
+                            tmp[i + j * m] = sum;
+                        }
+                    }
+                    let mut r = vec![zero; m * n];
+                    for j in 0..n {
+                        for i in 0..m {
+                            let mut sum = zero;
+                            for k in 0..m {
+                                sum += u[k + i * m].conj() * tmp[k + j * m];
+                            }
+                            if i == j && i < mnmin {
+                                sum -= Complex64::new(s[i], 0.0);
+                            }
+                            r[i + j * m] = sum;
+                        }
+                    }
+                    let recon = (clange1(&r, m, n) / anorm) / eps / m.max(n) as f64;
+
+                    let orth_u = orthonormality_h(&u, m);
+                    let mut v = vec![zero; n * n];
+                    for j in 0..n {
+                        for i in 0..n {
+                            v[i + j * n] = vt[j + i * n].conj();
+                        }
+                    }
+                    let orth_v = orthonormality_h(&v, n);
+                    let orth = orth_u.max(orth_v);
+
+                    let mut ss = s.clone();
+                    let mut ds: Vec<f64> = d.iter().map(|v| v.abs()).collect();
+                    ss.sort_by(|x, y| y.partial_cmp(x).unwrap());
+                    ds.sort_by(|x, y| y.partial_cmp(x).unwrap());
+                    let mut sv = 0.0f64;
+                    for (x, y) in ss.iter().zip(ds.iter()) {
+                        sv = sv.max((x - y).abs());
+                    }
+                    let sv = sv / (m.max(n) as f64 * anorm * eps);
+
+                    worst_recon = worst_recon.max(recon);
+                    worst_orth = worst_orth.max(orth);
+                    worst_sv = worst_sv.max(sv);
+                    assert!(
+                        recon <= 20.0,
+                        "{m}x{n}, mode {mode}, dmax {dmax:e}: reconstruction {recon:e}"
+                    );
+                    assert!(
+                        orth <= 20.0,
+                        "{m}x{n}, mode {mode}, dmax {dmax:e}: orthogonality {orth:e}"
+                    );
+                    assert!(
+                        sv <= 20.0,
+                        "{m}x{n}, mode {mode}, dmax {dmax:e}: singular values {sv:e}"
+                    );
+                }
+            }
+        }
+        println!(
+            "zgesvd over the family: reconstruction {worst_recon:e}, orthogonality {worst_orth:e}, singular values {worst_sv:e}"
+        );
+    }
+
     /// The generalized sweep: `dggev` over the pairs `dchkgg` builds.
     ///
     /// `dchkgg`'s 26 types are `(ITYPE1, ITYPE2, ISIGN, RMOD)`; what is reproduced

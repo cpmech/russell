@@ -90,7 +90,7 @@ This project is split into the following crates:
     - Data structures: NumVector, NumMatrix (column-major layout for direct BLAS/LAPACK interoperability), and stack-allocated SmallVector/SmallMatrix.
     - Linear Algebra: BLAS 1/2/3 and LAPACK routines (dense solves, SVD, Cholesky, symmetric and general eigenvalues/eigenvectors for real and complex numbers).
     - Numerics & Special Functions: Bessel, modified Bessel, Beta, Gamma, Erf, Elliptic integrals, Chebyshev/Legendre polynomials, Lagrange interpolation, B-splines, quadrature, Brent's root-finding, Newton solver, cubic solver, and numerical derivatives/Jacobians.
-    - Backends: native Rust BLAS/LAPACK by default; OpenBLAS (`open_blas`) or Intel oneAPI MKL (`intel_mkl`) as opt-in accelerators.
+    - Backends: pure-Rust BLAS/LAPACK from the [`algebra_linear`](https://crates.io/crates/algebra_linear) crate by default; OpenBLAS (`open_blas`) or Intel oneAPI MKL (`intel_mkl`) as opt-in accelerators.
 2. [![Crates.io](https://img.shields.io/crates/v/russell_tensor.svg)](https://crates.io/crates/russell_tensor) [russell_tensor](https://github.com/cpmech/russell/tree/main/russell_tensor) — Tensor calculus and continuum mechanics:
     - Tensor types: Tensor1 (3D vectors), Tensor2 (2nd-order), Tensor3 (3rd-order), Tensor4 (4th-order).
     - Kelvin-Mandel representation: Maps tensors to vector/matrix spaces preserving Euclidean norms.

@@ -5,11 +5,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check out algebra_linear (the kernels this workspace depends on)
-        uses: actions/checkout@v4
-        with:
-          repository: cpmech/algebra_linear
-          path: algebra_linear
       - name: Build docker image
         run: |
           bash zscripts/docker-build-rocky.bash

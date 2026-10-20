@@ -106,18 +106,23 @@ russell_lab = "*"
 
 ### Optional features
 
-The default build uses the native Rust BLAS/LAPACK in `src/native`: no external
-library to install, nothing to link. The following (Rust) features are available:
+The default build uses [`algebra_linear`](https://crates.io/crates/algebra_linear),
+a crate of pure-Rust BLAS/LAPACK kernels: no external library to install, nothing to
+link, and every target -- `wasm32-unknown-unknown` included -- builds. The following
+(Rust) features are available:
 
 * `open_blas`: use OpenBLAS instead of the native routines (needs its development headers)
 * `intel_mkl`: use Intel oneAPI MKL instead of the native routines
-* `dev_lapack`: development only -- compiles the C shim against a locally built LAPACK
-  so the native routines can be tested for numerical parity against the reference
 
 `intel_mkl` takes precedence over `open_blas`: enabling both is allowed and
 links MKL. Note that the
 [main README file](https://github.com/cpmech/russell) presents the steps to
 compile the required libraries according to each feature.
+
+`algebra_linear` is licensed BSD-3-Clause, because it is a port of LAPACK, which is.
+This crate is MIT. A binary distribution of this crate links `algebra_linear` into
+the executable, so it must reproduce that crate's copyright notice and conditions
+as well as this one.
 
 ### Performance of the backends
 

@@ -19,11 +19,6 @@ jobs:
       CARGO_TARGET_WASM32_WASIP1_RUNNER: wasmtime
     steps:
       - uses: actions/checkout@v4
-      - name: Check out algebra_linear (the kernels this workspace depends on)
-        uses: actions/checkout@v4
-        with:
-          repository: cpmech/algebra_linear
-          path: algebra_linear
       - name: Install Rust with the wasm target
         uses: dtolnay/rust-toolchain@master
         with:

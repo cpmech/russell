@@ -110,7 +110,7 @@ mod tests {
     }
 
     /// Note on the accelerated path: this calls `dgemm('T','N')` -- CBLAS's
-    /// `CblasTrans` through the shim, and `native::blas::dgemm_tn` in the default
+    /// `CblasTrans` through the shim, and `algebra_linear::blas::dgemm_tn` in the default
     /// build, which packs `A`'s columns from `A`'s rows. Until those kernels
     /// existed the native path *transposed `A` into a temporary* and called the
     /// plain `dgemm`; the transpose was measured at ~130 us at m=n=k=400 against

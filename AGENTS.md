@@ -63,67 +63,18 @@ What stays here: the dispatchers (`base::blas_dispatch`, `base::lapack_dispatch`
 the C shim and `build.rs` that link OpenBLAS or MKL, `Matrix`/`Vector`, the `small_*`
 stack kernels, and every public API.
 
-> **Historical, in part.** The rest of this section and the sections below
-> ("Performance: the blocking boundary", "Loose ends", "Deliberately uncovered
-> code", "BLAS/LAPACK invariants") describe the kernels, which now live in the
-> `algebra_linear` crate — the `src/native/...` paths in them no longer exist here.
-> Read them together with that crate's `AGENTS.md`; the dispatch rules below apply
-> to this repository.
-
-### Performance: the blocking boundary
-
-Worth knowing before optimizing, because the obvious move is the wrong one.
+### Performance: where the kernels are
 
 `mat_mat_mul` routes through `base::blas_dispatch::dgemm`, which is
-`native::blas::dgemm` -- a Goto-style blocked kernel with a 4x4 AVX2+FMA
+`algebra_linear::blas::dgemm` -- a Goto-style blocked kernel with a 4x4 AVX2+FMA
 micro-kernel (MC=128, KC=256, NC=256) -- unless an accelerated feature is on.
-There is no `portable` module any more: `wasm32` takes the same dispatch and gets
-the native kernel's scalar fallback, and the suite runs there under `wasmtime` in
-CI. Benchmarks:
-`benchmarks/matmul_benchmark.rs` and `benchmarks/decomp_benchmark.rs`.
+There is no `portable` module: `wasm32` takes the same path and gets the kernel's
+scalar fallback, and the suite runs there under `wasmtime` in CI.
 
-**The LAPACK layer is BLAS-3-free end to end**, so the blocked `dgemm` does not
-accelerate any decomposition:
-
-| Routine | Kernel used | BLAS-3? |
-|---|---|---|
-| `dsyev` | `dsytd2`, reflectors via a hand-written `dgemv` loop | no |
-| `dgesvd` / `zgesvd` | `dgebd2` / `zgebd2` | no |
-| `dgeev`, `dhseqr` | `dlahqr` (`dlarfg`/`dlanv2`/`dlartg` only) | no |
-| `dggev` / `zggev` | `dhgeqz` | no |
-
-Measured single-core, release: `mat_mat_mul` went 2.2 -> 21 Gelem/s, while `dsyev`
-runs at 0.4 ns/flop (~2.8 GFLOP/s) and `dgesvd` at 0.2 ns/flop, against the
-kernel's 0.05 ns/flop.
-
-`dsytrd` was ported anyway and delivered far less than that headroom suggested:
-~8-10% on `dsyev` at n >= 400, because the reduction is only ~29% of `dsyev` and
-the blocked algorithm still performs the same n^3/3 symmetric product -- only the
-rank-2 update becomes BLAS-3. Real headroom for `dsyev` needs the two-stage
-`sy2sb` + `sb2st` reduction, which is a different algorithm, not a blocking of
-this one. `dgesvd` remains unblocked. The rules of thumb:
-
-* Port the blocked variant only when the target routine's flop count is dominated
-  by panel updates that can become `dgemm`. `dlahqr` can never benefit -- it has
-  no BLAS-3 to give.
-* **A blocked routine can be slower than the unblocked one for small input.**
-  `dsytrd` measured slower below n ~ 300 and faster above, so `dsyev` picks by
-  size (threshold 128) rather than always paying for the blocking. Always
-  blocking would have regressed every small case.
-* **Some quantities are not invariants.** The first `dsytrd` test compared the
-  reduced `d`/`e`/`tau` entries element-wise against the unblocked reduction, to
-  1e-12. That is unsatisfiable and the test was at fault: the two reductions use
-  different Householder sign conventions, so their off-diagonals are not
-  comparable. Against reference LAPACK's own `dsytrd` and `dsytd2` on the same
-  problem, `|e|` differs by 4e-1 at n=128 while the eigenvalues agree to 6e-14,
-  and the reference's blocked-vs-unblocked `|d|` alone reaches 3.2e-12. Check the
-  spectrum, which is invariant, not the intermediate factors.
-* The user-facing `mat_mat_mul` is where the kernel change pays, and it is the
-  entry point users actually call, which is why it was worth doing first.
-* `dlaqr0` has one benefit that is *not* about throughput: aggressive early
-  deflation detects converged eigenvalues many sweeps earlier, cutting the
-  iteration count independently of kernel speed. It is the only part with no
-  `dlahqr` analog.
+The kernel-side notes -- the BLAS-3-free pipeline of the LAPACK layer, what
+`dsytrd` did and did not buy, and the blocking rules of thumb -- are in
+`algebra_linear`'s `AGENTS.md`, where the code is. What is measured here is the
+routing: `benchmarks/matmul_benchmark.rs` and `benchmarks/decomp_benchmark.rs`.
 
 ### Loose ends
 
@@ -134,25 +85,14 @@ this one. `dgesvd` remains unblocked. The rules of thumb:
   Note that a warning count is not a pass/fail signal by itself -- clippy's
   deny-by-default lints are *errors*, so read the exit code, not the count (a
   `| grep -c warning` once reported "0 warnings" on a build that had failed).
-- `dhseqr`/`zhseqr` implement the unblocked (`dlahqr`/`zlahqr`) path only, which
-  is what the reference uses for n <= 15; the blocked `dlaqr0`/`zlaqr0` fallback
-  for large matrices is not ported. Non-convergence `INFO` is *reported*, not
-  asserted: `dsyev`/`zheev` (via `dsteqr`/`zsteqr`), `dhseqr` (via `dlahqr`) and
-  `dgesvd`/`zgesvd` (via `dbdsqr`/`zbdsqr`) return `LapackError::Convergence`.
-  `dhseqr`, `dgeev` and `dgesvd` are exercised through NaN-matrix tests;
-  `dsyev`/`zheev` are not, because a NaN matrix reads as zero under the norm gate
-  and takes the reference's `ANORM == 0` early return.
-- `dgesvd`/`zgesvd` use the direct bidiagonalization path for both shapes, not
-  the QR/LQ pre-reduction the reference uses for very tall or wide inputs.
-  Agreement with the reference is ~1e-15.
 - `--features open_blas` builds and passes on this machine: the headers are under
   `/usr/include/openblas` and `pkg-config` finds them. All configurations (plain,
-  `open_blas`, `intel_mkl`, `--all-features`, `dev_lapack`, and the wasm target)
-  are runnable here, so an accelerated branch never has to be reasoned about
-  without being checked.
-- The web/WASM consumer of this crate has not been re-checked since the native
-  backend landed.
-
+  `open_blas`, `intel_mkl`, `--all-features`, and the wasm target) are runnable
+  here, so an accelerated branch never has to be reasoned about without being
+  checked. The unported kernel paths (`dlaqr0`, the QR/LQ pre-reduction of
+  `dgesvd`) are loose ends of `algebra_linear`, recorded there.
+- The web/WASM consumer of this crate has not been re-checked since the kernels
+  became a dependency.
 
 ## Test / lint commands
 
@@ -165,9 +105,10 @@ cargo test -p russell_tensor
 cargo test -p russell_lab --features open_blas
 cargo test -p russell_lab --features intel_mkl
 
-# Numerical parity of the native routines against the reference LAPACK.
-# reference parity now runs in the algebra_linear checkout:
-ALGEBRA_LINEAR_DEV_LAPACK_ROOT=/path/to/lapack/build cargo test --features dev_lapack
+# Numerical parity of the kernels against the reference LAPACK. The harness
+# moved with the code, so it runs in the algebra_linear checkout, not here:
+(cd ../algebra_linear && ALGEBRA_LINEAR_DEV_LAPACK_ROOT=/path/to/lapack/build \
+  cargo test --features dev_lapack)
 
 # Whole workspace (sparse crates need the locally compiled libraries)
 RUSSELL_LOCAL_PREFIX=/usr/local cargo test --workspace --features local_umfpack,mumps
@@ -197,46 +138,24 @@ accident. This is where those decisions are recorded. **A PR that adds code no t
 can reach adds it here in the same PR** — otherwise the next person spends a day
 rediscovering why a file sits at 84%.
 
-Measured 2026-10-19 with the command above: workspace **74,192 / 76,273 lines =
-97.27%**, 2,081 missed. The native/LAPACK rows were refreshed on 2026-10-20 from the
-lib-only run quoted below, which reports the same counts for those files; every other
-row is unchanged from the workspace measurement.
+Measured 2026-10-21, after the kernels moved to `algebra_linear`, with the command
+above: workspace **59,445 / 60,166 lines = 98.80%**, 721 missed. The kernel rows left
+with the code: they are in that crate's `AGENTS.md`, together with the older per-file
+measurements taken while the two were one crate.
 
 | where | missed | why |
 |---|---|---|
-| `russell_lab/src/native/lapack/qz.rs` | 547 | `dhgeqz`'s and `dggbal_p`'s rescue and permutation arms, `dtgevc`'s guard paths. Sweeping `dgeev` and `dggev` over the reference's own spectra — including a singular `B` — moved this file by zero lines, because those families are built to be *solvable* and cannot reach code whose job is to refuse or rescue. `dget54`, the checker for those factors, needs `Q` and `Z` out of `dggev`; the owner decided the port's API does not grow for it, so that check is not writable here |
-| `native/lapack/zeig.rs` | 204 | `zsteqr`'s remaining deflation arms, `zlarfg`'s underflow rescue, `zlatrs_upper`'s rescaling |
-| `native/lapack/eig.rs` | 203 | `dlaln2` and `dlanv2`: 2x2 blocks whose entries force a rescale |
-| `native/lapack/sym.rs`, `svd.rs`, `zsvd.rs` | 96, 76, 51 | `dsteqr`'s remaining arms, `dbdsqr`/`zbdsqr` convergence for repeated and zero singular values |
-| `russell_pde/src/transfinite_samples.rs`, `russell_lab/src/algo/bspline.rs` | 79, 50 | `if SAVE_FIGURE { ... }` blocks: plotting code that writes SVG to a developer's disk |
+| `russell_pde/src/transfinite_samples.rs`, `russell_lab/src/algo/bspline.rs` | 79, 43 | `if SAVE_FIGURE { ... }` blocks: plotting code that writes SVG to a developer's disk |
 | `russell_tensor/src/polar_higham.rs` | 67 | the `dd2 == 0` branch, which needs an isotropic spectrum, and the ill-conditioned fallbacks |
-| `russell_nonlin/src/solver.rs`, `solver_arclength.rs` | 33, 27 | scenario code: the `dlambda/ds` guard needs a turning point reached while the listed step is still legal, the precise-stop redo needs `Stop::UComp`, and the failure limits need a deliberately failing system |
+| `russell_nonlin/src/solver.rs`, `solver_arclength.rs` | 31, 27 | scenario code: the `dlambda/ds` guard needs a turning point reached while the listed step is still legal, the precise-stop redo needs `Stop::UComp`, and the failure limits need a deliberately failing system |
 | `russell_sparse/src/util.rs` | 31 | the `nvidia-smi` probe without a GPU, the `/proc/cpuinfo` fallback that `lscpu` pre-empts, and the false arms of `cfg!(feature = ...)` in a build that has the feature |
-| `native/lapack/examples.rs` | 18 | short-circuited false arms of the two example checkers. `DGET33`'s structural-violation penalty and `DGET31`'s `scale > 1` and `INFO ∉ {0, 1}` penalties are unreachable for a correct routine (`DGET31`'s own run reports `NINFO(1) = 0`); the tails of the `&&` chains in the `RES = ZERO` tests never evaluate; and the 2x2 complex arm of the `INFO` transcription is never selected by this grid, whose largest pivoted entry is always a diagonal one |
-| `native/lapack/auxiliary.rs` | 74 | the shared helpers' rescue arms: `dladiv`'s seven rescale-branch lines are constant-folded out when the fixture's literals reach the inliner (its twelve cases match the reference bit for bit, but the compiler removes the branches it can decide), `lascl_g`'s guards for a zero `cfrom` and for overflow, and the degenerate blocks of `dlae2`/`dlaev2` that the symmetric sweeps never produce |
-| `native/lapack/families.rs` | 43 | harness argument checks the tests do not exercise, the `wn == 0` arm of a reflector built from a zero random vector in `dlagge`/`dlagsy` (probability zero), `dlatms`'s `INFO = 2` guard for an all-zero spectrum (unreachable: `latm1` always scales the maximum to one), and the assertion-failure lines of the fixture tests |
 | `russell_tensor/src/eigen_projectors.rs` | 26 | `if VERBOSE { ... }` diagnostics |
 
-The remaining ~400 lines are spread over many files, none above 25.
+The remaining ~420 lines are spread over many files, none above 25; the largest are
+`russell_sparse/src/solver_mumps.rs` at 22 and `complex_solver_mumps.rs`,
+`transfinite_2d.rs` and `radau5.rs` at 21.
 
-**Measured 2026-10-20 for the SEP and SVD sweeps** (`cargo llvm-cov -p russell_lab
---lib --lcov`, 39,065 / 40,559 lines = 96.32%, 1,494 missed): the four sweeps moved
-**122 production lines**, and they were not evenly distributed:
-
-| sweep | moved | where |
-|---|---|---|
-| `dsyev` | 6 | `dsteqr` |
-| `zheev` | 99 | `zsteqr` 93, `zlasr_v` 6 |
-| `dgesvd` | **0** | — |
-| `zgesvd` | 17 | `zbdsqr` |
-
-So the value here is not the line count. `dgesvd` moved nothing because `dbdsqr`'s
-convergence and rescue arms were already reached by the hand-written shapes in
-`svd.rs`; the family grid adds cases, not branches. The complex twins moved the most
-for the opposite reason — `zsteqr` had almost no coverage before, so an ordinary
-well-conditioned spectrum was enough.
-
-Two rules that follow:
+Three rules that follow:
 
 - **Do not refactor production code to satisfy the tool.** The five dyadic kernels in
   `russell_tensor` read as 50% covered because `--fail-under-lines` counts a line once
@@ -287,13 +206,16 @@ warning-free.
 
 ## BLAS/LAPACK invariants
 
-These are the rules the code depends on. Each one has been violated at least once.
+These are the rules this repository's code depends on. Each one has been violated at
+least once. The kernels' own invariants -- scaling before squaring, the convergence
+contracts, the triangle and contraction rules as they apply inside a driver -- are in
+`algebra_linear`'s `AGENTS.md`.
 
-- **Matrix layout.** Everything in `russell_lab` is **column-major**, and
-  `native::blas` / `native::lapack` index `data[i + j * n]` to match `Matrix`.
-  `lapack.h` binds directly to the Fortran routines and is therefore column-major
-  too. **`LAPACKE_*` is the row-major API and will silently transpose every
-  matrix** — never use it here.
+- **Matrix layout.** Everything here and in the kernels is **column-major**:
+  `algebra_linear::blas` and `algebra_linear::lapack` index `data[i + j * n]`, to
+  match `Matrix`. `lapack.h` binds directly to the Fortran routines and is therefore
+  column-major too. **`LAPACKE_*` is the row-major API and will silently transpose
+  every matrix** — never use it here.
 - **LAPACK's string arguments are a hidden-argument ABI.** `lapack.h` in a build
   with `LAPACK_FORTRAN_STRLEN_END` passes hidden trailing string lengths
   (`FORTRAN_STRLEN` = `size_t`). Prefer the shim's `c_*` wrappers, which take
@@ -301,26 +223,20 @@ These are the rules the code depends on. Each one has been violated at least onc
   way to get garbage rather than an error.
 - **A routine that writes one triangle leaves the other alone.** `dpotrf` with
   `'L'` writes only the lower triangle and `'U'` only the upper; the rest keeps
-  whatever the caller had. So: mirror the triangle you *read* into the one you
-  need (the caller's other half may legitimately be zeros), and write back only
-  the requested triangle. `dsyrk` behaves the same way.
+  whatever the caller had. The dispatchers mirror the triangle they read into the one
+  they need and write back only the requested one; `dsyrk` behaves the same way.
 - **Check the contraction length, not just the output shape.** `C := A Aᵀ` and
   `C := Aᵀ A` are both `(n,n)` but contract over different lengths — `k` from `A`'s
   columns in one case and from its rows in the other. A dispatch that passes the
   same shape to both is silently wrong for non-square `A`. This bit
   `mat_sym_rank_op`.
 - **`idamax` is 1-based in BLAS and 0-based in Rust.** `find_index_abs_max` and
-  `native::blas::idamax` return 0-based indices; the first maximum wins.
-- **Scale before squaring.** A naive sum of squares overflows for entries around
-  `1e200` and underflows around `1e-200`. `dnrm2` and `dznrm2` use Blue's scaling.
-- **Non-convergence is an error, not a debug assertion.** An `INFO > 0` from an
-  iterative routine -- `dsteqr`, `zsteqr`, `dlahqr`, `dbdsqr`, `zbdsqr`, and the
-  QZ iterations -- becomes `LapackError::Convergence`, never a `debug_assert`.
-  A debug assertion only fires in a debug build, so a release build handed back
-  partly converged eigenvalues and singular vectors as if they had converged.
-  `dhseqr`, `dgeev` and `dgesvd` are tested for this with a NaN matrix (the
-  iteration limit really is exhausted); `dsyev`/`zheev` cannot be, because the
-  norm gate reads NaN as zero and takes the zero-matrix early return.
+  `algebra_linear::blas::idamax` return 0-based indices; the first maximum wins.
+- **Non-convergence is an error, not a debug assertion.** At the boundary,
+  `base::lapack_dispatch` maps an `INFO > 0` to `LapackError::Convergence`, and the
+  Rust driver returns the same variant itself, so a caller never receives a partly
+  converged result presented as a success. A `debug_assert` would only fire in a
+  debug build.
 
 ## Dispatch between the native and external backends
 

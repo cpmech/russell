@@ -380,13 +380,14 @@ where
     get31_where(|_| true, solve)
 }
 
-/// [`get31`] restricted to the cases `keep` accepts.
+/// The loop behind [`get31`], with a filter over the cases.
 ///
-/// A copy of `DLALN2` whose signature fixes some of the inputs cannot run the
-/// whole grid; this lets it run the part its signature actually expresses
-/// instead of emulating the rest, which would be a different computation and
-/// would score a different residual. `lmax` then counts the kept cases.
-pub fn get31_where<K, F>(keep: K, solve: F) -> (f64, usize, usize, usize, usize)
+/// `get31` keeps every case. The filter stays because it is how a subset of the
+/// grid can be run against one implementation without changing the checker -- and
+/// because the residual formulas are keyed to the case, so a caller that restricts
+/// the grid still gets ratios it can compare with the reference's, at the cost of a
+/// `knt` that counts only the kept cases.
+fn get31_where<K, F>(keep: K, solve: F) -> (f64, usize, usize, usize, usize)
 where
     K: Fn(&Case) -> bool,
     F: Fn(&Case) -> ([f64; 4], f64, f64, i32),
@@ -662,5 +663,52 @@ mod tests {
             "dlanv2 on the reference's examples: rmax = {rmax:e} at case {lmax}, where LAPACK's own dlanv2 reports 6.75"
         );
         assert!(lmax > 0 || rmax == 0.0, "lmax must name a case when rmax is nonzero");
+    }
+
+    /// `DGET31` on the one remaining `dlaln2`, against LAPACK's own run.
+    ///
+    /// This routine used to exist twice: `eig.rs` had a copy specialized to
+    /// `ltrans = .FALSE., ca = 1, d1 = d2 = 1` and `qz.rs` the general one, ~87%
+    /// identical. They are now one function in [`super::auxiliary`], which is the
+    /// general signature LAPACK has, so it expresses every case `DGET31`
+    /// constructs and has to reproduce the reference's numbers exactly, not merely
+    /// stay under the threshold:
+    ///
+    /// ```text
+    /// KNT = 230400   LMAX = 249   NINFO = (0, 74796)   RMAX = 1.77272727272727271
+    /// ```
+    ///
+    /// `NINFO(2) = 74796` is the interesting one: a third of the grid has a pivot
+    /// below `smin`, so a third of the residuals are divided by `smin*norm(X)`
+    /// instead of `ulp*norm(C)*norm(X)`. A routine that perturbed a different set
+    /// of cases, or that dropped the perturbation from its scaling, would score
+    /// `1/eps` per case and land nowhere near `1.77`.
+    ///
+    /// `INFO` is computed by [`get31_info`] rather than returned by `dlaln2`,
+    /// whose `Laln2` has no field for it; see that function for why. The case
+    /// index `lmax` counts the grid in the reference's loop order, so it names the
+    /// same case LAPACK names.
+    #[test]
+    fn dlaln2_matches_the_reference_examples() {
+        use crate::native::lapack::auxiliary::dlaln2;
+
+        let (rmax, lmax, ninfo_neg, ninfo_pos, knt) = get31(|c| {
+            let r = dlaln2(
+                c.ltrans, c.na, c.nw, c.smin, c.ca, c.a11, c.a21, c.a12, c.a22, c.d1, c.d2, c.b11, c.b21, c.b12, c.b22,
+                c.wr, c.wi,
+            );
+            ([r.x11, r.x21, r.x12, r.x22], r.scale, r.xnorm, get31_info(c))
+        });
+        println!(
+            "dlaln2 over the reference's example grid: {knt} cases, ninfo = ({ninfo_neg}, {ninfo_pos}), rmax = {rmax:e} at case {lmax}"
+        );
+        assert_eq!(knt, 230400, "the grid must have 640 * 360 cases");
+        assert_eq!(ninfo_neg, 0, "the reference does not check its arguments");
+        assert_eq!(ninfo_pos, 74796, "the perturbed cases must be the reference's");
+        assert!(
+            rmax <= 20.0,
+            "dlaln2 on the reference's examples: rmax = {rmax:e} at case {lmax}, where LAPACK's own dlaln2 reports 1.7727"
+        );
+        assert_eq!(lmax, 249, "the worst case must be the reference's");
     }
 }

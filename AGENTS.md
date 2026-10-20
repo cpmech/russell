@@ -368,7 +368,7 @@ row is unchanged from the workspace measurement.
 | `russell_tensor/src/polar_higham.rs` | 67 | the `dd2 == 0` branch, which needs an isotropic spectrum, and the ill-conditioned fallbacks |
 | `russell_nonlin/src/solver.rs`, `solver_arclength.rs` | 33, 27 | scenario code: the `dlambda/ds` guard needs a turning point reached while the listed step is still legal, the precise-stop redo needs `Stop::UComp`, and the failure limits need a deliberately failing system |
 | `russell_sparse/src/util.rs` | 31 | the `nvidia-smi` probe without a GPU, the `/proc/cpuinfo` fallback that `lscpu` pre-empts, and the false arms of `cfg!(feature = ...)` in a build that has the feature |
-| `native/lapack/examples.rs` | 14 | short-circuited false arms of the two example checkers. `DGET33`'s structural-violation penalty and `DGET31`'s `scale > 1` and `INFO ∉ {0, 1}` penalties are unreachable for a correct routine (`DGET31`'s own run reports `NINFO(1) = 0`); the tails of the `&&` chains in the `RES = ZERO` tests never evaluate; and the 2x2 complex arm of the `INFO` transcription is never selected by this grid, whose largest pivoted entry is always a diagonal one |
+| `native/lapack/examples.rs` | 16 | short-circuited false arms of the two example checkers. `DGET33`'s structural-violation penalty and `DGET31`'s `scale > 1` and `INFO ∉ {0, 1}` penalties are unreachable for a correct routine (`DGET31`'s own run reports `NINFO(1) = 0`); the tails of the `&&` chains in the `RES = ZERO` tests never evaluate; and the 2x2 complex arm of the `INFO` transcription is never selected by this grid, whose largest pivoted entry is always a diagonal one |
 | `native/lapack/families.rs` | 43 | harness argument checks the tests do not exercise, the `wn == 0` arm of a reflector built from a zero random vector in `dlagge`/`dlagsy` (probability zero), `dlatms`'s `INFO = 2` guard for an all-zero spectrum (unreachable: `latm1` always scales the maximum to one), and the assertion-failure lines of the fixture tests |
 | `russell_tensor/src/eigen_projectors.rs` | 26 | `if VERBOSE { ... }` diagnostics |
 
@@ -400,6 +400,14 @@ Two rules that follow:
 - **When a gap is called unreachable, say what was tried.** The LAPACK entry above is
   trustworthy because five generators were ported and verified against LAPACK's own
   build (`families.rs`) before the sweeps were run.
+- **The percentage moves when function layout changes, and that is the tool, not the
+  tests.** llvm-cov's `DA:` records include lines that carry no code — comments, a
+  `const` declared inside a function, a literal argument on its own line — whenever
+  inlining puts a region boundary there. Consolidating two copies of `dlaln2` into
+  `auxiliary.rs` moved the gate from 96.60% to 95.37% while every executed line kept
+  its hit count (the `dgebal` entry went from 139 to 139): of `eig.rs`'s 586 missed
+  lines, 416 have no code in them. Judge a refactor by the hit counts of the lines
+  that do work, and say so in the PR instead of hunting the total.
 
 `cargo test` also runs the doc examples. Always keep the tree rustfmt-clean and
 warning-free.

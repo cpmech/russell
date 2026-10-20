@@ -26,7 +26,7 @@
 //! step needs `dlaln2`-style solving rather than a plain triangular substitution.
 
 use super::LapackError;
-use super::auxiliary::dladiv2;
+use super::auxiliary::{Laln2, dlaln2};
 
 /// A 2x2 block's eigenvalues, as [`dlanv2`] returns them.
 ///
@@ -976,77 +976,14 @@ pub fn dlartg(f: f64, g: f64) -> (f64, f64, f64) {
     }
 }
 
-/// `dladiv` (LAPACK 3.12.1, `SRC/dladiv.f`): `(a + ib) / (c + id)`.
-fn dladiv(a: f64, b: f64, c: f64, d: f64) -> (f64, f64) {
-    let bs = 2.0;
-    let ab = a.abs().max(b.abs());
-    let cd = c.abs().max(d.abs());
-    let mut s = 1.0;
-    let ov = f64::MAX;
-    let un = f64::MIN_POSITIVE;
-    let eps = f64::EPSILON;
-    let be = bs / (eps * eps);
-    let (mut aa, mut bb, mut cc, mut dd) = (a, b, c, d);
-    if ab >= 0.5 * ov {
-        aa *= 0.5;
-        bb *= 0.5;
-        s *= 2.0;
-    }
-    if cd >= 0.5 * ov {
-        cc *= 0.5;
-        dd *= 0.5;
-        s *= 0.5;
-    }
-    if ab <= un * bs / eps {
-        aa *= be;
-        bb *= be;
-        s /= be;
-    }
-    if cd <= un * bs / eps {
-        cc *= be;
-        dd *= be;
-        s *= be;
-    }
-    let (mut p, mut q) = if d.abs() <= c.abs() {
-        dladiv1(aa, bb, cc, dd)
-    } else {
-        let (pp, qq) = dladiv1(bb, aa, dd, cc);
-        (pp, -qq)
-    };
-    p *= s;
-    q *= s;
-    (p, q)
-}
-
-fn dladiv1(a: f64, b: f64, c: f64, d: f64) -> (f64, f64) {
-    let r = d / c;
-    let t = 1.0 / (c + d * r);
-    let p = dladiv2(a, b, c, d, r, t);
-    let q = dladiv2(b, -a, c, d, r, t);
-    (p, q)
-}
-
-/// The result of [`dlaln2`]: `x` is the `2 x 2` solution array (only the entries
-/// the requested shape uses are meaningful), `scale` the factor the caller must
-/// apply to its right-hand side, and `xnorm` the infinity norm of `x`.
-struct Laln2 {
-    x11: f64,
-    x21: f64,
-    x12: f64,
-    x22: f64,
-    scale: f64,
-    xnorm: f64,
-}
-
-/// `dlaln2` (LAPACK 3.12.1, `SRC/dlaln2.f`) specialized to `LTRANS = .FALSE.`,
-/// `CA = ONE`, `D1 = D2 = ONE`.
+/// `dlaln2` on the path `dtrevc` needs: no transpose, `ca = 1`, `d1 = d2 = 1`.
 ///
-/// Solves `(A - (wr + i*wi) I) X = scale * B`, where `A` is the 1x1 or 2x2 block
-/// `[[a11, a12], [a21, a22]]` and `B` is `2 x 1` (real, `nw = 1`) or `2 x 2`
-/// (complex, `nw = 2`). If the system is closer to singular than `smin`, the
-/// pivot is perturbed to `smin` instead of failing, exactly as LAPACK does.
+/// Three of the general routine's arguments are constant here, and naming them
+/// once keeps the fifteen call sites to the values that actually vary. This is a
+/// forwarder, not a second implementation: the arithmetic lives in
+/// [`super::auxiliary::dlaln2`].
 #[allow(clippy::too_many_arguments)]
-fn dlaln2(
+fn dlaln2_real(
     na: usize,
     nw: usize,
     smin: f64,
@@ -1061,242 +998,9 @@ fn dlaln2(
     wr: f64,
     wi: f64,
 ) -> Laln2 {
-    // IPIVOT, RSWAP and ZSWAP from dlaln2.f's DATA statements. IPIVOT[:, icmax]
-    // is listed here by column (Fortran fills DATA column-major).
-    const IPIVOT: [[usize; 4]; 4] = [[1, 2, 3, 4], [2, 1, 4, 3], [3, 4, 1, 2], [4, 3, 2, 1]];
-    const RSWAP: [bool; 4] = [false, true, false, true];
-    const ZSWAP: [bool; 4] = [false, false, true, true];
-
-    let smlnum = 2.0 * f64::MIN_POSITIVE;
-    let bignum = 1.0 / smlnum;
-    let smini = smin.max(smlnum);
-    let mut scale = 1.0;
-
-    let (mut x11, mut x21, mut x12, mut x22);
-    let mut xnorm;
-
-    if na == 1 {
-        if nw == 1 {
-            // Real 1x1 system.
-            let mut csr = a11 - wr;
-            let mut cnorm = csr.abs();
-            if cnorm < smini {
-                csr = smini;
-                cnorm = smini;
-            }
-            let bnorm = b11.abs();
-            if cnorm < 1.0 && bnorm > 1.0 && bnorm > bignum * cnorm {
-                scale = 1.0 / bnorm;
-            }
-            x11 = (b11 * scale) / csr;
-            x21 = 0.0;
-            x12 = 0.0;
-            x22 = 0.0;
-            xnorm = x11.abs();
-        } else {
-            // Complex 1x1 system.
-            let mut csr = a11 - wr;
-            let mut csi = -wi;
-            let mut cnorm = csr.abs() + csi.abs();
-            if cnorm < smini {
-                csr = smini;
-                csi = 0.0;
-                cnorm = smini;
-            }
-            let bnorm = b11.abs() + b12.abs();
-            if cnorm < 1.0 && bnorm > 1.0 && bnorm > bignum * cnorm {
-                scale = 1.0 / bnorm;
-            }
-            let (p, q) = dladiv(scale * b11, scale * b12, csr, csi);
-            x11 = p;
-            x21 = 0.0;
-            x12 = q;
-            x22 = 0.0;
-            xnorm = x11.abs() + x12.abs();
-        }
-    } else {
-        // 2x2 system. CRV = [CR(1,1), CR(2,1), CR(1,2), CR(2,2)].
-        let crv = [a11 - wr, a21, a12, a22 - wr];
-        if nw == 1 {
-            // Real 2x2 system (w is real).
-            let mut cmax = 0.0;
-            let mut icmax = 0usize;
-            for j in 0..4 {
-                if crv[j].abs() > cmax {
-                    cmax = crv[j].abs();
-                    icmax = j;
-                }
-            }
-            if cmax < smini {
-                let bnorm = b11.abs().max(b21.abs());
-                if smini < 1.0 && bnorm > 1.0 && bnorm > bignum * smini {
-                    scale = 1.0 / bnorm;
-                }
-                let temp = scale / smini;
-                return Laln2 {
-                    x11: temp * b11,
-                    x21: temp * b21,
-                    x12: 0.0,
-                    x22: 0.0,
-                    scale,
-                    xnorm: temp * bnorm,
-                };
-            }
-            // Gaussian elimination with complete pivoting.
-            let ur11 = crv[icmax];
-            let cr21 = crv[IPIVOT[icmax][1] - 1];
-            let ur12 = crv[IPIVOT[icmax][2] - 1];
-            let cr22 = crv[IPIVOT[icmax][3] - 1];
-            let ur11r = 1.0 / ur11;
-            let lr21 = ur11r * cr21;
-            let mut ur22 = cr22 - ur12 * lr21;
-            if ur22.abs() < smini {
-                ur22 = smini;
-            }
-            let (br1, mut br2) = if RSWAP[icmax] { (b21, b11) } else { (b11, b21) };
-            br2 -= lr21 * br1;
-            let bbnd = (br1 * (ur22 * ur11r)).abs().max(br2.abs());
-            if bbnd > 1.0 && ur22.abs() < 1.0 && bbnd >= bignum * ur22.abs() {
-                scale = 1.0 / bbnd;
-            }
-            let xr2 = (br2 * scale) / ur22;
-            let xr1 = (scale * br1) * ur11r - xr2 * (ur11r * ur12);
-            if ZSWAP[icmax] {
-                x11 = xr2;
-                x21 = xr1;
-            } else {
-                x11 = xr1;
-                x21 = xr2;
-            }
-            x12 = 0.0;
-            x22 = 0.0;
-            xnorm = xr1.abs().max(xr2.abs());
-            if xnorm > 1.0 && cmax > 1.0 && xnorm > bignum / cmax {
-                let temp = cmax / bignum;
-                x11 *= temp;
-                x21 *= temp;
-                xnorm *= temp;
-                scale *= temp;
-            }
-        } else {
-            // Complex 2x2 system (w is complex).
-            let civ = [-wi, 0.0, 0.0, -wi];
-            let mut cmax = 0.0;
-            let mut icmax = 0usize;
-            for j in 0..4 {
-                let m = crv[j].abs() + civ[j].abs();
-                if m > cmax {
-                    cmax = m;
-                    icmax = j;
-                }
-            }
-            if cmax < smini {
-                let bnorm = (b11.abs() + b12.abs()).max(b21.abs() + b22.abs());
-                if smini < 1.0 && bnorm > 1.0 && bnorm > bignum * smini {
-                    scale = 1.0 / bnorm;
-                }
-                let temp = scale / smini;
-                return Laln2 {
-                    x11: temp * b11,
-                    x21: temp * b21,
-                    x12: temp * b12,
-                    x22: temp * b22,
-                    scale,
-                    xnorm: temp * bnorm,
-                };
-            }
-            // Gaussian elimination with complete pivoting.
-            let ur11 = crv[icmax];
-            let ui11 = civ[icmax];
-            let cr21 = crv[IPIVOT[icmax][1] - 1];
-            let ci21 = civ[IPIVOT[icmax][1] - 1];
-            let ur12 = crv[IPIVOT[icmax][2] - 1];
-            let ui12 = civ[IPIVOT[icmax][2] - 1];
-            let cr22 = crv[IPIVOT[icmax][3] - 1];
-            let ci22 = civ[IPIVOT[icmax][3] - 1];
-            let (ur11r, ui11r, lr21, li21, ur12s, ui12s, mut ur22, mut ui22);
-            if icmax == 0 || icmax == 3 {
-                // Off-diagonals of the pivoted C are real.
-                if ur11.abs() > ui11.abs() {
-                    let temp = ui11 / ur11;
-                    ur11r = 1.0 / (ur11 * (1.0 + temp * temp));
-                    ui11r = -temp * ur11r;
-                } else {
-                    let temp = ur11 / ui11;
-                    ui11r = -1.0 / (ui11 * (1.0 + temp * temp));
-                    ur11r = -temp * ui11r;
-                }
-                lr21 = cr21 * ur11r;
-                li21 = cr21 * ui11r;
-                ur12s = ur12 * ur11r;
-                ui12s = ur12 * ui11r;
-                ur22 = cr22 - ur12 * lr21;
-                ui22 = ci22 - ur12 * li21;
-            } else {
-                // Diagonals of the pivoted C are real.
-                ur11r = 1.0 / ur11;
-                ui11r = 0.0;
-                lr21 = cr21 * ur11r;
-                li21 = ci21 * ur11r;
-                ur12s = ur12 * ur11r;
-                ui12s = ui12 * ur11r;
-                ur22 = cr22 - ur12 * lr21 + ui12 * li21;
-                ui22 = -ur12 * li21 - ui12 * lr21;
-            }
-            let u22abs = ur22.abs() + ui22.abs();
-            if u22abs < smini {
-                ur22 = smini;
-                ui22 = 0.0;
-            }
-            let (mut br1, mut br2, mut bi1, mut bi2) = if RSWAP[icmax] {
-                (b21, b11, b22, b12)
-            } else {
-                (b11, b21, b12, b22)
-            };
-            br2 = br2 - lr21 * br1 + li21 * bi1;
-            bi2 = bi2 - li21 * br1 - lr21 * bi1;
-            let bbnd = ((br1.abs() + bi1.abs()) * (u22abs * (ur11r.abs() + ui11r.abs()))).max(br2.abs() + bi2.abs());
-            if bbnd > 1.0 && u22abs < 1.0 && bbnd >= bignum * u22abs {
-                scale = 1.0 / bbnd;
-                br1 *= scale;
-                bi1 *= scale;
-                br2 *= scale;
-                bi2 *= scale;
-            }
-            let (xr2, xi2) = dladiv(br2, bi2, ur22, ui22);
-            let xr1 = ur11r * br1 - ui11r * bi1 - ur12s * xr2 + ui12s * xi2;
-            let xi1 = ui11r * br1 + ur11r * bi1 - ui12s * xr2 - ur12s * xi2;
-            if ZSWAP[icmax] {
-                x11 = xr2;
-                x21 = xr1;
-                x12 = xi2;
-                x22 = xi1;
-            } else {
-                x11 = xr1;
-                x21 = xr2;
-                x12 = xi1;
-                x22 = xi2;
-            }
-            xnorm = (xr1.abs() + xi1.abs()).max(xr2.abs() + xi2.abs());
-            if xnorm > 1.0 && cmax > 1.0 && xnorm > bignum / cmax {
-                let temp = cmax / bignum;
-                x11 *= temp;
-                x21 *= temp;
-                x12 *= temp;
-                x22 *= temp;
-                xnorm *= temp;
-                scale *= temp;
-            }
-        }
-    }
-    Laln2 {
-        x11,
-        x21,
-        x12,
-        x22,
-        scale,
-        xnorm,
-    }
+    dlaln2(
+        false, na, nw, smin, 1.0, a11, a21, a12, a22, 1.0, 1.0, b11, b21, b12, b22, wr, wi,
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -1403,7 +1107,7 @@ fn dtrevc_right(t: &[f64], vr: &mut [f64], n: usize) {
                         }
                         if j1 == j2 {
                             // 1x1 diagonal block.
-                            let r = dlaln2(
+                            let r = dlaln2_real(
                                 1,
                                 1,
                                 smin,
@@ -1435,7 +1139,7 @@ fn dtrevc_right(t: &[f64], vr: &mut [f64], n: usize) {
                             }
                         } else {
                             // 2x2 diagonal block.
-                            let r = dlaln2(
+                            let r = dlaln2_real(
                                 2,
                                 1,
                                 smin,
@@ -1533,7 +1237,7 @@ fn dtrevc_right(t: &[f64], vr: &mut [f64], n: usize) {
                         }
                         if j1 == j2 {
                             // 1x1 diagonal block, two right-hand sides.
-                            let r = dlaln2(
+                            let r = dlaln2_real(
                                 1,
                                 2,
                                 smin,
@@ -1572,7 +1276,7 @@ fn dtrevc_right(t: &[f64], vr: &mut [f64], n: usize) {
                             }
                         } else {
                             // 2x2 diagonal block, complex system.
-                            let r = dlaln2(
+                            let r = dlaln2_real(
                                 2,
                                 2,
                                 smin,
@@ -2193,7 +1897,7 @@ fn dtrevc_left(t: &[f64], vl: &mut [f64], n: usize) {
                             s += tget(t, n, l, j) * w1[l - 1];
                         }
                         w1[j - 1] -= s;
-                        let r = dlaln2(
+                        let r = dlaln2_real(
                             1,
                             1,
                             smin,
@@ -2237,7 +1941,7 @@ fn dtrevc_left(t: &[f64], vl: &mut [f64], n: usize) {
                         }
                         w1[j] -= s2;
                         // LTRANS = .TRUE.: the off-diagonals are swapped.
-                        let r = dlaln2(
+                        let r = dlaln2_real(
                             2,
                             1,
                             smin,
@@ -2335,7 +2039,7 @@ fn dtrevc_left(t: &[f64], vl: &mut [f64], n: usize) {
                             s2 += tget(t, n, l, j) * w2[l - 1];
                         }
                         w2[j - 1] -= s2;
-                        let r = dlaln2(
+                        let r = dlaln2_real(
                             1,
                             2,
                             smin,
@@ -2392,7 +2096,7 @@ fn dtrevc_left(t: &[f64], vl: &mut [f64], n: usize) {
                         }
                         w2[j] -= s4;
                         // LTRANS = .TRUE.: the off-diagonals are swapped.
-                        let r = dlaln2(
+                        let r = dlaln2_real(
                             2,
                             2,
                             smin,
@@ -2682,6 +2386,7 @@ pub fn dgeev_lr(
 
 #[cfg(test)]
 mod tests {
+    use super::super::auxiliary::dladiv;
     use super::*;
     use crate::{Complex64, Matrix};
 
@@ -3505,13 +3210,13 @@ mod tests {
     #[test]
     fn dlaln2_solves_the_four_block_shapes() {
         // (a11, b11) with a real eigenvalue: x = b11 / (a11 - wr).
-        let r = dlaln2(1, 1, 0.0, 4.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+        let r = dlaln2_real(1, 1, 0.0, 4.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 1.0, 0.0);
         assert_eq!(r.scale, 1.0);
         assert!((r.x11 - 2.0 / 3.0).abs() < 1e-15, "x11 = {}", r.x11);
 
         // Complex 1x1: x = (b11 + i b12) / (a11 - wr - i wi).
         let (a11, b11, b12, wr, wi) = (4.0, 1.0, 2.0, 1.0, 0.5);
-        let r = dlaln2(1, 2, 0.0, a11, 0.0, 0.0, 0.0, b11, 0.0, b12, 0.0, wr, wi);
+        let r = dlaln2_real(1, 2, 0.0, a11, 0.0, 0.0, 0.0, b11, 0.0, b12, 0.0, wr, wi);
         assert_eq!(r.scale, 1.0);
         // (1 + 2i) / (3 - 0.5i) = (1*3 + 2*(-0.5) + i(2*3 - 1*(-0.5)))/9.25
         let den = (a11 - wr) * (a11 - wr) + wi * wi;
@@ -3524,7 +3229,7 @@ mod tests {
         // Real 2x2: (A - wr I) x = (b11, b21).
         let (a11, a21, a12, a22) = (4.0, 2.0, 1.0, 3.0);
         let (b11, b21, wr) = (1.0, -2.0, 0.5);
-        let r = dlaln2(2, 1, 0.0, a11, a21, a12, a22, b11, b21, 0.0, 0.0, wr, 0.0);
+        let r = dlaln2_real(2, 1, 0.0, a11, a21, a12, a22, b11, b21, 0.0, 0.0, wr, 0.0);
         assert_eq!(r.scale, 1.0);
         let det = (a11 - wr) * (a22 - wr) - a12 * a21;
         let want_x11 = ((a22 - wr) * b11 - a12 * b21) / det;
@@ -3535,7 +3240,7 @@ mod tests {
         // Complex 2x2: (A - wr I - i wi I) x = (b11 + i b12, b21 + i b22).
         let (wr, wi) = (0.5, 1.5);
         let (b11, b21, b12, b22) = (1.0, -1.0, 0.5, 2.0);
-        let r = dlaln2(2, 2, 0.0, a11, a21, a12, a22, b11, b21, b12, b22, wr, wi);
+        let r = dlaln2_real(2, 2, 0.0, a11, a21, a12, a22, b11, b21, b12, b22, wr, wi);
         assert_eq!(r.scale, 1.0);
         // Solve with Cramer's rule over the complex field.
         let m11 = Complex64::new(a11 - wr, -wi);
@@ -3563,7 +3268,7 @@ mod tests {
         // solution would be 1e600, so the routine must return
         // `x = 1e300` with `scale = 1e-300`.
         let (a11, b11) = (1e-300, 1e300);
-        let r = dlaln2(1, 1, 0.0, a11, 0.0, 0.0, 0.0, b11, 0.0, 0.0, 0.0, 0.0, 0.0);
+        let r = dlaln2_real(1, 1, 0.0, a11, 0.0, 0.0, 0.0, b11, 0.0, 0.0, 0.0, 0.0, 0.0);
         assert!(r.scale < 1.0, "scale = {} should be below one", r.scale);
         assert!(r.x11.is_finite(), "x11 = {} overflowed", r.x11);
         let lhs = r.x11 * a11;
@@ -3576,7 +3281,7 @@ mod tests {
         // A large SMIN clamps the denominator, so the solution is bounded by
         // b/smin rather than by the true (tiny) denominator.
         let smin = 1e-3;
-        let r = dlaln2(1, 1, smin, 1e-8, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        let r = dlaln2_real(1, 1, smin, 1e-8, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0);
         assert!(
             r.x11.abs() <= 1.0 / smin * 1.000001,
             "x11 = {} exceeds b/smin = {}",
@@ -4250,59 +3955,5 @@ mod tests {
                 j += if complex { 2 } else { 1 };
             }
         }
-    }
-
-    /// `DGET31` on this module's `dlaln2`, restricted to the cases its signature
-    /// expresses.
-    ///
-    /// This copy is the one `dtrevc3` and the Hessenberg iteration need, so it is
-    /// specialized to `ltrans = .FALSE.`, `ca = 1`, `d1 = d2 = 1`: it solves
-    /// `(A - w I) X = s B` and never sees a transpose, a scaled `A`, or a
-    /// diagonal `D`. The other 79 of the reference's 80 `(d1, d2, ca)`
-    /// combinations and all of its `ltrans = .TRUE.` cases are therefore not
-    /// ordinary `DGET31` cases *for this copy* — running them would mean
-    /// emulating `ca`, `D` and the transpose by rewriting the arguments, which is
-    /// a different computation feeding the reference's residual formulas, and a
-    /// different computation is what the residual would then be measuring.
-    /// [`super::examples::get31_where`] exists so the test can run the part the
-    /// signature does express instead of pretending to run the whole grid.
-    ///
-    /// That leaves 1,440 cases: four `smin` values over the four `(na, nw)`
-    /// blocks, `a`/`b` from `{sqrt(smlnum), 1, sqrt(bignum)}` and `w` from
-    /// `{0, 1/2, 2, 1}` (`wr` and `wi` both multiplied by `a(1,1)`, the
-    /// reference's special case). LAPACK 3.12.1's `dget31.f` restricted to the
-    /// same loops reports
-    ///
-    /// ```text
-    /// KNT = 1440   LMAX = 541   NINFO = (0, 549)   RMAX = 1.50000000000000000
-    /// ```
-    ///
-    /// and the port matches all four, so the specialization agrees with the
-    /// reference on the cases it claims to implement. The whole grid is covered
-    /// by [`super::super::qz`]'s copy, which has the general signature.
-    #[test]
-    fn dlaln2_matches_the_reference_examples() {
-        use crate::native::lapack::examples::{get31_info, get31_where};
-
-        let (rmax, lmax, ninfo_neg, ninfo_pos, knt) = get31_where(
-            |c| c.ca == 1.0 && c.d1 == 1.0 && c.d2 == 1.0 && !c.ltrans,
-            |c| {
-                let r = dlaln2(
-                    c.na, c.nw, c.smin, c.a11, c.a21, c.a12, c.a22, c.b11, c.b21, c.b12, c.b22, c.wr, c.wi,
-                );
-                ([r.x11, r.x21, r.x12, r.x22], r.scale, r.xnorm, get31_info(c))
-            },
-        );
-        println!(
-            "dlaln2 (ca = 1, d1 = d2 = 1, no transpose) over the reference's example grid: {knt} cases, ninfo = ({ninfo_neg}, {ninfo_pos}), rmax = {rmax:e} at case {lmax}"
-        );
-        assert_eq!(knt, 1440, "the specialized grid must have 4 * 360 cases");
-        assert_eq!(ninfo_neg, 0, "the reference does not check its arguments");
-        assert_eq!(ninfo_pos, 549, "the perturbed cases must be the reference's");
-        assert!(
-            rmax <= 20.0,
-            "dlaln2 on the reference's examples: rmax = {rmax:e} at case {lmax}, where LAPACK's own dlaln2 reports 1.5"
-        );
-        assert_eq!(lmax, 541, "the worst case must be the reference's");
     }
 }

@@ -16,32 +16,95 @@
 //! matters, since only that decides which library defines the symbols. Enabling
 //! both is therefore not an error: it is MKL.
 //!
-//! # What is here, and what is not
+//! # What is here
 //!
-//! Routed:
+//! One entry per BLAS operation the crate uses, with the crate's own argument
+//! shapes -- slices, `usize` lengths, `bool` flags -- rather than CBLAS's:
 //!
-//! * level 1: `ddot`, `dnrm2`, `dasum`, `idamax`;
-//! * level 2: `dgemv`, `dgemv_trans`, `dger`, `zger`;
-//! * level 3: `dgemm` and the three transposed combinations `dgemm_tn`,
-//!   `dgemm_nt`, `dgemm_tt`; `zgemm` and its three; `dsyrk`; `zherk`;
-//! * `dlange`, which is LAPACK's rather than BLAS's, but is a norm over the same
-//!   buffer and was needed by `mat_norm`.
+//! * level 1: `ddot`, `daxpy`, `dscal`, `dcopy`, `dnrm2`, `dasum`, `idamax`,
+//!   `dznrm2`, `zaxpy`, `zscal`, `zcopy`;
+//! * level 2: `dgemv`, `dgemv_trans`, `dger`, `zgemv`, `zgemv_trans`, `zger`;
+//! * level 3: `dgemm` and its three transposed combinations (`dgemm_tn`,
+//!   `dgemm_nt`, `dgemm_tt`), `dsyrk`, `zgemm` and its three, `zsyrk`, `zherk`;
+//! * `dlange` and `zlange`, which are LAPACK's rather than BLAS's but are norms
+//!   over the same buffer and are needed by `mat_norm`/`complex_mat_norm`.
 //!
-//! `dgemv_trans` and `dasum` are included because the call sites being routed need
-//! them -- `vec_mat_mul` and `Norm::One`, respectively -- and splitting a file
-//! between this module and a local `extern "C"` block would be worse than adding
-//! the entry. The transposed `gemm` entries exist for the same reason: without
-//! them `mat_t_mat_mul` and `complex_mat_t_mat_mul` cannot be routed, because
-//! `native::blas` originally had no transposed `gemm` to forward to. They were
-//! written here first (see `dgemm_tn` in `crate::native::blas`), then routed.
+//! This is now the only place in the crate that names a `cblas_*` symbol or
+//! chooses between a native BLAS kernel and the shim: every BLAS call site goes
+//! through here. (The `c_*` LAPACK wrappers in `src/matrix` and `src/matvec` are a
+//! different layer and were not part of this.)
 //!
-//! Everything else keeps its existing per-file dispatch, which is the convention
-//! described in `AGENTS.md`: the level-1 `daxpy`/`dcopy`/`dscal` family and their
-//! complex twins `zscal`/`zaxpy`/`zcopy`, `zgemv`/`zgemv_trans`, `zlange`,
-//! `zsyrk`, and the `zger`-free complex symmetric rank-k path used by
-//! `complex_mat_sym_rank_op`. Those are not what this dispatch was extended for:
-//! the level-1 routines are too small for the call to matter, and the complex
-//! entry points other than `zgemm` have no accelerated call site.
+//! Five entries have no call site -- `dgemm_nt`, `dgemm_tt`, `zgemm_nt`,
+//! `zgemm_tt` and `zger`. They are here because this module is the surface a call
+//! site has to use, and leaving one of a symmetric set out would make the next
+//! call site reopen it; the tests are their callers, which is what the `allow`s
+//! record.
+//!
+//! `zsyrk` is **not** `zherk`. Both are rank-k updates of an `n x n` matrix from
+//! an `n x k` one, but `zsyrk` transposes plainly and takes complex `alpha`/`beta`
+//! (the result is complex symmetric), while `zherk` conjugates and takes real
+//! scalars (the result is Hermitian, with a real diagonal). They are separate CBLAS
+//! entry points and separate native kernels for exactly that reason; the shim's
+//! `c_zsyrk` sends `CblasTrans`, never `CblasConjTrans`.
+//!
+//! # Which entries reach the library
+//!
+//! Sending everything to the library is the uniform choice, and for level 1 it is
+//! partly the wrong one: these routines are memory-bound and short, so the call
+//! into C can cost more than the loop it replaces. Each was measured instead of
+//! assumed, with `cargo bench --bench backends_benchmark` (level1 group) against
+//! MKL 2026.0 pinned to one thread, at the three sizes the numbers below are
+//! quoted for. `native -> CBLAS`, ns per call, mean of two runs:
+//!
+//! | routine | n = 128 | n = 1,024 | n = 8,192 | routed |
+//! |---|---|---|---|---|
+//! | `daxpy` | 12 -> 8.9 | 98 -> 46 | 1,011 -> 820 | yes |
+//! | `dcopy` | 6.4 -> 8.9 | 36 -> 37 | 866 -> 913 | **no** |
+//! | `dscal` | 7.7 -> 8.1 | 63 -> 28 | 682 -> 724 | **no** |
+//! | `ddot` | 27 -> 9.2 | 337 -> 52 | 2,817 -> 738 | yes |
+//! | `dnrm2` | 124 -> 31 | 1,073 -> 189 | 8,665 -> 1,456 | yes |
+//! | `dasum` | 28 -> 7.2 | 339 -> 34 | 2,832 -> 315 | yes |
+//! | `idamax` | 80 -> 59 | 699 -> 95 | 5,860 -> 413 | yes |
+//! | `zaxpy` | 68 -> 18 | 533 -> 119 | 4,376 -> 1,655 | yes |
+//! | `zcopy` | 8.7 -> 13 | 69 -> 100 | 1,737 -> 2,018 | **no** |
+//! | `zscal` | 45 -> 14 | 356 -> 93 | 2,868 -> 1,422 | yes |
+//! | `dznrm2` | 587 -> 54 | 4,718 -> 369 | 37,774 -> 2,887 | yes |
+//!
+//! Three conclusions, and the last two are the awkward ones:
+//!
+//! * The reductions and the complex scalings are 3-14x faster through the library
+//!   at every size, which is why they were worth routing.
+//! * The two copies are not. `copy_from_slice` compiles to a single `memcpy`,
+//!   which the library cannot beat and a call only makes slower, so `dcopy` and
+//!   `zcopy` stay native. `daxpy` is the same shape plus an add, and its win is
+//!   the thinnest of the routed entries for that reason.
+//! * `dscal` is the one judgment call: 2.2x faster through the library at
+//!   n = 1,024 and 6% slower at n = 8,192, where both sides are limited by memory
+//!   bandwidth. Routing it would trade one size for the other rather than win, so
+//!   it is left native -- the same `if size > threshold` problem `dsyev` has, and
+//!   no size test can express it because the loss and the win are at opposite ends.
+//!
+//! Read the n = 128 column with care: those calls are 5-12 ns, and the native
+//! column moved by up to 40% between the two runs there, so a difference under
+//! about 20% at that size is not a result. The n = 1,024 and n = 8,192 columns
+//! reproduced within about 3% (`zcopy` by 7%), and the decisions rest on those.
+//!
+//! The level-2 and level-3 entries are O(n^2) or O(n^3), so the call overhead
+//! does not matter and the only question is whether the library's kernel is
+//! better. Measured through the public entry point -- plain vs `--all-features`,
+//! same binary, same data -- it is:
+//!
+//! | call site | n = 128 | n = 512 | n = 1,024 | routed |
+//! |---|---|---|---|---|
+//! | `complex_mat_vec_mul` (zgemv) | 9.0 -> 1.7 us | 136 -> 40 us | 563 -> 171 us | yes |
+//! | `complex_mat_sym_rank_op` (zsyrk) | 777 -> 105 us | 143 -> 6.2 ms | 1.37 s -> 50 ms | yes |
+//! | `mat_norm`, Frobenius (dlange) | 17.3 -> 4.1 us | 276 -> 51 us | 1,106 -> 194 us | yes |
+//! | `complex_mat_norm`, one-norm (zlange) | 39.7 -> 50.2 us | 647 -> 752 us | 2,682 -> 3,055 us | **no** |
+//!
+//! `zsyrk` is where this dispatch was worth the most outside the level-3 products:
+//! the native complex symmetric rank-k update is a scalar triple loop, and the
+//! library is 7-27x faster depending on size. `zlange` is the one library kernel
+//! that loses on every norm -- see its own comment.
 //!
 //! # Why the shim, and not CBLAS directly
 //!
@@ -77,6 +140,7 @@ unsafe extern "C" {
     fn c_dnrm2(x: *const f64, n: *const i32) -> f64;
     fn c_dasum(x: *const f64, n: *const i32) -> f64;
     fn c_idamax(x: *const f64, n: *const i32) -> i32;
+    fn c_daxpy(alpha: f64, x: *const f64, y: *mut f64, n: *const i32);
     fn c_dlange(norm_code: i32, m: *const i32, n: *const i32, a: *const f64, lda: *const i32, work: *mut f64) -> f64;
     fn c_zgemm(
         alpha: *const Complex64,
@@ -176,6 +240,37 @@ unsafe extern "C" {
         k: *const i32,
         upper: i32,
         conj_transposed: i32,
+    );
+    fn c_zaxpy(alpha: *const Complex64, x: *const Complex64, y: *mut Complex64, n: *const i32);
+    fn c_zscal(alpha: *const Complex64, x: *mut Complex64, n: *const i32);
+    fn c_dznrm2(x: *const Complex64, n: *const i32) -> f64;
+    fn c_zgemv(
+        alpha: *const Complex64,
+        a: *const Complex64,
+        x: *const Complex64,
+        beta: *const Complex64,
+        y: *mut Complex64,
+        m: *const i32,
+        n: *const i32,
+    );
+    fn c_zgemv_trans(
+        alpha: *const Complex64,
+        a: *const Complex64,
+        x: *const Complex64,
+        beta: *const Complex64,
+        y: *mut Complex64,
+        m: *const i32,
+        n: *const i32,
+    );
+    fn c_zsyrk(
+        alpha: *const Complex64,
+        a: *const Complex64,
+        beta: *const Complex64,
+        c: *mut Complex64,
+        n: *const i32,
+        k: *const i32,
+        upper: i32,
+        transposed: i32,
     );
 }
 
@@ -432,6 +527,52 @@ pub fn ddot(x: &[f64], y: &[f64]) -> f64 {
     crate::native::blas::ddot(&x[..n], &y[..n])
 }
 
+/// `y := alpha * x + y` (daxpy), where `y` and `x` are the same length.
+///
+/// # Panics
+///
+/// Panics if the slices differ in length.
+pub fn daxpy(alpha: f64, x: &[f64], y: &mut [f64]) {
+    assert_eq!(x.len(), y.len(), "daxpy: vectors must have the same length");
+    if y.is_empty() {
+        return;
+    }
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        let n_i32 = to_i32(y.len());
+        // Safety: `x` and `y` have the same length, checked above, and the shim
+        // is linked in this configuration.
+        unsafe { c_daxpy(alpha, x.as_ptr(), y.as_mut_ptr(), &n_i32) };
+    }
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    crate::native::blas::daxpy(alpha, x, y);
+}
+
+/// `y := x` (dcopy).
+///
+/// **Not routed.** The native kernel is a `copy_from_slice`, i.e. one `memcpy`,
+/// and the library call adds a call it cannot win back; see the level-1
+/// measurements on this module.
+///
+/// # Panics
+///
+/// Panics if the slices differ in length.
+pub fn dcopy(x: &[f64], y: &mut [f64]) {
+    crate::native::blas::dcopy(x, y);
+}
+
+/// `x := alpha * x` (dscal).
+///
+/// **Not routed.** Measured against MKL, this is the one level-1 routine that
+/// wins through the library at one size and loses at another: 2.2x faster at
+/// n = 1024, 6% slower at n = 8192, and within noise at n = 128 (see the
+/// measurements on this module). The large-size case is memory-bandwidth-bound on
+/// both sides, so routing would trade one size for the other rather than win, and
+/// the native loop is kept.
+pub fn dscal(alpha: f64, x: &mut [f64]) {
+    crate::native::blas::dscal(alpha, x);
+}
+
 /// Euclidean norm `sqrt(x . x)` (dnrm2).
 pub fn dnrm2(x: &[f64]) -> f64 {
     if x.is_empty() {
@@ -537,6 +678,27 @@ fn norm_discriminant(norm: char) -> i32 {
     }
 }
 
+/// `nrm := |A|` for a complex matrix (zlange), as a real number.
+///
+/// `norm` is the BLAS character, as in [`dlange`]. The one- and infinity-norms
+/// use the modulus of each entry, as LAPACK specifies.
+///
+/// **Not routed, unlike [`dlange`].** Measured through `complex_mat_norm` against
+/// MKL, LAPACK's `zlange` is 23% slower at n = 128 and 14% slower at n = 1024 for
+/// the one-norm, and no better than the Rust kernel for the Frobenius and max
+/// norms (1.00-1.03). The real `dlange` goes the other way -- 4-6x faster through
+/// LAPACK -- so this is a property of the complex kernel, not of the norm code:
+/// LAPACK's `zlange` walks the matrix twice to build `dlassq`'s scaled sums, and
+/// the native twin needs neither a scaling pass nor a workspace. The shim's
+/// `c_zlange` is kept for the pairing with `c_dlange` and has no Rust caller.
+///
+/// # Panics
+///
+/// Panics on an unrecognized norm character.
+pub fn zlange(norm: char, a: &[Complex64], m: usize, n: usize) -> f64 {
+    crate::native::blas::zlange(norm, a, m, n)
+}
+
 /// `C := alpha * A * A^T + beta * C`, or `C := alpha * A^T * A + beta * C` when
 /// `transposed` (dsyrk).
 ///
@@ -579,6 +741,74 @@ pub fn dsyrk(alpha: f64, a: &[f64], beta: f64, c: &mut [f64], n: usize, k: usize
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     crate::native::blas::dsyrk_rank(alpha, a, beta, c, n, k, upper, transposed);
+}
+
+/// `y := alpha * x + y` for complex data (zaxpy).
+///
+/// # Panics
+///
+/// Panics if the slices differ in length.
+pub fn zaxpy(alpha: Complex64, x: &[Complex64], y: &mut [Complex64]) {
+    assert_eq!(x.len(), y.len(), "zaxpy: vectors must have the same length");
+    if y.is_empty() {
+        return;
+    }
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        let n_i32 = to_i32(y.len());
+        // Safety: `x` and `y` have the same length, checked above, and the shim
+        // is linked in this configuration.
+        unsafe { c_zaxpy(&alpha, x.as_ptr(), y.as_mut_ptr(), &n_i32) };
+    }
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    crate::native::blas::zaxpy(alpha, x, y);
+}
+
+/// `y := x` for complex data (zcopy).
+///
+/// **Not routed**, for the same reason as [`dcopy`]: the native kernel is one
+/// `memcpy` and the library call cannot beat it.
+///
+/// # Panics
+///
+/// Panics if the slices differ in length.
+pub fn zcopy(x: &[Complex64], y: &mut [Complex64]) {
+    crate::native::blas::zcopy(x, y);
+}
+
+/// `x := alpha * x` for complex data (zscal).
+pub fn zscal(alpha: Complex64, x: &mut [Complex64]) {
+    if x.is_empty() {
+        return;
+    }
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        let n_i32 = to_i32(x.len());
+        // Safety: `x` has `n` entries by construction, and the shim is linked in
+        // this configuration.
+        unsafe { c_zscal(&alpha, x.as_mut_ptr(), &n_i32) };
+    }
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    crate::native::blas::zscal(alpha, x);
+}
+
+/// Euclidean norm of a complex vector (dznrm2), as a real number.
+///
+/// LAPACK names this `dznrm2` because its result is real even though the input is
+/// complex; the native twin is [`crate::native::blas::dznrm2`].
+pub fn dznrm2(x: &[Complex64]) -> f64 {
+    if x.is_empty() {
+        return 0.0;
+    }
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        let n_i32 = to_i32(x.len());
+        // Safety: `x` has `n` entries, and the shim is linked in this
+        // configuration.
+        unsafe { c_dznrm2(x.as_ptr(), &n_i32) }
+    }
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    crate::native::blas::dznrm2(x)
 }
 
 /// `C := alpha * A * B + beta * C` for complex data (zgemm, both 'N').
@@ -805,6 +1035,72 @@ pub fn zger(alpha: Complex64, x: &[Complex64], y: &[Complex64], a: &mut [Complex
     crate::native::blas::zger(alpha, x, y, a, m, n);
 }
 
+/// `y := alpha * A * x + beta * y` for complex data (zgemv, trans = 'N').
+///
+/// # Panics
+///
+/// Panics if the shapes are inconsistent.
+pub fn zgemv(
+    alpha: Complex64,
+    a: &[Complex64],
+    x: &[Complex64],
+    beta: Complex64,
+    y: &mut [Complex64],
+    m: usize,
+    n: usize,
+) {
+    assert_eq!(a.len(), m * n, "zgemv: a must be m*n");
+    assert_eq!(x.len(), n, "zgemv: x must have n entries");
+    assert_eq!(y.len(), m, "zgemv: y must have m entries");
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        let m_i32 = to_i32(m);
+        let n_i32 = to_i32(n);
+        // The complex scalars go by pointer, as CBLAS's own `zgemv` takes them.
+        // Safety: every slice was checked against `m` and `n` above, and the shim
+        // is linked in this configuration.
+        unsafe {
+            c_zgemv(&alpha, a.as_ptr(), x.as_ptr(), &beta, y.as_mut_ptr(), &m_i32, &n_i32);
+        }
+    }
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    crate::native::blas::zgemv(alpha, a, x, beta, y, m, n);
+}
+
+/// `y := alpha * A^T * x + beta * y` for complex data (zgemv, trans = 'T').
+///
+/// `a` is `m x n` column-major, so `x` has `m` entries and `y` has `n`. **Not
+/// conjugated**: the conjugated product is `'C'` and a different operation.
+///
+/// # Panics
+///
+/// Panics if the shapes are inconsistent.
+pub fn zgemv_trans(
+    alpha: Complex64,
+    a: &[Complex64],
+    x: &[Complex64],
+    beta: Complex64,
+    y: &mut [Complex64],
+    m: usize,
+    n: usize,
+) {
+    assert_eq!(a.len(), m * n, "zgemv_trans: a must be m*n");
+    assert_eq!(x.len(), m, "zgemv_trans: x must have m entries");
+    assert_eq!(y.len(), n, "zgemv_trans: y must have n entries");
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        let m_i32 = to_i32(m);
+        let n_i32 = to_i32(n);
+        // Safety: every slice was checked against `m` and `n` above, and the shim
+        // is linked in this configuration.
+        unsafe {
+            c_zgemv_trans(&alpha, a.as_ptr(), x.as_ptr(), &beta, y.as_mut_ptr(), &m_i32, &n_i32);
+        }
+    }
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    crate::native::blas::zgemv_trans(alpha, a, x, beta, y, m, n);
+}
+
 /// `C := alpha * A * A^H + beta * C`, or `C := alpha * A^H * A + beta * C` when
 /// `conj_transposed` (zherk).
 ///
@@ -864,6 +1160,70 @@ pub fn zherk(
     }
 }
 
+/// `C := alpha * A * A^T + beta * C`, or `C := alpha * A^T * A + beta * C` when
+/// `transposed` (zsyrk).
+///
+/// **The symmetric rank-k update, not the Hermitian one.** The transpose is
+/// plain, so `alpha` and `beta` are complex and the result is complex symmetric
+/// rather than Hermitian: no conjugation, and no real diagonal. [`zherk`] is the
+/// other kernel, and passing one's shapes to the other is silently wrong for
+/// complex data -- the two agree only when the imaginary parts vanish.
+///
+/// `a` is `n x k` column-major without the transpose and `k x n` with it; its
+/// length is `n*k` either way, so the caller states `transposed` rather than the
+/// shapes implying it. `c` is `n x n` and only the `upper` (or lower) triangle of
+/// it is written.
+///
+/// The native counterparts are [`crate::native::blas::zsyrk`] and, for the
+/// transposed orientation, [`crate::native::blas::zsyrk_rank`].
+///
+/// # Panics
+///
+/// Panics if the shapes are inconsistent.
+pub fn zsyrk(
+    alpha: Complex64,
+    a: &[Complex64],
+    beta: Complex64,
+    c: &mut [Complex64],
+    n: usize,
+    k: usize,
+    upper: bool,
+    transposed: bool,
+) {
+    assert_eq!(a.len(), n * k, "zsyrk: a must be n*k");
+    assert_eq!(c.len(), n * n, "zsyrk: c must be n*n");
+    if n == 0 {
+        return;
+    }
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        let n_i32 = to_i32(n);
+        let k_i32 = to_i32(k);
+        // Safety: `a` and `c` were checked against `n` and `k` above, and the shim
+        // is linked in this configuration.
+        unsafe {
+            c_zsyrk(
+                &alpha,
+                a.as_ptr(),
+                &beta,
+                c.as_mut_ptr(),
+                &n_i32,
+                &k_i32,
+                if upper { C_TRUE } else { C_FALSE },
+                if transposed { C_TRUE } else { C_FALSE },
+            );
+        }
+    }
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    if transposed {
+        // `A^T A`, contracting over A's k rows: a different kernel, not the same
+        // one with the operands exchanged.
+        crate::native::blas::zsyrk_rank(alpha, a, beta, c, n, k, upper);
+    } else {
+        crate::native::blas::zsyrk(alpha, a, beta, c, n, k, upper);
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
@@ -880,6 +1240,12 @@ mod tests {
     fn assert_close(got: f64, want: f64, what: &str) {
         let scale = want.abs().max(1.0);
         assert!((got - want).abs() / scale < 1e-13, "{what}: got {got} but want {want}");
+    }
+
+    /// The complex twin, comparing the modulus of the difference.
+    fn assert_close_cpx(got: Complex64, want: Complex64, what: &str) {
+        let scale = want.norm().max(1.0);
+        assert!((got - want).norm() / scale < 1e-13, "{what}: got {got} but want {want}");
     }
 
     /// `assert_eq!` on floats would be wrong here: the native kernel and the
@@ -953,6 +1319,141 @@ mod tests {
         assert_eq!(dnrm2(&[]), 0.0);
         assert_eq!(dasum(&[]), 0.0);
         assert_eq!(idamax(&[]), 0);
+        daxpy(1.0, &[], &mut []);
+        dcopy(&[], &mut []);
+        dscal(2.0, &mut []);
+        assert_eq!(dznrm2(&[]), 0.0);
+        zaxpy(cpx!(1.0, 1.0), &[], &mut []);
+        zcopy(&[], &mut []);
+        zscal(cpx!(1.0, 1.0), &mut []);
+    }
+
+    /// The level-1 routines that write an output vector, against their native
+    /// kernels.
+    ///
+    /// The comparison is per entry and relative: a library that contracts
+    /// `alpha * x` into an FMA is not required to be bit-identical to the Rust
+    /// loop. The copy is the exception -- it moves bits, so it is compared
+    /// exactly.
+    #[test]
+    fn level1_updates_match_the_native_kernel() {
+        let x = data(23);
+        let y0 = data(23);
+        for alpha in [1.0, -2.5, 0.0] {
+            let mut want = y0.clone();
+            crate::native::blas::daxpy(alpha, &x, &mut want);
+            let mut got = y0.clone();
+            daxpy(alpha, &x, &mut got);
+            for i in 0..got.len() {
+                assert_close(got[i], want[i], &format!("daxpy alpha={alpha} [{i}]"));
+            }
+
+            let mut want = y0.clone();
+            crate::native::blas::dscal(alpha, &mut want);
+            let mut got = y0.clone();
+            dscal(alpha, &mut got);
+            for i in 0..got.len() {
+                assert_close(got[i], want[i], &format!("dscal alpha={alpha} [{i}]"));
+            }
+        }
+
+        let mut want = vec![0.0; x.len()];
+        crate::native::blas::dcopy(&x, &mut want);
+        let mut got = vec![0.0; x.len()];
+        dcopy(&x, &mut got);
+        assert_eq!(got, want, "dcopy");
+    }
+
+    /// The complex twins of the level-1 updates, plus the complex norm.
+    #[test]
+    fn complex_level1_routines_match_the_native_kernel() {
+        let x: Vec<Complex64> = (0..23)
+            .map(|i| cpx!(((i % 5) as f64) - 2.0, ((i % 7) as f64) - 3.0))
+            .collect();
+        let y0: Vec<Complex64> = (0..23).map(|i| cpx!((i % 3) as f64, ((i % 4) as f64) - 1.5)).collect();
+
+        for alpha in [cpx!(1.0, 0.0), cpx!(0.5, -1.5)] {
+            let mut want = y0.clone();
+            crate::native::blas::zaxpy(alpha, &x, &mut want);
+            let mut got = y0.clone();
+            zaxpy(alpha, &x, &mut got);
+            for i in 0..got.len() {
+                assert_close_cpx(got[i], want[i], &format!("zaxpy alpha={alpha} [{i}]"));
+            }
+
+            let mut want = y0.clone();
+            crate::native::blas::zscal(alpha, &mut want);
+            let mut got = y0.clone();
+            zscal(alpha, &mut got);
+            for i in 0..got.len() {
+                assert_close_cpx(got[i], want[i], &format!("zscal alpha={alpha} [{i}]"));
+            }
+        }
+
+        let mut want = vec![cpx!(0.0, 0.0); x.len()];
+        crate::native::blas::zcopy(&x, &mut want);
+        let mut got = vec![cpx!(0.0, 0.0); x.len()];
+        zcopy(&x, &mut got);
+        assert_eq!(got, want, "zcopy");
+
+        assert_close(dznrm2(&x), crate::native::blas::dznrm2(&x), "dznrm2");
+    }
+
+    /// The complex twin of the norm sweep, plus its own rejection of an unknown
+    /// character: the panic message has to name `zlange`, not `dlange`.
+    #[test]
+    fn zlange_matches_the_native_kernel_for_every_norm() {
+        let (m, n) = (4usize, 6usize);
+        let a: Vec<Complex64> = (0..m * n)
+            .map(|i| cpx!(((i * 3) % 7) as f64 - 3.0, ((i * 5) % 11) as f64 - 5.0))
+            .collect();
+        for norm in ['1', 'O', 'I', 'F', 'E', 'M'] {
+            let got = zlange(norm, &a, m, n);
+            let want = crate::native::blas::zlange(norm, &a, m, n);
+            assert_close(got, want, &format!("zlange '{norm}'"));
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "unrecognized norm")]
+    fn zlange_rejects_an_unknown_norm() {
+        zlange('X', &[cpx!(1.0, 0.0)], 1, 1);
+    }
+
+    /// Both orientations of the complex matrix-vector product.
+    ///
+    /// `m != n` is what makes a wrong leading dimension or a swapped `x`/`y`
+    /// extent visible; with a square matrix either mistake would still agree.
+    #[test]
+    fn zgemv_and_zgemv_trans_match_the_native_kernel() {
+        let (m, n) = (8usize, 6usize);
+        let a: Vec<Complex64> = (0..m * n)
+            .map(|i| cpx!(((i % 3) as f64) - 1.0, ((i % 5) as f64) - 2.0))
+            .collect();
+
+        let x: Vec<Complex64> = (0..n).map(|i| cpx!(((i % 4) as f64) - 1.5, (i % 2) as f64)).collect();
+        let y0: Vec<Complex64> = (0..m).map(|i| cpx!((i % 2) as f64, 0.5)).collect();
+        // Transposed: x has m entries, y has n.
+        let xt: Vec<Complex64> = (0..m).map(|i| cpx!(((i % 3) as f64) - 1.0, (i % 4) as f64)).collect();
+        let yt0: Vec<Complex64> = (0..n).map(|i| cpx!(0.5, ((i % 3) as f64) - 1.0)).collect();
+
+        for (alpha, beta) in [(cpx!(1.0, 0.0), cpx!(0.0, 0.0)), (cpx!(0.5, -1.5), cpx!(2.0, 0.25))] {
+            let mut want = y0.clone();
+            crate::native::blas::zgemv(alpha, &a, &x, beta, &mut want, m, n);
+            let mut got = y0.clone();
+            zgemv(alpha, &a, &x, beta, &mut got, m, n);
+            for i in 0..m {
+                assert_close_cpx(got[i], want[i], &format!("zgemv [{i}]"));
+            }
+
+            let mut want = yt0.clone();
+            crate::native::blas::zgemv_trans(alpha, &a, &xt, beta, &mut want, m, n);
+            let mut got = yt0.clone();
+            zgemv_trans(alpha, &a, &xt, beta, &mut got, m, n);
+            for i in 0..n {
+                assert_close_cpx(got[i], want[i], &format!("zgemv_trans [{i}]"));
+            }
+        }
     }
 
     #[test]
@@ -1181,6 +1682,55 @@ mod tests {
                         let in_triangle = if upper { i <= j } else { i >= j };
                         if !in_triangle {
                             assert_eq!(got[idx], c0[idx], "zherk must leave ({i},{j}) alone");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Both orientations and both triangles of the complex *symmetric* rank-k
+    /// update, against the native kernels.
+    ///
+    /// `n != k` matters for the same reason as in [`dsyrk`]: the two orientations
+    /// contract over different axes, so passing the untransposed `k` would agree
+    /// only on a square `a`. The untaken triangle is checked too, because leaving
+    /// it alone is part of the contract.
+    ///
+    /// This is `zsyrk`, not `zherk`: nothing here is conjugated, and the test data
+    /// has imaginary parts throughout, so a dispatch that conjugated would differ
+    /// in every off-diagonal entry.
+    #[test]
+    fn zsyrk_matches_the_native_kernel() {
+        let (n, k) = (5usize, 8usize);
+        let a: Vec<Complex64> = (0..n * k)
+            .map(|i| cpx!(((i % 3) as f64) - 1.0, ((i % 5) as f64) - 2.0))
+            .collect();
+        let c0: Vec<Complex64> = (0..n * n).map(|i| cpx!((i % 2) as f64, 0.5)).collect();
+        let (alpha, beta) = (cpx!(2.5, -1.0), cpx!(-1.5, 0.25));
+        type Zsyrk = fn(Complex64, &[Complex64], Complex64, &mut [Complex64], usize, usize, bool);
+        for transposed in [false, true] {
+            let native: Zsyrk = if transposed {
+                crate::native::blas::zsyrk_rank
+            } else {
+                crate::native::blas::zsyrk
+            };
+            for upper in [false, true] {
+                let mut want = c0.clone();
+                native(alpha, &a, beta, &mut want, n, k, upper);
+                let mut got = c0.clone();
+                zsyrk(alpha, &a, beta, &mut got, n, k, upper, transposed);
+                for j in 0..n {
+                    for i in 0..n {
+                        let idx = i + j * n;
+                        assert_close_cpx(
+                            got[idx],
+                            want[idx],
+                            &format!("zsyrk transposed={transposed} upper={upper} ({i},{j})"),
+                        );
+                        let in_triangle = if upper { i <= j } else { i >= j };
+                        if !in_triangle {
+                            assert_eq!(got[idx], c0[idx], "zsyrk must leave ({i},{j}) alone");
                         }
                     }
                 }

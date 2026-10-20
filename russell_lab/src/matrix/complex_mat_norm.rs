@@ -1,26 +1,6 @@
 use super::ComplexMatrix;
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-use crate::Complex64;
-use crate::{Norm, to_i32};
+use crate::Norm;
 
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-unsafe extern "C" {
-    // Computes the matrix norm
-    // <https://www.netlib.org/lapack/explore-html/d5/d8f/zlange_8f.html>
-    fn c_zlange(
-        norm_code: i32,
-        m: *const i32,
-        n: *const i32,
-        a: *const Complex64,
-        lda: *const i32,
-        work: *mut f64,
-    ) -> f64;
-}
-
-#[cfg_attr(
-    not(any(feature = "open_blas", feature = "intel_mkl")),
-    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
-)]
 /// (zlange) Computes the matrix norm
 ///
 /// Computes one of:
@@ -58,20 +38,11 @@ pub fn complex_mat_norm(a: &ComplexMatrix, kind: Norm) -> f64 {
     if m == 0 || n == 0 {
         return 0.0;
     }
-
-    let m_i32 = to_i32(m);
-    let norm_code = kind as i32;
-
-    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-    {
-        let n_i32 = to_i32(n);
-        let lda = m_i32;
-        let mut work = if kind == Norm::Inf { vec![0.0; m] } else { Vec::new() };
-        // Safety: the shim is linked in this configuration.
-        unsafe { c_zlange(norm_code, &m_i32, &n_i32, a.as_data().as_ptr(), &lda, work.as_mut_ptr()) }
-    }
-    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::zlange(crate::native::lapack::norm_char(norm_code), a.as_data(), m, n)
+    // `norm_char` is the one mapping from `Norm` to the BLAS character, and the
+    // dispatch maps it back to the discriminant the shim expects; going through
+    // the character keeps a single source for the translation.
+    let norm = crate::native::lapack::norm_char(kind as i32);
+    crate::base::blas_dispatch::zlange(norm, a.as_data(), m, n)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

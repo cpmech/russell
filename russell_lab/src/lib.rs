@@ -166,10 +166,11 @@
 //! choice, not what makes the crate work. Enabling both is allowed and links MKL
 //! (`intel_mkl` takes precedence); see `crate::base::blas_dispatch`.
 //!
-//! The `small::*` kernels for stack-allocated matrices and the level-1/2/3
-//! fallbacks in `portable` are plain Rust in every configuration; `portable` is
-//! what a target without the C shim would otherwise need for matrix
-//! multiplication and inversion.
+//! The `small::*` kernels for stack-allocated matrices are plain Rust in every
+//! configuration. The level-1/2/3 operations go through
+//! `crate::base::blas_dispatch`, which reaches the native Rust kernels when no
+//! external library is linked -- so they too are plain Rust on every target,
+//! wasm32 included.
 
 /// Defines the error output as a static string
 pub type StrError = &'static str;
@@ -188,7 +189,6 @@ pub mod math;
 pub mod matrix;
 pub mod matvec;
 pub mod native;
-mod portable;
 pub mod small;
 pub mod vector;
 

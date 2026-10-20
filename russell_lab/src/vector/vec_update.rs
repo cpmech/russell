@@ -1,14 +1,5 @@
 use super::Vector;
 use crate::StrError;
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-use crate::to_i32;
-
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-unsafe extern "C" {
-    // Computes constant times a vector plus a vector.
-    // <https://www.netlib.org/lapack/explore-html/d9/dcd/daxpy_8f.html>
-    fn cblas_daxpy(n: i32, alpha: f64, x: *const f64, incx: i32, y: *mut f64, incy: i32);
-}
 
 /// (daxpy) Updates vector based on another vector
 ///
@@ -43,15 +34,7 @@ pub fn vec_update(v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrError
     if u.dim() != n {
         return Err("vectors are incompatible");
     }
-    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-    {
-        let n_i32 = to_i32(n);
-        unsafe {
-            cblas_daxpy(n_i32, alpha, u.as_data().as_ptr(), 1, v.as_mut_data().as_mut_ptr(), 1);
-        }
-    }
-    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::portable::vec_update_data(v.as_mut_data(), alpha, u.as_data());
+    crate::base::blas_dispatch::daxpy(alpha, u.as_data(), v.as_mut_data());
     Ok(())
 }
 

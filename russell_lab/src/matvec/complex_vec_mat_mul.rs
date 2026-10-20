@@ -1,28 +1,6 @@
 use crate::matrix::ComplexMatrix;
 use crate::vector::ComplexVector;
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-use crate::{CBLAS_COL_MAJOR, CBLAS_TRANS};
-use crate::{Complex64, StrError, to_i32};
-
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-unsafe extern "C" {
-    // Performs one of the matrix-vector multiplication
-    // <https://www.netlib.org/lapack/explore-html/db/d40/zgemv_8f.html>
-    fn cblas_zgemv(
-        layout: i32,
-        transa: i32,
-        m: i32,
-        n: i32,
-        alpha: *const Complex64,
-        a: *const Complex64,
-        lda: i32,
-        x: *const Complex64,
-        incx: i32,
-        beta: *const Complex64,
-        y: *mut Complex64,
-        incy: i32,
-    );
-}
+use crate::{Complex64, StrError};
 
 #[cfg_attr(
     not(any(feature = "open_blas", feature = "intel_mkl")),
@@ -94,33 +72,7 @@ pub fn complex_vec_mat_mul(
         v.fill(zero);
         return Ok(());
     }
-    let m_i32: i32 = to_i32(m);
-    let n_i32: i32 = to_i32(n);
-    let incx = 1;
-    let incy = 1;
-    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-    {
-        // Safety: the shim is linked in this configuration.
-        unsafe {
-            cblas_zgemv(
-                CBLAS_COL_MAJOR,
-                CBLAS_TRANS,
-                m_i32,
-                n_i32,
-                &alpha,
-                a.as_data().as_ptr(),
-                m_i32,
-                u.as_data().as_ptr(),
-                incx,
-                &zero,
-                v.as_mut_data().as_mut_ptr(),
-                incy,
-            );
-        }
-        let _ = (incx, incy, m_i32, n_i32);
-    }
-    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::zgemv_trans(alpha, a.as_data(), u.as_data(), zero, v.as_mut_data(), m, n);
+    crate::base::blas_dispatch::zgemv_trans(alpha, a.as_data(), u.as_data(), zero, v.as_mut_data(), m, n);
     Ok(())
 }
 

@@ -16,6 +16,11 @@ use num_complex::ComplexFloat;
 /// LAPACK's `SAFMIN` (`DLAMCH('S')`): the smallest positive normal number.
 const SAFMIN: f64 = f64::MIN_POSITIVE;
 
+/// `dlamch('E')`: the relative machine precision, `EPSILON/2`, which is what the
+/// reference's `DLAMCH('E')` returns -- not `EPSILON`, which is its `'P'`. The
+/// difference matters in `dladiv`'s underflow guard, where it enters squared.
+pub(super) const DLAMCH_E: f64 = f64::EPSILON / 2.0;
+
 /// The zero of the complex type, so the complex routines read like the reference.
 pub(super) fn zero() -> Complex64 {
     Complex64::new(0.0, 0.0)
@@ -134,13 +139,68 @@ pub(super) fn dlaev2(a: f64, b: f64, c: f64) -> (f64, f64, f64, f64) {
     (rt1, rt2, cs1, sn1)
 }
 
-pub(super) fn dladiv2(a: f64, b: f64, c: f64, d: f64, r: f64, t: f64) -> f64 {
+fn dladiv2(a: f64, b: f64, c: f64, d: f64, r: f64, t: f64) -> f64 {
     if r != 0.0 {
         let br = b * r;
         if br != 0.0 { (a + br) * t } else { a * t + (b * t) * r }
     } else {
         (a + d * (b / c)) * t
     }
+}
+
+fn dladiv1(a: f64, b: f64, c: f64, d: f64) -> (f64, f64) {
+    let r = d / c;
+    let t = 1.0 / (c + d * r);
+    let p = dladiv2(a, b, c, d, r, t);
+    let q = dladiv2(b, -a, c, d, r, t);
+    (p, q)
+}
+
+/// `dladiv`: `(a + i b) / (c + i d)`, robust against overflow and underflow.
+pub(super) fn dladiv(a: f64, b: f64, c: f64, d: f64) -> (f64, f64) {
+    const BS: f64 = 2.0;
+    let ov = f64::MAX;
+    let un = SAFMIN;
+    let eps = DLAMCH_E;
+    let be = BS / (eps * eps);
+
+    let mut aa = a;
+    let mut bb = b;
+    let mut cc = c;
+    let mut dd = d;
+    let ab = a.abs().max(b.abs());
+    let cd = c.abs().max(d.abs());
+    let mut s = 1.0;
+
+    if ab >= 0.5 * ov {
+        aa *= 0.5;
+        bb *= 0.5;
+        s *= 2.0;
+    }
+    if cd >= 0.5 * ov {
+        cc *= 0.5;
+        dd *= 0.5;
+        s *= 0.5;
+    }
+    if ab <= un * BS / eps {
+        aa *= be;
+        bb *= be;
+        s /= be;
+    }
+    if cd <= un * BS / eps {
+        cc *= be;
+        dd *= be;
+        s *= be;
+    }
+    let (mut p, mut q) = if d.abs() <= c.abs() {
+        dladiv1(aa, bb, cc, dd)
+    } else {
+        let (pp, qq) = dladiv1(bb, aa, dd, cc);
+        (pp, -qq)
+    };
+    p *= s;
+    q *= s;
+    (p, q)
 }
 
 /// `zladiv`: the complex quotient `x / y`, avoiding overflow in `y`'s products.
@@ -290,6 +350,292 @@ pub(super) fn zlarf_right(
         for j in 0..ncols {
             a[(r0 + i) + (c0 + j) * lda] -= tau * wi * v[j].conj();
         }
+    }
+}
+
+/// The result of [`dlaln2`]: the `2 x 2` solution, the power of two it was scaled
+/// by, and the norm of the solution before that scaling.
+pub(super) struct Laln2 {
+    pub(super) x11: f64,
+    pub(super) x21: f64,
+    pub(super) x12: f64,
+    pub(super) x22: f64,
+    pub(super) scale: f64,
+    pub(super) xnorm: f64,
+}
+
+/// `dlaln2`: solve a 1x1 or 2x2 real system `(ca A - w D) X = scale B`, where
+/// `w = wr + i wi`. `ltrans` selects `A` or `A^T`. Returns the entries of `X`,
+/// the scale factor the caller must apply to the right-hand side, and the norm
+/// of `X`.
+///
+/// This is LAPACK's general signature, and it is the *only* copy in the crate:
+/// `eig.rs` used to carry a second one specialized to `ltrans = .false.`,
+/// `ca = 1`, `d1 = d2 = 1`, about 87% textually identical, and the two differed
+/// where it mattered -- the specialized copy took `EPS = DLAMCH('P')` where the
+/// reference takes `DLAMCH('E')` (`EPSILON/2`), which enters `dladiv`'s underflow
+/// guard squared. On the specialized copy's own inputs the two are bit-identical
+/// (multiplying by `ca = 1` and `d1 = d2 = 1` is exact), so no result the crate's
+/// tests or the reference grid exercises moved, and the guard is now right for
+/// subnormal inputs; `examples.rs`'s `DGET31` run reports LAPACK's numbers to the
+/// last digit on all 230,400 cases.
+///
+/// The `INFO` flag the reference returns is not part of this API: a perturbed
+/// solution is reported through `scale` and `xnorm`, and `DGET31` reconstructs
+/// `INFO` from the inputs it kept (see `examples::get31_info`).
+#[allow(clippy::too_many_arguments)]
+pub(super) fn dlaln2(
+    ltrans: bool,
+    na: usize,
+    nw: usize,
+    smin: f64,
+    ca: f64,
+    a11: f64,
+    a21: f64,
+    a12: f64,
+    a22: f64,
+    d1: f64,
+    d2: f64,
+    b11: f64,
+    b21: f64,
+    b12: f64,
+    b22: f64,
+    wr: f64,
+    wi: f64,
+) -> Laln2 {
+    const IPIVOT: [[usize; 4]; 4] = [[1, 2, 3, 4], [2, 1, 4, 3], [3, 4, 1, 2], [4, 3, 2, 1]];
+    const RSWAP: [bool; 4] = [false, true, false, true];
+    const ZSWAP: [bool; 4] = [false, false, true, true];
+
+    let smlnum = 2.0 * SAFMIN;
+    let bignum = 1.0 / smlnum;
+    let smini = smin.max(smlnum);
+    let mut scale = 1.0;
+
+    let (x11, x21, x12, x22, xnorm);
+
+    if na == 1 {
+        if nw == 1 {
+            // Real 1x1 system.
+            let mut csr = ca * a11 - wr * d1;
+            let mut cnorm = csr.abs();
+            if cnorm < smini {
+                csr = smini;
+                cnorm = smini;
+            }
+            let bnorm = b11.abs();
+            if cnorm < 1.0 && bnorm > 1.0 && bnorm > bignum * cnorm {
+                scale = 1.0 / bnorm;
+            }
+            x11 = (b11 * scale) / csr;
+            x21 = 0.0;
+            x12 = 0.0;
+            x22 = 0.0;
+            xnorm = x11.abs();
+        } else {
+            // Complex 1x1 system.
+            let mut csr = ca * a11 - wr * d1;
+            let mut csi = -wi * d1;
+            let mut cnorm = csr.abs() + csi.abs();
+            if cnorm < smini {
+                csr = smini;
+                csi = 0.0;
+                cnorm = smini;
+            }
+            let bnorm = b11.abs() + b12.abs();
+            if cnorm < 1.0 && bnorm > 1.0 && bnorm > bignum * cnorm {
+                scale = 1.0 / bnorm;
+            }
+            let (p, q) = dladiv(scale * b11, scale * b12, csr, csi);
+            x11 = p;
+            x21 = 0.0;
+            x12 = q;
+            x22 = 0.0;
+            xnorm = x11.abs() + x12.abs();
+        }
+    } else {
+        // 2x2 system. CRV = [CR(1,1), CR(2,1), CR(1,2), CR(2,2)].
+        let crv = if ltrans {
+            [ca * a11 - wr * d1, ca * a12, ca * a21, ca * a22 - wr * d2]
+        } else {
+            [ca * a11 - wr * d1, ca * a21, ca * a12, ca * a22 - wr * d2]
+        };
+        if nw == 1 {
+            // Real 2x2 system.
+            let mut cmax = 0.0;
+            let mut icmax = 0usize;
+            for j in 0..4 {
+                if crv[j].abs() > cmax {
+                    cmax = crv[j].abs();
+                    icmax = j;
+                }
+            }
+            if cmax < smini {
+                let bnorm = b11.abs().max(b21.abs());
+                if smini < 1.0 && bnorm > 1.0 && bnorm > bignum * smini {
+                    scale = 1.0 / bnorm;
+                }
+                let temp = scale / smini;
+                return Laln2 {
+                    x11: temp * b11,
+                    x21: temp * b21,
+                    x12: 0.0,
+                    x22: 0.0,
+                    scale,
+                    xnorm: temp * bnorm,
+                };
+            }
+            let ur11 = crv[icmax];
+            let cr21 = crv[IPIVOT[icmax][1] - 1];
+            let ur12 = crv[IPIVOT[icmax][2] - 1];
+            let cr22 = crv[IPIVOT[icmax][3] - 1];
+            let ur11r = 1.0 / ur11;
+            let lr21 = ur11r * cr21;
+            let mut ur22 = cr22 - ur12 * lr21;
+            if ur22.abs() < smini {
+                ur22 = smini;
+            }
+            let (br1, mut br2) = if RSWAP[icmax] { (b21, b11) } else { (b11, b21) };
+            br2 -= lr21 * br1;
+            let bbnd = (br1 * (ur22 * ur11r)).abs().max(br2.abs());
+            if bbnd > 1.0 && ur22.abs() < 1.0 && bbnd >= bignum * ur22.abs() {
+                scale = 1.0 / bbnd;
+            }
+            let xr2 = (br2 * scale) / ur22;
+            let xr1 = (scale * br1) * ur11r - xr2 * (ur11r * ur12);
+            let (mut xa, mut xb) = if ZSWAP[icmax] { (xr2, xr1) } else { (xr1, xr2) };
+            let mut xnorm = xr1.abs().max(xr2.abs());
+            if xnorm > 1.0 && cmax > 1.0 && xnorm > bignum / cmax {
+                let temp = cmax / bignum;
+                xa *= temp;
+                xb *= temp;
+                xnorm *= temp;
+                scale *= temp;
+            }
+            return Laln2 {
+                x11: xa,
+                x21: xb,
+                x12: 0.0,
+                x22: 0.0,
+                scale,
+                xnorm,
+            };
+        }
+        // Complex 2x2 system.
+        let civ = [-wi * d1, 0.0, 0.0, -wi * d2];
+        let mut cmax = 0.0;
+        let mut icmax = 0usize;
+        for j in 0..4 {
+            let m = crv[j].abs() + civ[j].abs();
+            if m > cmax {
+                cmax = m;
+                icmax = j;
+            }
+        }
+        if cmax < smini {
+            let bnorm = (b11.abs() + b12.abs()).max(b21.abs() + b22.abs());
+            if smini < 1.0 && bnorm > 1.0 && bnorm > bignum * smini {
+                scale = 1.0 / bnorm;
+            }
+            let temp = scale / smini;
+            return Laln2 {
+                x11: temp * b11,
+                x21: temp * b21,
+                x12: temp * b12,
+                x22: temp * b22,
+                scale,
+                xnorm: temp * bnorm,
+            };
+        }
+        let ur11 = crv[icmax];
+        let ui11 = civ[icmax];
+        let cr21 = crv[IPIVOT[icmax][1] - 1];
+        let ci21 = civ[IPIVOT[icmax][1] - 1];
+        let ur12 = crv[IPIVOT[icmax][2] - 1];
+        let ui12 = civ[IPIVOT[icmax][2] - 1];
+        let cr22 = crv[IPIVOT[icmax][3] - 1];
+        let ci22 = civ[IPIVOT[icmax][3] - 1];
+        let (ur11r, ui11r, lr21, li21, ur12s, ui12s, mut ur22, mut ui22);
+        if icmax == 0 || icmax == 3 {
+            if ur11.abs() > ui11.abs() {
+                let temp = ui11 / ur11;
+                ur11r = 1.0 / (ur11 * (1.0 + temp * temp));
+                ui11r = -temp * ur11r;
+            } else {
+                let temp = ur11 / ui11;
+                ui11r = -1.0 / (ui11 * (1.0 + temp * temp));
+                ur11r = -temp * ui11r;
+            }
+            lr21 = cr21 * ur11r;
+            li21 = cr21 * ui11r;
+            ur12s = ur12 * ur11r;
+            ui12s = ur12 * ui11r;
+            ur22 = cr22 - ur12 * lr21;
+            ui22 = ci22 - ur12 * li21;
+        } else {
+            ur11r = 1.0 / ur11;
+            ui11r = 0.0;
+            lr21 = cr21 * ur11r;
+            li21 = ci21 * ur11r;
+            ur12s = ur12 * ur11r;
+            ui12s = ui12 * ur11r;
+            ur22 = cr22 - ur12 * lr21 + ui12 * li21;
+            ui22 = -ur12 * li21 - ui12 * lr21;
+        }
+        let u22abs = ur22.abs() + ui22.abs();
+        if u22abs < smini {
+            ur22 = smini;
+            ui22 = 0.0;
+        }
+        let (mut br1, mut br2, mut bi1, mut bi2) = if RSWAP[icmax] {
+            (b21, b11, b22, b12)
+        } else {
+            (b11, b21, b12, b22)
+        };
+        br2 = br2 - lr21 * br1 + li21 * bi1;
+        bi2 = bi2 - li21 * br1 - lr21 * bi1;
+        let bbnd = ((br1.abs() + bi1.abs()) * (u22abs * (ur11r.abs() + ui11r.abs()))).max(br2.abs() + bi2.abs());
+        if bbnd > 1.0 && u22abs < 1.0 && bbnd >= bignum * u22abs {
+            scale = 1.0 / bbnd;
+            br1 *= scale;
+            bi1 *= scale;
+            br2 *= scale;
+            bi2 *= scale;
+        }
+        let (xr2, xi2) = dladiv(br2, bi2, ur22, ui22);
+        let xr1 = ur11r * br1 - ui11r * bi1 - ur12s * xr2 + ui12s * xi2;
+        let xi1 = ui11r * br1 + ur11r * bi1 - ui12s * xr2 - ur12s * xi2;
+        let (mut xa, mut xb, mut xc, mut xd) = if ZSWAP[icmax] {
+            (xr2, xr1, xi2, xi1)
+        } else {
+            (xr1, xr2, xi1, xi2)
+        };
+        let mut xnorm = (xr1.abs() + xi1.abs()).max(xr2.abs() + xi2.abs());
+        if xnorm > 1.0 && cmax > 1.0 && xnorm > bignum / cmax {
+            let temp = cmax / bignum;
+            xa *= temp;
+            xb *= temp;
+            xc *= temp;
+            xd *= temp;
+            xnorm *= temp;
+            scale *= temp;
+        }
+        return Laln2 {
+            x11: xa,
+            x21: xb,
+            x12: xc,
+            x22: xd,
+            scale,
+            xnorm,
+        };
+    }
+    Laln2 {
+        x11,
+        x21,
+        x12,
+        x22,
+        scale,
+        xnorm,
     }
 }
 

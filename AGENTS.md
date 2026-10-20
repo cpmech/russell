@@ -19,10 +19,10 @@ installed:
   - **`intel_mkl`** — Intel oneAPI MKL, expected under
     `/opt/intel/oneapi/mkl/<version>`; set `MKL_VERSION` to override `latest`.
 
-`open_blas` and `intel_mkl` are mutually exclusive; `build.rs` rejects the combination while
-it compiles (`compile_error!`, so the message is an ordinary error rather than a panic),
-instead of leaving the linker to report two providers of the same symbols. Enabling
-neither prints which path was taken, so a build log always records it.
+`intel_mkl` takes precedence: enabling both links MKL (OpenBLAS is compiled in only under
+`open_blas` without `intel_mkl`), and `build.rs` says so in the build log. There is no
+`compile_error!` for the combination, so `--all-features` is a valid build and exercises the
+MKL path. Enabling neither prints which path was taken, so a build log always records it.
 
 The `open_blas` and `intel_mkl` features are forwarded from every dependent crate
 (`russell_tensor`, `russell_sparse`, `russell_stat`, `russell_ode`,

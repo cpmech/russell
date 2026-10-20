@@ -102,6 +102,117 @@ int32_t c_get_num_threads() {
 #endif
 }
 
+// ---------------------------------------------------------------------------------------------
+// BLAS entry points routed by src/base/blas_dispatch.rs
+// ---------------------------------------------------------------------------------------------
+//
+// Each wrapper is one CBLAS call with the arguments the crate's own kernels take,
+// so the Rust side has a single signature per routine regardless of the library.
+// Two conventions differ between the real and the complex CBLAS routines: the
+// real ones take `alpha`/`beta` by value, while the complex ones take pointers to
+// the scalar (CBLAS represents a complex value as `void *`). The wrappers keep
+// the crate's convention on both sides, which is why `c_zgemm` takes
+// `COMPLEX64 *` for the scalars.
+//
+// CBLAS's index type is `blasint` on OpenBLAS and `MKL_INT` on MKL; both are
+// `int` in the configurations this shim supports, as noted at the top of the file.
+
+// c := alpha a b + beta c (both no-trans), all matrices column-major
+void c_dgemm(double alpha,
+             const double *a,
+             const double *b,
+             double beta,
+             double *c,
+             const int32_t *m,
+             const int32_t *n,
+             const int32_t *k) {
+    cblas_dgemm(CblasColMajor,
+                CblasNoTrans,
+                CblasNoTrans,
+                (int)(*m),
+                (int)(*n),
+                (int)(*k),
+                alpha,
+                a,
+                (int)(*m),
+                b,
+                (int)(*k),
+                beta,
+                c,
+                (int)(*m));
+}
+
+// y := alpha a x + beta y
+void c_dgemv(double alpha,
+             const double *a,
+             const double *x,
+             double beta,
+             double *y,
+             const int32_t *m,
+             const int32_t *n) {
+    cblas_dgemv(CblasColMajor, CblasNoTrans, (int)(*m), (int)(*n), alpha, a, (int)(*m), x, 1, beta, y, 1);
+}
+
+// y := alpha aᵀ x + beta y
+void c_dgemv_trans(double alpha,
+                   const double *a,
+                   const double *x,
+                   double beta,
+                   double *y,
+                   const int32_t *m,
+                   const int32_t *n) {
+    cblas_dgemv(CblasColMajor, CblasTrans, (int)(*m), (int)(*n), alpha, a, (int)(*m), x, 1, beta, y, 1);
+}
+
+// x ⋅ y
+double c_ddot(const double *x, const double *y, const int32_t *n) {
+    return cblas_ddot((int)(*n), x, 1, y, 1);
+}
+
+// ‖x‖₂
+double c_dnrm2(const double *x, const int32_t *n) {
+    return cblas_dnrm2((int)(*n), x, 1);
+}
+
+// ‖x‖₁
+double c_dasum(const double *x, const int32_t *n) {
+    return cblas_dasum((int)(*n), x, 1);
+}
+
+// Index of the first maximum absolute value, 0-based as CBLAS returns it.
+int32_t c_idamax(const double *x, const int32_t *n) {
+    if (*n <= 0) {
+        return 0;
+    }
+    return (int32_t)cblas_idamax((int)(*n), x, 1);
+}
+
+// c := alpha a b + beta c for complex data (both no-trans), using the same
+// pointer-to-scalar convention as cblas_zgemm itself
+void c_zgemm(const COMPLEX64 *alpha,
+             const COMPLEX64 *a,
+             const COMPLEX64 *b,
+             const COMPLEX64 *beta,
+             COMPLEX64 *c,
+             const int32_t *m,
+             const int32_t *n,
+             const int32_t *k) {
+    cblas_zgemm(CblasColMajor,
+                CblasNoTrans,
+                CblasNoTrans,
+                (int)(*m),
+                (int)(*n),
+                (int)(*k),
+                (const void *)alpha,
+                (const void *)a,
+                (int)(*m),
+                (const void *)b,
+                (int)(*k),
+                (const void *)beta,
+                (void *)c,
+                (int)(*m));
+}
+
 // Computes the solution to a system of linear equations
 // <https://www.netlib.org/lapack/explore-html/d8/d72/dgesv_8f.html>
 void c_dgesv(const int32_t *n,

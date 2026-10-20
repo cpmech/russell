@@ -99,7 +99,7 @@ russell_tensor = "*"
 The following (Rust) features are available:
 
 * `open_blas`: Use OpenBLAS instead of the native Rust BLAS/LAPACK
-* `intel_mkl`: Use Intel oneAPI MKL instead of OpenBLAS (mutually exclusive with `open_blas`)
+* `intel_mkl`: Use Intel oneAPI MKL instead of OpenBLAS (takes precedence if both are enabled)
 
 Note that the [main README file](https://github.com/cpmech/russell) presents the steps to compile the required libraries according to each feature.
 

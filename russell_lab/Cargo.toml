@@ -23,7 +23,8 @@ keywords = ["matrix", "vector", "linspace"]
 # * `open_blas` -- OpenBLAS (also the reference netlib BLAS/LAPACK)
 # * `intel_mkl`   -- Intel oneAPI MKL
 #
-# They are mutually exclusive. Enabling neither (the default) uses `src/native`,
+# `intel_mkl` takes precedence: enabling both links MKL and not OpenBLAS.
+# Enabling neither (the default) uses `src/native`,
 # whose routines are plain Rust and are tested for numerical parity against the
 # reference LAPACK.
 # Link the C shim against OpenBLAS.

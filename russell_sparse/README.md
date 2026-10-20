@@ -77,7 +77,7 @@ russell_sparse = "*"
 The following (Rust) features are available:
 
 * `open_blas`: Use OpenBLAS instead of the native Rust BLAS/LAPACK
-* `intel_mkl`: Use Intel oneAPI MKL instead of OpenBLAS (mutually exclusive with `open_blas`)
+* `intel_mkl`: Use Intel oneAPI MKL instead of OpenBLAS (takes precedence if both are enabled)
 * `local_umfpack`: Use a locally compiled SuiteSparse (UMFPACK) instead of the
   package-manager one; the install is found through `RUSSELL_LOCAL_PREFIX`.
 * `mumps`: Use a locally compiled MUMPS, found through `RUSSELL_LOCAL_PREFIX`.

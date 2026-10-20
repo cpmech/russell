@@ -1,13 +1,4 @@
 use super::Vector;
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-use crate::to_i32;
-
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-unsafe extern "C" {
-    // Calculates the dot product of two vectors
-    // <https://www.netlib.org/lapack/explore-html/d5/df6/ddot_8f.html>
-    fn cblas_ddot(n: i32, x: *const f64, incx: i32, y: *const f64, incy: i32) -> f64;
-}
 
 /// (ddot) Performs the inner (dot) product between two vectors resulting in a scalar value
 ///
@@ -61,14 +52,7 @@ pub fn vec_inner(u: &Vector, v: &Vector) -> f64 {
             + u[7] * v[7]
             + u[8] * v[8]
     } else {
-        #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-        {
-            let n_i32 = to_i32(n);
-            // Safety: the shim is linked in this configuration.
-            unsafe { cblas_ddot(n_i32, u.as_data().as_ptr(), 1, v.as_data().as_ptr(), 1) }
-        }
-        #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-        crate::native::blas::ddot(&u.as_data()[..n], &v.as_data()[..n])
+        crate::base::blas_dispatch::ddot(&u.as_data()[..n], &v.as_data()[..n])
     }
 }
 

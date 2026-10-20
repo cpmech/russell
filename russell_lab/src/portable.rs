@@ -21,14 +21,15 @@
 //! | [`vec_copy_data`] | `dcopy` |
 //! | [`vec_scale_data`] | `dscal` |
 //! | [`vec_update_data`] | `daxpy` |
-//! | [`vec_norm_data`] | `dnrm2`, `dasum`, `idamax` |
-//! | [`mat_vec_mul_data`] | `dgemv` |
 //! | [`mat_mat_mul_data`] | `dgemm` |
 //! | [`mat_t_mat_mul_data`] | `dgemm` (transposed) |
+//!
+//! The vector norm and the matrix-vector product used to have twins here too.
+//! They do not any more: [`crate::base::blas_dispatch`] reaches the native
+//! kernels on every target, including wasm32, so a separate portable copy had no
+//! caller left to serve.
 
 #![cfg_attr(any(feature = "open_blas", feature = "intel_mkl"), allow(dead_code))]
-
-use crate::Norm;
 
 /// `v := u`, replacing `cblas_dcopy`.
 ///
@@ -52,38 +53,6 @@ pub fn vec_scale_data(v: &mut [f64], alpha: f64) {
 pub fn vec_update_data(v: &mut [f64], alpha: f64, u: &[f64]) {
     for (vi, ui) in v.iter_mut().zip(u.iter()) {
         *vi += alpha * ui;
-    }
-}
-
-/// Vector norm, replacing `cblas_dnrm2` / `cblas_dasum` / `cblas_idamax`.
-///
-/// `Norm::Euc` and `Norm::Fro` are the Euclidean norm, `Norm::Inf` and
-/// `Norm::Max` are the largest absolute entry, and `Norm::One` is the sum of
-/// absolute values — matching the documentation of [`Norm`] and the tests in
-/// [`crate::vector::vec_norm`].
-pub fn vec_norm_data(v: &[f64], kind: Norm) -> f64 {
-    match kind {
-        Norm::Euc | Norm::Fro => v.iter().fold(0.0, |acc, x| acc + x * x).sqrt(),
-        Norm::One => v.iter().map(|x| x.abs()).sum(),
-        Norm::Inf | Norm::Max => v.iter().fold(0.0, |acc, x| acc.max(x.abs())),
-    }
-}
-
-/// `v := α ⋅ a ⋅ u`, replacing `cblas_dgemv`.
-///
-/// `a` is column-major with `m` rows and `n` columns, which is how
-/// [`crate::matrix::Matrix`] stores its data.
-pub fn mat_vec_mul_data(v: &mut [f64], alpha: f64, a: &[f64], m: usize, n: usize, u: &[f64]) {
-    v.fill(0.0);
-    for j in 0..n {
-        let uj = u[j];
-        if uj == 0.0 {
-            continue;
-        }
-        let column = &a[j * m..(j + 1) * m];
-        for i in 0..m {
-            v[i] += alpha * column[i] * uj;
-        }
     }
 }
 
@@ -140,7 +109,7 @@ pub fn mat_t_mat_mul_data(c: &mut [f64], alpha: f64, a: &[f64], b: &[f64], beta:
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Matrix, Vector, approx_eq};
+    use crate::{Matrix, approx_eq};
 
     #[test]
     fn vec_kernels_work() {
@@ -154,31 +123,6 @@ mod tests {
 
         vec_update_data(&mut v, 0.5, &u);
         assert_eq!(v, vec![2.5, 5.0, 7.5]);
-    }
-
-    #[test]
-    fn vec_norm_matches_documented_semantics() {
-        let v = vec![-3.0, 2.0, 1.0, 1.0, 1.0];
-        assert_eq!(vec_norm_data(&v, Norm::Euc), 4.0);
-        assert_eq!(vec_norm_data(&v, Norm::Fro), 4.0);
-        assert_eq!(vec_norm_data(&v, Norm::Inf), 3.0);
-        assert_eq!(vec_norm_data(&v, Norm::Max), 3.0);
-        assert_eq!(vec_norm_data(&v, Norm::One), 8.0);
-
-        let empty: Vec<f64> = Vec::new();
-        assert_eq!(vec_norm_data(&empty, Norm::Euc), 0.0);
-        assert_eq!(vec_norm_data(&empty, Norm::Inf), 0.0);
-        assert_eq!(vec_norm_data(&empty, Norm::One), 0.0);
-    }
-
-    #[test]
-    fn mat_vec_mul_matches_expected() {
-        // Same example as the `mat_vec_mul` doc test: a is 4x3, column-major.
-        let a = Matrix::from(&[[5.0, -2.0, 1.0], [-4.0, 0.0, 2.0], [15.0, -6.0, 0.0], [3.0, 5.0, 1.0]]);
-        let u = Vector::from(&[1.0, 2.0, 3.0]);
-        let mut v = Vector::new(4);
-        mat_vec_mul_data(v.as_mut_data(), 0.5, a.as_data(), 4, 3, u.as_data());
-        assert_eq!(v.as_data(), &[2.0, 1.0, 1.5, 8.0]);
     }
 
     #[test]

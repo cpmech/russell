@@ -162,9 +162,9 @@
 //!   headers, e.g. `lapack.h`);
 //! * `intel_mkl` -- Intel oneAPI MKL, expected under `/opt/intel/oneapi/mkl/<version>`.
 //!
-//! They are mutually exclusive (`build.rs` refuses both), and neither is a
-//! requirement: enabling one is a performance choice, not what makes the crate
-//! work.
+//! They are alternatives, not a requirement: enabling one is a performance
+//! choice, not what makes the crate work. Enabling both is allowed and links MKL
+//! (`intel_mkl` takes precedence); see `crate::base::blas_dispatch`.
 //!
 //! The `small::*` kernels for stack-allocated matrices and the level-1/2/3
 //! fallbacks in `portable` are plain Rust in every configuration; `portable` is

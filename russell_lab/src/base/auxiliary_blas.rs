@@ -24,10 +24,6 @@ unsafe extern "C" {
     fn c_using_intel_mkl() -> CcBool;
     fn c_set_num_threads(n: i32);
     fn c_get_num_threads() -> i32;
-
-    // Finds the index of the maximum absolute value
-    // <https://www.netlib.org/lapack/explore-html/dd/de0/idamax_8f.html>
-    fn cblas_idamax(n: i32, x: *const f64, incx: i32) -> i32;
 }
 
 /// Returns whether the code was compiled with Intel MKL or not
@@ -118,30 +114,7 @@ pub fn get_num_threads() -> usize {
 /// assert_eq!(find_index_abs_max(u), 1);
 /// ```
 pub fn find_index_abs_max(x: &[f64]) -> usize {
-    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-    {
-        let n = to_i32(x.len());
-        // Safety: the shim is linked in this configuration.
-        unsafe {
-            let i = cblas_idamax(n, x.as_ptr(), 1);
-            assert!(i >= 0);
-            i as usize
-        }
-    }
-    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    {
-        // The first maximum wins, matching `idamax`; an empty slice yields 0.
-        let mut best = 0usize;
-        let mut best_abs = f64::NEG_INFINITY;
-        for (i, &v) in x.iter().enumerate() {
-            let a = v.abs();
-            if a > best_abs {
-                best_abs = a;
-                best = i;
-            }
-        }
-        best
-    }
+    crate::base::blas_dispatch::idamax(x)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

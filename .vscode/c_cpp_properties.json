@@ -6,7 +6,7 @@
         "${default}",
         "/usr/include",
         "/usr/local/include/mumps",
-        "/usr/local/include/suitesparse"
+        "/usr/local/include/umfpack"
       ],
       "defines": [
         "USE_INTEL_MKL"

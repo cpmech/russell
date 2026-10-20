@@ -204,7 +204,7 @@ run `dev_lapack` alone.
   `center`, `modeling`, `toward`: the British variants (`-our` for `-or`, `-ise`
   for `-ize`, `-re` for `-er`, `-ce` for `-se`, doubled `l`) are not used. The
   workspace was cleaned once (139 occurrences in 26 files);
-  `russell_lab/tests/american_english.rs` scans `.rs`/`.md`/`.py` and fails the
+  `check_spelling` in `~/01-Code/rust/check_spelling/` scans `.rs`/`.md`/`.py` and fails the
   suite on a regression, so a new form belongs in that file's list -- or better,
   not in the tree.
 - **Do not change the behavior of the `open_blas` / `intel_mkl` accelerated paths.** They

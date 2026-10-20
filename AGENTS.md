@@ -346,6 +346,41 @@ bash zscripts/check-coverage.bash lcov.info 95
 ```
 
 
+## Deliberately uncovered code
+
+The 95% gate counts source lines, so what is left uncovered is a decision, not an
+accident. This is where those decisions are recorded. **A PR that adds code no test
+can reach adds it here in the same PR** — otherwise the next person spends a day
+rediscovering why a file sits at 84%.
+
+Measured 2026-10-19 with the command above: workspace **74,192 / 76,273 lines =
+97.27%**, 2,081 missed.
+
+| where | missed | why |
+|---|---|---|
+| `russell_lab/src/native/lapack/qz.rs` | 547 | `dhgeqz`'s and `dggbal_p`'s rescue and permutation arms, `dtgevc`'s guard paths. Sweeping `dgeev` and `dggev` over the reference's own spectra — including a singular `B` — moved this file by zero lines, because those families are built to be *solvable* and cannot reach code whose job is to refuse or rescue |
+| `native/lapack/zeig.rs` | 303 | `zsteqr`'s deflation and QR-section arms, `zlarfg`'s underflow rescue |
+| `native/lapack/eig.rs` | 203 | `dlaln2` and `dlanv2`: 2x2 blocks whose entries force a rescale |
+| `native/lapack/sym.rs`, `svd.rs`, `zsvd.rs` | 102, 76, 68 | `dsteqr`'s remaining arms, `dbdsqr`/`zbdsqr` convergence for repeated and zero singular values |
+| `russell_pde/src/transfinite_samples.rs`, `russell_lab/src/algo/bspline.rs` | 79, 50 | `if SAVE_FIGURE { ... }` blocks: plotting code that writes SVG to a developer's disk |
+| `russell_tensor/src/polar_higham.rs` | 67 | the `dd2 == 0` branch, which needs an isotropic spectrum, and the ill-conditioned fallbacks |
+| `russell_nonlin/src/solver.rs`, `solver_arclength.rs` | 33, 27 | scenario code: the `dlambda/ds` guard needs a turning point reached while the listed step is still legal, the precise-stop redo needs `Stop::UComp`, and the failure limits need a deliberately failing system |
+| `russell_sparse/src/util.rs` | 31 | the `nvidia-smi` probe without a GPU, the `/proc/cpuinfo` fallback that `lscpu` pre-empts, and the false arms of `cfg!(feature = ...)` in a build that has the feature |
+| `native/lapack/families.rs` | 32 | harness argument checks that the tests do not exercise |
+| `russell_tensor/src/eigen_projectors.rs` | 26 | `if VERBOSE { ... }` diagnostics |
+
+The remaining ~400 lines are spread over many files, none above 25.
+
+Two rules that follow:
+
+- **Do not refactor production code to satisfy the tool.** The five dyadic kernels in
+  `russell_tensor` read as 50% covered because `--fail-under-lines` counts a line once
+  per monomorphization; the `DA:` gate exists so that this is not a reason to rewrite
+  working code.
+- **When a gap is called unreachable, say what was tried.** The LAPACK entry above is
+  trustworthy because five generators were ported and verified against LAPACK's own
+  build (`families.rs`) before the sweeps were run.
+
 `cargo test` also runs the doc examples. Always keep the tree rustfmt-clean and
 warning-free.
 

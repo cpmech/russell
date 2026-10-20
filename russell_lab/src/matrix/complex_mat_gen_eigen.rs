@@ -1,37 +1,8 @@
 use super::ComplexMatrix;
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-use crate::{C_FALSE, C_TRUE, CcBool, Complex64};
-use crate::{ComplexVector, StrError, cpx, to_i32};
+use crate::ComplexVector;
+use crate::StrError;
+use crate::base::lapack_dispatch;
 
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-unsafe extern "C" {
-    // Computes the eigenvalues and, optionally, the left and/or right eigenvectors for GE matrices
-    // <https://www.netlib.org/lapack/explore-html/d3/d47/zggev_8f.html>
-    fn c_zggev(
-        calc_vl: CcBool,
-        calc_vr: CcBool,
-        n: *const i32,
-        a: *mut Complex64,
-        lda: *const i32,
-        b: *mut Complex64,
-        ldb: *const i32,
-        alpha: *mut Complex64,
-        beta: *mut Complex64,
-        vl: *mut Complex64,
-        ldvl: *const i32,
-        vr: *mut Complex64,
-        ldvr: *const i32,
-        work: *mut Complex64,
-        lwork: *const i32,
-        rwork: *mut f64,
-        info: *mut i32,
-    );
-}
-
-#[cfg_attr(
-    not(any(feature = "open_blas", feature = "intel_mkl")),
-    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
-)]
 /// (zggev) Computes the generalized eigenvalues and right eigenvectors
 ///
 /// A generalized eigenvalue for a pair of matrices (A,B) is a scalar lambda
@@ -125,76 +96,29 @@ pub fn complex_mat_gen_eigen(
     if v.nrow() != m || v.ncol() != m || b.nrow() != m || b.ncol() != m {
         return Err("matrices are incompatible");
     }
-    let m_i32 = to_i32(m);
-    let lda = m_i32;
-    let ldb = m_i32;
-    let ldu = 1;
-    let ldv = m_i32;
-    const EXTRA: i32 = 1;
-    let lwork = 2 * m_i32 + EXTRA;
-    let mut u = vec![cpx!(0.0, 0.0); ldu as usize];
-    let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
-    let mut rwork = vec![0.0; 8 * m];
-    let mut info = 0;
-    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    {
-        // The reference is destructive, but the caller's matrices are left
-        // intact here because the acceptance test checks the defining equation
-        // against the originals. So work on copies.
-        let n = m;
-        let mut a_work = a.clone();
-        let mut b_work = b.clone();
-        crate::native::lapack::qz::zggev(
-            false,
-            true,
-            n,
-            a_work.as_mut_data(),
-            b_work.as_mut_data(),
-            alpha.as_mut_data(),
-            beta.as_mut_data(),
-            &mut [],
-            v.as_mut_data(),
-        )
-        .map_err(|_| "LAPACK ERROR (zggev): Iterations failed ")?;
-        return Ok(());
-    }
-    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-    {
-        unsafe {
-            c_zggev(
-                C_FALSE,
-                C_TRUE,
-                &m_i32,
-                a.as_mut_data().as_mut_ptr(),
-                &lda,
-                b.as_mut_data().as_mut_ptr(),
-                &ldb,
-                alpha.as_mut_data().as_mut_ptr(),
-                beta.as_mut_data().as_mut_ptr(),
-                u.as_mut_ptr(),
-                &ldu,
-                v.as_mut_data().as_mut_ptr(),
-                &ldv,
-                work.as_mut_ptr(),
-                &lwork,
-                rwork.as_mut_ptr(),
-                &mut info,
-            );
-        }
-    }
-    if info < 0 {
-        println!("LAPACK ERROR (zggev): Argument #{} had an illegal value", -info);
-        return Err("LAPACK ERROR (zggev): An argument had an illegal value");
-    } else if info > 0 {
-        return Err("LAPACK ERROR (zggev): Iterations failed ");
-    }
+    // The reference is destructive, but the caller's matrices are left intact
+    // here because the acceptance test checks the defining equation against the
+    // originals. So work on copies, on either backend.
+    let mut a_work = a.clone();
+    let mut b_work = b.clone();
+    lapack_dispatch::zggev(
+        false,
+        true,
+        m,
+        a_work.as_mut_data(),
+        b_work.as_mut_data(),
+        alpha.as_mut_data(),
+        beta.as_mut_data(),
+        &mut [],
+        v.as_mut_data(),
+    )
+    .map_err(|e| match e {
+        crate::native::lapack::LapackError::BadShape => "LAPACK ERROR (zggev): An argument had an illegal value",
+        _ => "LAPACK ERROR (zggev): Iterations failed ",
+    })?;
     Ok(())
 }
 
-#[cfg_attr(
-    not(any(feature = "open_blas", feature = "intel_mkl")),
-    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
-)]
 /// Computes the generalized eigenvalues and eigenvectors (left and right)
 ///
 /// A generalized eigenvalue for a pair of matrices (A,B) is a scalar lambda
@@ -308,67 +232,25 @@ pub fn complex_mat_gen_eigen_lr(
     if u.nrow() != m || u.ncol() != m || v.nrow() != m || v.ncol() != m || b.nrow() != m || b.ncol() != m {
         return Err("matrices are incompatible");
     }
-    let m_i32 = to_i32(m);
-    let lda = m_i32;
-    let ldb = m_i32;
-    let ldu = m_i32;
-    let ldv = m_i32;
-    const EXTRA: i32 = 1;
-    let lwork = 2 * m_i32 + EXTRA;
-    let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
-    let mut rwork = vec![0.0; 8 * m];
-    let mut info = 0;
-    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    {
-        // As in `complex_mat_gen_eigen`, the caller's matrices are left intact
-        // even though the reference overwrites them.
-        let n = m;
-        let mut a_work = a.clone();
-        let mut b_work = b.clone();
-        crate::native::lapack::qz::zggev(
-            true,
-            true,
-            n,
-            a_work.as_mut_data(),
-            b_work.as_mut_data(),
-            alpha.as_mut_data(),
-            beta.as_mut_data(),
-            u.as_mut_data(),
-            v.as_mut_data(),
-        )
-        .map_err(|_| "LAPACK ERROR (zggev): Iterations failed ")?;
-        return Ok(());
-    }
-    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-    {
-        unsafe {
-            c_zggev(
-                C_FALSE,
-                C_TRUE,
-                &m_i32,
-                a.as_mut_data().as_mut_ptr(),
-                &lda,
-                b.as_mut_data().as_mut_ptr(),
-                &ldb,
-                alpha.as_mut_data().as_mut_ptr(),
-                beta.as_mut_data().as_mut_ptr(),
-                u.as_mut_data().as_mut_ptr(),
-                &ldu,
-                v.as_mut_data().as_mut_ptr(),
-                &ldv,
-                work.as_mut_ptr(),
-                &lwork,
-                rwork.as_mut_ptr(),
-                &mut info,
-            );
-        }
-    }
-    if info < 0 {
-        println!("LAPACK ERROR (zggev): Argument #{} had an illegal value", -info);
-        return Err("LAPACK ERROR (zggev): An argument had an illegal value");
-    } else if info > 0 {
-        return Err("LAPACK ERROR (zggev): Iterations failed ");
-    }
+    // As in `complex_mat_gen_eigen`, the caller's matrices are left intact even
+    // though the reference overwrites them.
+    let mut a_work = a.clone();
+    let mut b_work = b.clone();
+    lapack_dispatch::zggev(
+        true,
+        true,
+        m,
+        a_work.as_mut_data(),
+        b_work.as_mut_data(),
+        alpha.as_mut_data(),
+        beta.as_mut_data(),
+        u.as_mut_data(),
+        v.as_mut_data(),
+    )
+    .map_err(|e| match e {
+        crate::native::lapack::LapackError::BadShape => "LAPACK ERROR (zggev): An argument had an illegal value",
+        _ => "LAPACK ERROR (zggev): Iterations failed ",
+    })?;
     Ok(())
 }
 

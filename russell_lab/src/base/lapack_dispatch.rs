@@ -9,15 +9,19 @@
 //!
 //! # What is here, and what is not
 //!
-//! The five drivers the crate's public API leans on hardest, and nothing else:
+//! The nine drivers the crate's public API leans on, and nothing else:
 //!
 //! | Fortran | Here as | Call sites |
 //! |---|---|---|
 //! | `dgesv` | [`dgesv`] | [`crate::solve_lin_sys`] |
+//! | `dgetrf` | [`dgetrf`] | [`crate::mat_inverse`] |
+//! | `dgetri` | [`dgetri`] | [`crate::mat_inverse`] |
 //! | `dpotrf` | [`dpotrf`] | [`crate::mat_cholesky`] |
 //! | `dsyev` | [`dsyev`] | [`crate::mat_eigen_sym`] |
 //! | `dgesvd` | [`dgesvd`] | [`crate::mat_svd`] |
 //! | `dgeev` | [`dgeev`], [`dgeev_lr`], [`dgeev_eigenvalues`] | [`crate::mat_eigen`], [`crate::mat_eigen_lr`], [`crate::mat_eigenvalues`] |
+//! | `dggev` | [`dggev`] | [`crate::mat_gen_eigen`], [`crate::mat_gen_eigen_lr`] |
+//! | `zggev` | [`zggev`] | [`crate::complex_mat_gen_eigen`], [`crate::complex_mat_gen_eigen_lr`] |
 //!
 //! `dgeev` appears three times because that is how many different jobs the crate
 //! asks of it: `dgeev` computes the right eigenvectors (`JOBVR = 'V'`),
@@ -26,14 +30,17 @@
 //! to skip lightly, since `dtrevc3` and its back-transformation are most of
 //! `dgeev`'s cost.
 //!
-//! Still native, and untouched by this module: `dgetrf`/`dgetri` (used by
-//! `mat_inverse`), every complex routine (`zgesv`, `zgetrf`, `zgetri`, `zpotrf`,
-//! `zheev`, `zgeev`, `zggev`, `zgesvd`), the generalized eigen-decomposition
-//! (`dggev`/`zggev`), `dlange`, and `small_mat_svd`, which is a const-generic
-//! entry over stack arrays rather than a driver -- routing it would hand LAPACK
-//! the workspace allocation that the point of the `small_` API is to avoid. Their
-//! C wrappers are already in the shim, so routing one of the others later is an
-//! entry here plus a call-site edit, not new C code.
+//! [`dgetrf`] and [`dgetri`] are one operation split in two because that is how
+//! `mat_inverse` uses them: the factorization hands back the pivots and the
+//! determinant, and the inversion consumes both.
+//!
+//! Still native, and untouched by this module: every remaining complex routine
+//! (`zgesv`, `zgetrf`, `zgetri`, `zpotrf`, `zheev`, `zgeev`, `zgesvd`), `dlange`,
+//! and `small_mat_svd`, which is a const-generic entry over stack arrays rather
+//! than a driver -- routing it would hand LAPACK the workspace allocation that
+//! the point of the `small_` API is to avoid. Their C wrappers are already in the
+//! shim, so routing one of the others later is an entry here plus a call-site
+//! edit, not new C code.
 //!
 //! # `info` is translated here, once
 //!
@@ -51,19 +58,21 @@
 //! diagnostic the call sites used to print (`U(3,3) is exactly zero`, and so
 //! on) instead of dropping it.
 //!
-//! ## The one thing that is not identical: what counts as singular
+//! ## What counts as singular
 //!
-//! The *kinds* and the messages agree; the boundary does not, and it cannot
-//! without a rank check neither backend performs. The native `dgetrf` treats a
-//! pivot at or below [`crate::native::lapack::ZERO_DETERMINANT`] (1e-15) as zero,
-//! while LAPACK's `dgetrf` -- and therefore `dgesv` and `dpotrf` -- reports
-//! `info > 0` only for an *exactly* zero pivot or a leading minor that is not
-//! positive definite. A matrix that is singular to 1e-16 but not exactly is
-//! `Singular` on the native path and solved to working precision on the
-//! accelerated one. That divergence predates this module -- the call sites
-//! already had it between their two branches -- and closing it would mean
-//! post-checking the factor on the accelerated path, which is a policy change
-//! rather than a dispatch one.
+//! Both backends test a pivot against *exactly* zero: the native `dgetrf` uses
+//! [`crate::native::lapack::ZERO_DETERMINANT`], which is `0.0`, and LAPACK's
+//! `DGETRF` reports `info > 0` only for an exactly zero pivot. They used to
+//! disagree -- the native path called anything below `1e-15` singular -- which
+//! is what made routing `dgetrf` unsound: the two backends would have answered
+//! differently for a matrix that is singular to working precision but not
+//! exactly. The boundary is now pinned by
+//! `native::lapack::zero_determinant_tests::pivot_threshold_matches_lapack`, in
+//! both directions.
+//!
+//! The one conversion this costs is `dgetrf`'s pivots: LAPACK's `IPIV` is
+//! 1-based and the crate's is 0-based, so [`dgetrf`] shifts on the way out and
+//! [`dgetri`] shifts back before handing them to `DGETRI`.
 //!
 //! # Precedence and gating
 //!
@@ -77,7 +86,7 @@
 //!
 //! # Which entries reach the library
 //!
-//! All five, measured through the public entry points with
+//! All nine, measured through the public entry points with
 //! `cargo bench --bench backends_benchmark` (`lapack_*` groups) against MKL 2026.0
 //! pinned to one thread. The columns are the same binary, same data, run once
 //! plain and once with `--all-features`; `native` is the Rust driver those runs
@@ -86,12 +95,15 @@
 //! | call site (driver) | n = 128 | n = 512 | routed |
 //! |---|---|---|---|
 //! | `solve_lin_sys` (`dgesv`) | 931 us -> 44.7 us (21x) | 101 ms -> 1.38 ms (74x) | yes |
+//! | `mat_inverse` (`dgetrf`+`dgetri`) | 1.88 ms -> 118 us (16x) | 177 ms -> 4.31 ms (41x) | yes |
 //! | `mat_cholesky` (`dpotrf`) | 155 us -> 27.5 us (5.6x) | 14.8 ms -> 761 us (19x) | yes |
 //! | `mat_eigen_sym` (`dsyev`) | 1.51 ms -> 673 us (2.2x) | 61.9 ms -> 21.7 ms (2.9x) | yes |
 //! | `mat_svd` (`dgesvd`), n x n | 7.50 ms -> 2.50 ms (3.0x) | 625 ms -> 50.7 ms (12x) | yes |
 //! | `mat_svd` (`dgesvd`), 512 x 256 | 72.6 ms -> 8.30 ms (8.8x) | -- | yes |
 //! | `mat_eigen` (`dgeev`, vectors) | 6.64 ms -> 2.41 ms (2.8x) | 542 ms -> 72.4 ms (7.5x) | yes |
 //! | `mat_eigenvalues` (`dgeev`, values) | 6.53 ms -> 1.42 ms (4.6x) | 560 ms -> 52.5 ms (11x) | yes |
+//! | `mat_gen_eigen` (`dggev`) | 8.49 ms -> 6.58 ms (1.3x) | 933 ms -> 776 ms (1.2x) | yes |
+//! | `complex_mat_gen_eigen` (`zggev`) | 16.9 ms -> 14.2 ms (1.2x) | 1.63 s -> 1.23 s (1.3x) | yes |
 //!
 //! The native control rows agreed between the two runs to within 7% (mostly
 //! 1-4%), so the columns are comparable. Nothing was left native: unlike the
@@ -105,15 +117,36 @@
 //! into BLAS-3. The largest is `dgesv` -- 74x at n = 512 -- because the native LU
 //! is a scalar triple loop with no blocking at all.
 //!
+//! `dggev`/`zggev` are the narrowest wins (1.2-1.3x), and worth recording rather
+//! than hiding: both sides are the unblocked QZ iteration, so the library has no
+//! BLAS-3 to offer and only the inner `dgemv`/`zgemv` calls improve. They are
+//! still faster at every size measured (the control moved 1-7% between the two
+//! runs, against a 20-33% gap), so they are routed. A build that wants the native
+//! QZ can still call `native::lapack::qz` directly, as the parity tests do.
+//!
 //! `mat_eigenvalues` is quoted separately from `mat_eigen` because it asks
 //! `dgeev` for a different job: `'N'`/`'N'` skips `dtrevc3`, which is 28% of the
 //! accelerated cost (52 ms against 72 ms at n = 512). The native driver always
 //! computes the vectors and discards them, so natively the two cost the same --
 //! one more reason the `'N'` entry exists rather than being folded into
 //! [`dgeev`].
+//!
+//! # Workspace
+//!
+//! Every entry that takes `WORK` asks LAPACK for its size with `lwork = -1`
+//! instead of hard-coding a minimum. The two differ by a lot, and the query is
+//! the only way to get the blocked path: at n = 512 MKL answers 32768 for
+//! `dgetri` against a documented minimum of 512, 7680 for `dggev` against 4096,
+//! and 16896 for `zggev` against 1024 (OpenBLAS answers 32768, 19968 and 16896;
+//! the documents' minima are `max(1,N)`, `max(1,8*N)` and `max(1,2*N)` in
+//! `SRC/dgetri.f`, `SRC/dggev.f` and `SRC/zggev.f`). `ZGGEV` also takes a real
+//! `RWORK` of `8*N`, which [`zggev`] allocates because the native signature has
+//! no place for it; that is the argument the reference uses for `zggbal`'s
+//! balancing norms.
 
 use crate::native::lapack::LapackError;
 
+use crate::Complex64;
 #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::internal::dgeev_data;
 #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
@@ -138,6 +171,16 @@ unsafe extern "C" {
         ipiv: *mut i32,
         b: *mut f64,
         ldb: *const i32,
+        info: *mut i32,
+    );
+    fn c_dgetrf(m: *const i32, n: *const i32, a: *mut f64, lda: *const i32, ipiv: *mut i32, info: *mut i32);
+    fn c_dgetri(
+        n: *const i32,
+        a: *mut f64,
+        lda: *const i32,
+        ipiv: *const i32,
+        work: *mut f64,
+        lwork: *const i32,
         info: *mut i32,
     );
     fn c_dpotrf(upper: CcBool, n: *const i32, a: *mut f64, lda: *const i32, info: *mut i32);
@@ -182,6 +225,44 @@ unsafe extern "C" {
         ldvr: *const i32,
         work: *mut f64,
         lwork: *const i32,
+        info: *mut i32,
+    );
+    fn c_dggev(
+        calc_vl: CcBool,
+        calc_vr: CcBool,
+        n: *const i32,
+        a: *mut f64,
+        lda: *const i32,
+        b: *mut f64,
+        ldb: *const i32,
+        alphar: *mut f64,
+        alphai: *mut f64,
+        beta: *mut f64,
+        vl: *mut f64,
+        ldvl: *const i32,
+        vr: *mut f64,
+        ldvr: *const i32,
+        work: *mut f64,
+        lwork: *const i32,
+        info: *mut i32,
+    );
+    fn c_zggev(
+        calc_vl: CcBool,
+        calc_vr: CcBool,
+        n: *const i32,
+        a: *mut Complex64,
+        lda: *const i32,
+        b: *mut Complex64,
+        ldb: *const i32,
+        alpha: *mut Complex64,
+        beta: *mut Complex64,
+        vl: *mut Complex64,
+        ldvl: *const i32,
+        vr: *mut Complex64,
+        ldvr: *const i32,
+        work: *mut Complex64,
+        lwork: *const i32,
+        rwork: *mut f64,
         info: *mut i32,
     );
 }
@@ -816,6 +897,396 @@ pub fn dgeev_eigenvalues(wr: &mut [f64], wi: &mut [f64], a: &mut [f64], n: usize
     }
 }
 
+/// `dgetrf`: LU factorization with partial pivoting, in place.
+///
+/// As [`crate::native::lapack::dgetrf`], it returns the pivot indices as
+/// **0-based** row indices, and the determinant. LAPACK's `IPIV` is 1-based, so
+/// the accelerated path shifts it on the way in and on the way out; the
+/// determinant is the product of `U`'s diagonal with one sign flip per row
+/// interchange, which is also how the native routine accumulates it.
+///
+/// # Errors
+///
+/// [`LapackError::Singular`] if a pivot is exactly zero, which is the test both
+/// backends apply (see the module note), and [`LapackError::BadShape`] if
+/// `a.len() != n * n`.
+pub fn dgetrf(a: &mut [f64], n: usize) -> Result<(Vec<usize>, f64), LapackError> {
+    if a.len() != n * n {
+        return Err(LapackError::BadShape);
+    }
+    if n == 0 {
+        return Ok((Vec::new(), 1.0));
+    }
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        let n_i32 = to_i32(n);
+        let lda = n_i32;
+        let mut ipiv = vec![0i32; n];
+        let mut info = 0i32;
+        // Safety: `a` has n*n entries, checked above, and the shim is linked in
+        // this configuration. `c_dgetrf` supplies LAPACK's argument count itself.
+        unsafe { c_dgetrf(&n_i32, &n_i32, a.as_mut_ptr(), &lda, ipiv.as_mut_ptr(), &mut info) };
+        if info != 0 {
+            return Err(lapack_error("dgetrf", info, LapackError::Singular, || {
+                println!("LAPACK ERROR (dgetrf): U({},{}) is exactly zero", info - 1, info - 1);
+            }));
+        }
+        let mut det = 1.0;
+        for (i, &p) in ipiv.iter().enumerate() {
+            // `IPIV(i)` is the 1-based row interchanged with row `i`.
+            let d = a[i + i * n];
+            det = if p - 1 == i as i32 { det * d } else { -det * d };
+        }
+        Ok((ipiv.iter().map(|&p| (p - 1) as usize).collect(), det))
+    }
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    crate::native::lapack::dgetrf(a, n)
+}
+
+/// `dgetri`: inverse of a matrix from its [`dgetrf`] factorization, in place.
+///
+/// `ipiv` holds the 0-based pivots [`dgetrf`] returned. LAPACK's `DGETRI`
+/// requires `LWORK >= max(1, N)` (`SRC/dgetri.f`, the `LWORK` argument); the
+/// accelerated path still queries, because the *optimal* size is `N*NB` and the
+/// unblocked minimum is several times slower at the sizes this crate inverts.
+/// The query touches no part of the factorization, so it is asked before the
+/// real call and the result is floored at the documented minimum.
+///
+/// # Errors
+///
+/// [`LapackError::Singular`] if a diagonal of `U` is zero,
+/// [`LapackError::BadShape`] if the shapes disagree.
+pub fn dgetri(lu: &mut [f64], n: usize, ipiv: &[usize]) -> Result<(), LapackError> {
+    if lu.len() != n * n || ipiv.len() != n {
+        return Err(LapackError::BadShape);
+    }
+    if n == 0 {
+        return Ok(());
+    }
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        let n_i32 = to_i32(n);
+        let lda = n_i32;
+        // LAPACK indexes `IPIV` from 1; the crate indexes it from 0.
+        let ipiv_i32: Vec<i32> = ipiv.iter().map(|&p| p as i32 + 1).collect();
+        let mut info = 0i32;
+        let mut work = vec![0.0f64; 1];
+        let mut lwork = -1i32;
+        // Safety: `lu` has n*n entries and `ipiv_i32` n, both checked above; the
+        // query writes only `work[0]`.
+        unsafe {
+            c_dgetri(
+                &n_i32,
+                lu.as_mut_ptr(),
+                &lda,
+                ipiv_i32.as_ptr(),
+                work.as_mut_ptr(),
+                &lwork,
+                &mut info,
+            )
+        };
+        if info != 0 {
+            // Unreachable: a query with `lwork = -1` is never rejected.
+            return Err(lapack_error("dgetri", info, LapackError::Singular, || {}));
+        }
+        let need = (work[0].max(1.0) as usize).max(n);
+        let mut work = vec![0.0f64; need];
+        lwork = need as i32;
+        // Safety: as above, and `work` now holds the size the library asked for.
+        unsafe {
+            c_dgetri(
+                &n_i32,
+                lu.as_mut_ptr(),
+                &lda,
+                ipiv_i32.as_ptr(),
+                work.as_mut_ptr(),
+                &lwork,
+                &mut info,
+            )
+        };
+        if info != 0 {
+            // The call site's message is the native routine's; this one prints
+            // nothing because the accelerated branch never did.
+            return Err(lapack_error("dgetri", info, LapackError::Singular, || {}));
+        }
+        Ok(())
+    }
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    crate::native::lapack::dgetri(lu, n, ipiv)
+}
+
+/// `dggev`: generalized eigenvalues and, optionally, eigenvectors of `(A, B)`.
+///
+/// Same arguments and storage as [`crate::native::lapack::qz::dggev`]: `a` and
+/// `b` are `n x n`, column-major and destroyed; the eigenvalues come back as
+/// `(alphar, alphai)` over `beta`; and the right eigenvectors, when requested,
+/// use LAPACK's compact layout, where columns `j` and `j + 1` of `vr` are the
+/// real and imaginary parts of a conjugate pair.
+///
+/// `LWORK` is always queried (`lwork = -1`), never guessed. `DGGEV` documents
+/// `LWORK >= max(1, 8*N)` for its `WORK` argument (`SRC/dggev.f`); the query's
+/// optimum is at least that, and the floor is applied anyway so a library that
+/// answered below its own minimum could not make this pass a short buffer.
+///
+/// # Panics
+///
+/// Panics if the shapes are inconsistent, as the native routine does.
+///
+/// # Errors
+///
+/// [`LapackError::Convergence`] when the QZ iteration or `dtgevc` fails,
+/// [`LapackError::BadShape`] for an argument LAPACK rejects.
+#[allow(clippy::too_many_arguments)]
+pub fn dggev(
+    calc_vl: bool,
+    calc_vr: bool,
+    n: usize,
+    a: &mut [f64],
+    b: &mut [f64],
+    alphar: &mut [f64],
+    alphai: &mut [f64],
+    beta: &mut [f64],
+    vl: &mut [f64],
+    vr: &mut [f64],
+) -> Result<(), LapackError> {
+    assert_eq!(a.len(), n * n, "dggev: a must be n*n");
+    assert_eq!(b.len(), n * n, "dggev: b must be n*n");
+    assert_eq!(alphar.len(), n, "dggev: alphar must have n entries");
+    assert_eq!(alphai.len(), n, "dggev: alphai must have n entries");
+    assert_eq!(beta.len(), n, "dggev: beta must have n entries");
+    if calc_vl {
+        assert_eq!(vl.len(), n * n, "dggev: vl must be n*n");
+    }
+    if calc_vr {
+        assert_eq!(vr.len(), n * n, "dggev: vr must be n*n");
+    }
+    if n == 0 {
+        return Ok(());
+    }
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        let n_i32 = to_i32(n);
+        let lda = n_i32;
+        let ldb = n_i32;
+        // LAPACK wants a valid pointer and a leading dimension >= 1 even for a
+        // matrix it will not touch, which is what the dummy and `ld* = 1` are.
+        let c_vl = if calc_vl { C_TRUE } else { C_FALSE };
+        let c_vr = if calc_vr { C_TRUE } else { C_FALSE };
+        let ldvl = if calc_vl { n_i32 } else { 1 };
+        let ldvr = if calc_vr { n_i32 } else { 1 };
+        let mut vl_dummy = [0.0f64];
+        let mut vr_dummy = [0.0f64];
+        let vl_ptr = if calc_vl {
+            vl.as_mut_ptr()
+        } else {
+            vl_dummy.as_mut_ptr()
+        };
+        let vr_ptr = if calc_vr {
+            vr.as_mut_ptr()
+        } else {
+            vr_dummy.as_mut_ptr()
+        };
+        let mut info = 0i32;
+        let mut work = vec![0.0f64; 1];
+        let mut lwork = -1i32;
+        // Safety: every buffer is n*n or n, asserted above; the query writes only
+        // `work[0]` and does not read `a`/`b`.
+        unsafe {
+            c_dggev(
+                c_vl,
+                c_vr,
+                &n_i32,
+                a.as_mut_ptr(),
+                &lda,
+                b.as_mut_ptr(),
+                &ldb,
+                alphar.as_mut_ptr(),
+                alphai.as_mut_ptr(),
+                beta.as_mut_ptr(),
+                vl_ptr,
+                &ldvl,
+                vr_ptr,
+                &ldvr,
+                work.as_mut_ptr(),
+                &lwork,
+                &mut info,
+            )
+        };
+        if info != 0 {
+            return Err(lapack_error("dggev", info, LapackError::Convergence, || {}));
+        }
+        let need = (work[0].max(1.0) as usize).max(8 * n);
+        let mut work = vec![0.0f64; need];
+        lwork = need as i32;
+        // Safety: as above, and `work` now holds the size the library asked for.
+        unsafe {
+            c_dggev(
+                c_vl,
+                c_vr,
+                &n_i32,
+                a.as_mut_ptr(),
+                &lda,
+                b.as_mut_ptr(),
+                &ldb,
+                alphar.as_mut_ptr(),
+                alphai.as_mut_ptr(),
+                beta.as_mut_ptr(),
+                vl_ptr,
+                &ldvl,
+                vr_ptr,
+                &ldvr,
+                work.as_mut_ptr(),
+                &lwork,
+                &mut info,
+            )
+        };
+        if info != 0 {
+            // `1..=n` is QZ non-convergence, `n+1` a `dhgeqz` failure and `n+2` a
+            // `dtgevc` failure: all of them are `Convergence` in the native
+            // routine, which reports the same kind for every non-zero `INFO`.
+            return Err(lapack_error("dggev", info, LapackError::Convergence, || {}));
+        }
+        Ok(())
+    }
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    crate::native::lapack::qz::dggev(calc_vl, calc_vr, n, a, b, alphar, alphai, beta, vl, vr)
+}
+
+/// `zggev`: complex generalized eigenvalues and, optionally, eigenvectors.
+///
+/// Same arguments as [`crate::native::lapack::qz::zggev`], with `alpha`/`beta`
+/// carrying the eigenvalues and the same compact eigenvector layout as
+/// [`dggev`].
+///
+/// LAPACK's `ZGGEV` has one argument the native signature does not: `RWORK`, a
+/// **real** workspace of dimension `8*N` used by `zggbal` for the row and column
+/// balancing norms (`SRC/zggev.f`, the `RWORK` argument). This entry allocates it
+/// as `f64`, which is why the routine is still routable through a
+/// `Result<(), LapackError>` signature: the workspace is the dispatch's
+/// business, as it is for the five drivers that preceded it.
+///
+/// `LWORK` is queried (`lwork = -1`); `ZGGEV` documents `LWORK >= max(1, 2*N)`
+/// for `WORK`, and the query's optimum is floored at that minimum.
+///
+/// # Panics
+///
+/// Panics if the shapes are inconsistent, as the native routine does.
+///
+/// # Errors
+///
+/// [`LapackError::Convergence`] when the QZ iteration or `ztgevc` fails,
+/// [`LapackError::BadShape`] for an argument LAPACK rejects.
+#[allow(clippy::too_many_arguments)]
+pub fn zggev(
+    calc_vl: bool,
+    calc_vr: bool,
+    n: usize,
+    a: &mut [Complex64],
+    b: &mut [Complex64],
+    alpha: &mut [Complex64],
+    beta: &mut [Complex64],
+    vl: &mut [Complex64],
+    vr: &mut [Complex64],
+) -> Result<(), LapackError> {
+    assert_eq!(a.len(), n * n, "zggev: a must be n*n");
+    assert_eq!(b.len(), n * n, "zggev: b must be n*n");
+    assert_eq!(alpha.len(), n, "zggev: alpha must have n entries");
+    assert_eq!(beta.len(), n, "zggev: beta must have n entries");
+    if calc_vl {
+        assert_eq!(vl.len(), n * n, "zggev: vl must be n*n");
+    }
+    if calc_vr {
+        assert_eq!(vr.len(), n * n, "zggev: vr must be n*n");
+    }
+    if n == 0 {
+        return Ok(());
+    }
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        let n_i32 = to_i32(n);
+        let lda = n_i32;
+        let ldb = n_i32;
+        let c_vl = if calc_vl { C_TRUE } else { C_FALSE };
+        let c_vr = if calc_vr { C_TRUE } else { C_FALSE };
+        let ldvl = if calc_vl { n_i32 } else { 1 };
+        let ldvr = if calc_vr { n_i32 } else { 1 };
+        let mut vl_dummy = [Complex64::new(0.0, 0.0)];
+        let mut vr_dummy = [Complex64::new(0.0, 0.0)];
+        let vl_ptr = if calc_vl {
+            vl.as_mut_ptr()
+        } else {
+            vl_dummy.as_mut_ptr()
+        };
+        let vr_ptr = if calc_vr {
+            vr.as_mut_ptr()
+        } else {
+            vr_dummy.as_mut_ptr()
+        };
+        // `ZGGEV`'s `RWORK`: real, `8*n`, for `ZGGBAL`'s balancing norms.
+        let mut rwork = vec![0.0f64; 8 * n];
+        let mut info = 0i32;
+        let mut work = vec![Complex64::new(0.0, 0.0); 1];
+        let mut lwork = -1i32;
+        // Safety: every buffer is n*n or n, asserted above; `work` holds one
+        // element for the query, which writes only `work[0]`.
+        unsafe {
+            c_zggev(
+                c_vl,
+                c_vr,
+                &n_i32,
+                a.as_mut_ptr(),
+                &lda,
+                b.as_mut_ptr(),
+                &ldb,
+                alpha.as_mut_ptr(),
+                beta.as_mut_ptr(),
+                vl_ptr,
+                &ldvl,
+                vr_ptr,
+                &ldvr,
+                work.as_mut_ptr(),
+                &lwork,
+                rwork.as_mut_ptr(),
+                &mut info,
+            )
+        };
+        if info != 0 {
+            return Err(lapack_error("zggev", info, LapackError::Convergence, || {}));
+        }
+        let need = (work[0].re.max(1.0) as usize).max(2 * n);
+        let mut work = vec![Complex64::new(0.0, 0.0); need];
+        lwork = need as i32;
+        // Safety: as above, and `work` now holds the size the library asked for.
+        unsafe {
+            c_zggev(
+                c_vl,
+                c_vr,
+                &n_i32,
+                a.as_mut_ptr(),
+                &lda,
+                b.as_mut_ptr(),
+                &ldb,
+                alpha.as_mut_ptr(),
+                beta.as_mut_ptr(),
+                vl_ptr,
+                &ldvl,
+                vr_ptr,
+                &ldvr,
+                work.as_mut_ptr(),
+                &lwork,
+                rwork.as_mut_ptr(),
+                &mut info,
+            )
+        };
+        if info != 0 {
+            return Err(lapack_error("zggev", info, LapackError::Convergence, || {}));
+        }
+        Ok(())
+    }
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    crate::native::lapack::qz::zggev(calc_vl, calc_vr, n, a, b, alpha, beta, vl, vr)
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
@@ -1187,5 +1658,309 @@ mod tests {
                 assert!((atu[i] - re * u[i]).abs() < 1e-11, "dgeev_lr real column {j} row {i}");
             }
         }
+    }
+
+    /// A deterministic, non-symmetric, well-conditioned matrix for the LU tests.
+    fn lu_sample(n: usize) -> Vec<f64> {
+        let mut a = vec![0.0; n * n];
+        for j in 0..n {
+            for i in 0..n {
+                a[i + j * n] = if i == j {
+                    (n as f64) + 1.0 + (i as f64) * 0.5
+                } else {
+                    (((i * 7 + j * 13) % 11) as f64) - 5.0
+                };
+            }
+        }
+        a
+    }
+
+    #[test]
+    fn dgetrf_and_dgetri_match_the_native_drivers() {
+        for n in [1usize, 2, 4, 7, 20] {
+            let a = lu_sample(n);
+
+            // The dispatch's own round trip.
+            let mut got = a.clone();
+            let (ipiv_got, det_got) = dgetrf(&mut got, n).unwrap();
+            // Both backends report 0-based pivots in range; the native routine
+            // documents the same convention.
+            assert_eq!(ipiv_got.len(), n);
+            assert!(ipiv_got.iter().all(|&p| p < n), "dgetrf: pivot out of range");
+            dgetri(&mut got, n, &ipiv_got).unwrap();
+
+            // The native drivers, run on a second copy.
+            let mut want = a.clone();
+            let (ipiv_want, det_want) = crate::native::lapack::dgetrf(&mut want, n).unwrap();
+            crate::native::lapack::dgetri(&mut want, n, &ipiv_want).unwrap();
+
+            assert_eq!(ipiv_got, ipiv_want, "dgetrf: pivots differ at n={n}");
+            let det_scale = det_want.abs().max(1.0);
+            assert!(
+                (det_got - det_want).abs() / det_scale < 1e-12,
+                "dgetrf n={n}: det {det_got} vs {det_want}"
+            );
+            for i in 0..n * n {
+                let scale = want[i].abs().max(1.0);
+                assert!(
+                    (got[i] - want[i]).abs() / scale < 1e-12,
+                    "dgetri n={n} [{i}]: {} vs {}",
+                    got[i],
+                    want[i]
+                );
+            }
+        }
+    }
+
+    /// The pivot threshold #245 aligned: a tiny but non-zero pivot must not be
+    /// called singular, and an exactly degenerate one must still be. The reason
+    /// `dgetrf` was left native until that change is that LAPACK and the native
+    /// routine must agree on this input, not merely on the well-conditioned ones.
+    #[test]
+    fn dgetrf_shares_lapacks_singularity_boundary() {
+        // column-major [[1e-16, 0], [0, 1]]: tiny, not singular.
+        let mut a = vec![1e-16, 0.0, 0.0, 1.0];
+        assert!(dgetrf(&mut a, 2).is_ok());
+        let mut b = vec![1e-16, 0.0, 0.0, 1.0];
+        assert!(crate::native::lapack::dgetrf(&mut b, 2).is_ok());
+
+        // column-major [[1, 2], [2, 4]]: exactly singular.
+        let mut a = vec![1.0, 2.0, 2.0, 4.0];
+        assert_eq!(dgetrf(&mut a, 2), Err(LapackError::Singular));
+        let mut b = vec![1.0, 2.0, 2.0, 4.0];
+        assert_eq!(crate::native::lapack::dgetrf(&mut b, 2), Err(LapackError::Singular));
+    }
+
+    #[test]
+    fn dgetrf_and_dgetri_report_the_same_errors_as_the_native_driver() {
+        let mut a = vec![1.0, 2.0, 3.0];
+        assert_eq!(dgetrf(&mut a, 2), Err(LapackError::BadShape));
+        assert_eq!(dgetrf(&mut Vec::new(), 0), Ok((Vec::new(), 1.0)));
+
+        let mut a = vec![1.0, 2.0, 3.0];
+        assert_eq!(
+            dgetrf(&mut a, 2),
+            crate::native::lapack::dgetrf(&mut [1.0, 2.0, 3.0], 2)
+        );
+
+        // A factorized matrix with a zero diagonal of `U`: `dgetri` must report
+        // it, not hand back a half-written inverse. Both backends exit through
+        // `dtrtri`'s `INFO > 0`.
+        let lu = [1.0, 0.0, 0.0, 0.0];
+        let ipiv = [0usize, 1];
+        let mut a = lu;
+        assert_eq!(dgetri(&mut a, 2, &ipiv), Err(LapackError::Singular));
+        let mut b = lu;
+        assert_eq!(
+            dgetri(&mut b, 2, &ipiv),
+            crate::native::lapack::dgetri(&mut [1.0, 0.0, 0.0, 0.0], 2, &ipiv)
+        );
+
+        let mut a = vec![1.0; 4];
+        assert_eq!(dgetri(&mut a, 2, &[0]), Err(LapackError::BadShape));
+        assert_eq!(dgetri(&mut Vec::new(), 0, &[]), Ok(()));
+    }
+
+    /// `dggev` on a pair whose spectrum is `{i, -i, 3}`: one conjugate pair, so
+    /// the compact eigenvector storage is exercised as well as the workspace.
+    #[test]
+    fn dggev_matches_the_native_driver() {
+        #[rustfmt::skip]
+        let a = vec![
+             0.0, -1.0, 0.0,
+             1.0,  0.0, 0.0,
+             0.0,  0.0, 3.0,
+        ];
+        let b = vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+        let n = 3;
+
+        for (calc_vl, calc_vr) in [(false, true), (true, true)] {
+            let mut a_got = a.clone();
+            let mut b_got = b.clone();
+            let (mut ar_got, mut ai_got, mut be_got) = (vec![0.0; n], vec![0.0; n], vec![0.0; n]);
+            let mut vl_got = if calc_vl { vec![0.0; n * n] } else { Vec::new() };
+            let mut vr_got = vec![0.0; n * n];
+            dggev(
+                calc_vl,
+                calc_vr,
+                n,
+                &mut a_got,
+                &mut b_got,
+                &mut ar_got,
+                &mut ai_got,
+                &mut be_got,
+                &mut vl_got,
+                &mut vr_got,
+            )
+            .unwrap();
+
+            let mut a_want = a.clone();
+            let mut b_want = b.clone();
+            let (mut ar_want, mut ai_want, mut be_want) = (vec![0.0; n], vec![0.0; n], vec![0.0; n]);
+            let mut vl_want = if calc_vl { vec![0.0; n * n] } else { Vec::new() };
+            let mut vr_want = vec![0.0; n * n];
+            crate::native::lapack::qz::dggev(
+                calc_vl,
+                calc_vr,
+                n,
+                &mut a_want,
+                &mut b_want,
+                &mut ar_want,
+                &mut ai_want,
+                &mut be_want,
+                &mut vl_want,
+                &mut vr_want,
+            )
+            .unwrap();
+
+            for i in 0..n {
+                assert!((ar_got[i] - ar_want[i]).abs() < 1e-12, "dggev ar[{i}]");
+                assert!((ai_got[i] - ai_want[i]).abs() < 1e-12, "dggev ai[{i}]");
+                assert!((be_got[i] - be_want[i]).abs() < 1e-12, "dggev beta[{i}]");
+            }
+            for i in 0..n * n {
+                assert!((vr_got[i] - vr_want[i]).abs() < 1e-12, "dggev vr[{i}]");
+                if calc_vl {
+                    assert!((vl_got[i] - vl_want[i]).abs() < 1e-12, "dggev vl[{i}]");
+                }
+            }
+
+            // And the eigenvalue equation, so agreement between two ports of the
+            // same algorithm is not the only thing being asserted: A v = lambda B v.
+            for j in 0..n {
+                let (re, im) = (ar_got[j] / be_got[j], ai_got[j] / be_got[j]);
+                let vr_re: Vec<f64> = (0..n).map(|i| vr_got[i + j * n]).collect();
+                if im == 0.0 {
+                    let av = mat_vec(&a, &vr_re, n);
+                    let bv = mat_vec(&b, &vr_re, n);
+                    for i in 0..n {
+                        assert!((av[i] - re * bv[i]).abs() < 1e-12, "dggev real column {j} row {i}");
+                    }
+                } else if im > 0.0 {
+                    // Columns j and j+1 are the real and imaginary parts.
+                    let vr_im: Vec<f64> = (0..n).map(|i| vr_got[i + (j + 1) * n]).collect();
+                    let (av_re, av_im) = (mat_vec(&a, &vr_re, n), mat_vec(&a, &vr_im, n));
+                    let (bv_re, bv_im) = (mat_vec(&b, &vr_re, n), mat_vec(&b, &vr_im, n));
+                    for i in 0..n {
+                        assert!(
+                            (av_re[i] - (re * bv_re[i] - im * bv_im[i])).abs() < 1e-12,
+                            "dggev pair {j} re {i}"
+                        );
+                        assert!(
+                            (av_im[i] - (re * bv_im[i] + im * bv_re[i])).abs() < 1e-12,
+                            "dggev pair {j} im {i}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn zggev_matches_the_native_driver() {
+        let n = 3;
+        let a: Vec<Complex64> = vec![
+            Complex64::new(1.0, 1.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(2.0, 0.0),
+            Complex64::new(2.0, 0.0),
+            Complex64::new(3.0, -1.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(1.0, 0.0),
+            Complex64::new(4.0, 0.0),
+        ];
+        let b: Vec<Complex64> = vec![
+            Complex64::new(1.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(1.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(1.0, 0.0),
+        ];
+
+        for (calc_vl, calc_vr) in [(false, true), (true, true)] {
+            let mut a_got = a.clone();
+            let mut b_got = b.clone();
+            let (mut al_got, mut be_got) = (vec![Complex64::new(0.0, 0.0); n], vec![Complex64::new(0.0, 0.0); n]);
+            let mut vl_got = if calc_vl {
+                vec![Complex64::new(0.0, 0.0); n * n]
+            } else {
+                Vec::new()
+            };
+            let mut vr_got = vec![Complex64::new(0.0, 0.0); n * n];
+            zggev(
+                calc_vl,
+                calc_vr,
+                n,
+                &mut a_got,
+                &mut b_got,
+                &mut al_got,
+                &mut be_got,
+                &mut vl_got,
+                &mut vr_got,
+            )
+            .unwrap();
+
+            let mut a_want = a.clone();
+            let mut b_want = b.clone();
+            let (mut al_want, mut be_want) = (vec![Complex64::new(0.0, 0.0); n], vec![Complex64::new(0.0, 0.0); n]);
+            let mut vl_want = if calc_vl {
+                vec![Complex64::new(0.0, 0.0); n * n]
+            } else {
+                Vec::new()
+            };
+            let mut vr_want = vec![Complex64::new(0.0, 0.0); n * n];
+            crate::native::lapack::qz::zggev(
+                calc_vl,
+                calc_vr,
+                n,
+                &mut a_want,
+                &mut b_want,
+                &mut al_want,
+                &mut be_want,
+                &mut vl_want,
+                &mut vr_want,
+            )
+            .unwrap();
+
+            for i in 0..n {
+                assert!((al_got[i] - al_want[i]).norm() < 1e-12, "zggev alpha[{i}]");
+                assert!((be_got[i] - be_want[i]).norm() < 1e-12, "zggev beta[{i}]");
+            }
+            for i in 0..n * n {
+                assert!((vr_got[i] - vr_want[i]).norm() < 1e-12, "zggev vr[{i}]");
+                if calc_vl {
+                    assert!((vl_got[i] - vl_want[i]).norm() < 1e-12, "zggev vl[{i}]");
+                }
+            }
+
+            // The defining equation, with the real eigenvalue encoded as
+            // alpha/beta (complex division here, so one formula covers both).
+            for j in 0..n {
+                let lambda = al_got[j] / be_got[j];
+                let v: Vec<Complex64> = (0..n).map(|i| vr_got[i + j * n]).collect();
+                let av = complex_mat_vec(&a, &v, n);
+                let bv = complex_mat_vec(&b, &v, n);
+                for i in 0..n {
+                    assert!((av[i] - lambda * bv[i]).norm() < 1e-11, "zggev column {j} row {i}");
+                }
+            }
+        }
+    }
+
+    /// Complex matrix-vector product with an explicit loop, so the test does not
+    /// depend on the BLAS dispatch's complex entries.
+    fn complex_mat_vec(a: &[Complex64], x: &[Complex64], n: usize) -> Vec<Complex64> {
+        let mut y = vec![Complex64::new(0.0, 0.0); n];
+        for j in 0..n {
+            for i in 0..n {
+                y[i] += a[i + j * n] * x[j];
+            }
+        }
+        y
     }
 }

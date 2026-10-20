@@ -1,37 +1,8 @@
 use super::Matrix;
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-use crate::{C_FALSE, C_TRUE, CcBool};
-use crate::{StrError, Vector, to_i32};
+use crate::StrError;
+use crate::Vector;
+use crate::base::lapack_dispatch;
 
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-unsafe extern "C" {
-    // Computes the eigenvalues and, optionally, the left and/or right eigenvectors for GE matrices
-    // <https://www.netlib.org/lapack/explore-html/d9/d52/dggev_8f.html>
-    fn c_dggev(
-        calc_vl: CcBool,
-        calc_vr: CcBool,
-        n: *const i32,
-        a: *mut f64,
-        lda: *const i32,
-        b: *mut f64,
-        ldb: *const i32,
-        alphar: *mut f64,
-        alphai: *mut f64,
-        beta: *mut f64,
-        vl: *mut f64,
-        ldvl: *const i32,
-        vr: *mut f64,
-        ldvr: *const i32,
-        work: *mut f64,
-        lwork: *const i32,
-        info: *mut i32,
-    );
-}
-
-#[cfg_attr(
-    not(any(feature = "open_blas", feature = "intel_mkl")),
-    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
-)]
 /// (dggev) Computes the generalized eigenvalues and right eigenvectors
 ///
 /// A generalized eigenvalue for a pair of matrices (A,B) is a scalar lambda
@@ -128,74 +99,28 @@ pub fn mat_gen_eigen(
     if v.nrow() != m || v.ncol() != m || b.nrow() != m || b.ncol() != m {
         return Err("matrices are incompatible");
     }
-    let m_i32 = to_i32(m);
-    let lda = m_i32;
-    let ldb = m_i32;
-    let ldu = 1;
-    let ldv = m_i32;
-    const EXTRA: i32 = 1;
-    let lwork = 8 * m_i32 + EXTRA;
-    let mut u = vec![0.0; ldu as usize];
-    let mut work = vec![0.0; lwork as usize];
-    let mut info = 0;
-    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    {
-        // `v` is the compact LAPACK storage: for a conjugate pair, columns `j`
-        // and `j + 1` are the real and imaginary parts of `v(j)`. `a` and `b` are
-        // overwritten, as the reference does.
-        let n = m;
-        crate::native::lapack::qz::dggev(
-            false,
-            true,
-            n,
-            a.as_mut_data(),
-            b.as_mut_data(),
-            alpha_real.as_mut_data(),
-            alpha_imag.as_mut_data(),
-            beta.as_mut_data(),
-            &mut [],
-            v.as_mut_data(),
-        )
-        .map_err(|_| "LAPACK ERROR (dggev): Iterations failed ")?;
-        return Ok(());
-    }
-    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-    {
-        unsafe {
-            c_dggev(
-                C_FALSE,
-                C_TRUE,
-                &m_i32,
-                a.as_mut_data().as_mut_ptr(),
-                &lda,
-                b.as_mut_data().as_mut_ptr(),
-                &ldb,
-                alpha_real.as_mut_data().as_mut_ptr(),
-                alpha_imag.as_mut_data().as_mut_ptr(),
-                beta.as_mut_data().as_mut_ptr(),
-                u.as_mut_ptr(),
-                &ldu,
-                v.as_mut_data().as_mut_ptr(),
-                &ldv,
-                work.as_mut_ptr(),
-                &lwork,
-                &mut info,
-            );
-        }
-    }
-    if info < 0 {
-        println!("LAPACK ERROR (dggev): Argument #{} had an illegal value", -info);
-        return Err("LAPACK ERROR (dggev): An argument had an illegal value");
-    } else if info > 0 {
-        return Err("LAPACK ERROR (dggev): Iterations failed ");
-    }
+    // `v` is the compact LAPACK storage: for a conjugate pair, columns `j` and
+    // `j + 1` are the real and imaginary parts of `v(j)`. `a` and `b` are
+    // overwritten, as the reference does, on either backend.
+    lapack_dispatch::dggev(
+        false,
+        true,
+        m,
+        a.as_mut_data(),
+        b.as_mut_data(),
+        alpha_real.as_mut_data(),
+        alpha_imag.as_mut_data(),
+        beta.as_mut_data(),
+        &mut [],
+        v.as_mut_data(),
+    )
+    .map_err(|e| match e {
+        crate::native::lapack::LapackError::BadShape => "LAPACK ERROR (dggev): An argument had an illegal value",
+        _ => "LAPACK ERROR (dggev): Iterations failed ",
+    })?;
     Ok(())
 }
 
-#[cfg_attr(
-    not(any(feature = "open_blas", feature = "intel_mkl")),
-    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
-)]
 /// Computes the generalized eigenvalues and eigenvectors (left and right)
 ///
 /// A generalized eigenvalue for a pair of matrices (A,B) is a scalar lambda
@@ -318,66 +243,25 @@ pub fn mat_gen_eigen_lr(
     if u.nrow() != m || u.ncol() != m || v.nrow() != m || v.ncol() != m || b.nrow() != m || b.ncol() != m {
         return Err("matrices are incompatible");
     }
-    let m_i32 = to_i32(m);
-    let lda = m_i32;
-    let ldb = m_i32;
-    let ldu = m_i32;
-    let ldv = m_i32;
-    const EXTRA: i32 = 1;
-    let lwork = 8 * m_i32 + EXTRA;
-    let mut work = vec![0.0; lwork as usize];
-    let mut info = 0;
-    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    {
-        // `u` and `v` are the compact LAPACK storage: for a conjugate pair,
-        // columns `j` and `j + 1` are the real and imaginary parts. `a` and `b`
-        // are overwritten, as the reference does.
-        let n = m;
-        crate::native::lapack::qz::dggev(
-            true,
-            true,
-            n,
-            a.as_mut_data(),
-            b.as_mut_data(),
-            alpha_real.as_mut_data(),
-            alpha_imag.as_mut_data(),
-            beta.as_mut_data(),
-            u.as_mut_data(),
-            v.as_mut_data(),
-        )
-        .map_err(|_| "LAPACK ERROR (dggev): Iterations failed ")?;
-        return Ok(());
-    }
-    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-    {
-        unsafe {
-            c_dggev(
-                C_TRUE,
-                C_TRUE,
-                &m_i32,
-                a.as_mut_data().as_mut_ptr(),
-                &lda,
-                b.as_mut_data().as_mut_ptr(),
-                &ldb,
-                alpha_real.as_mut_data().as_mut_ptr(),
-                alpha_imag.as_mut_data().as_mut_ptr(),
-                beta.as_mut_data().as_mut_ptr(),
-                u.as_mut_data().as_mut_ptr(),
-                &ldu,
-                v.as_mut_data().as_mut_ptr(),
-                &ldv,
-                work.as_mut_ptr(),
-                &lwork,
-                &mut info,
-            );
-        }
-    }
-    if info < 0 {
-        println!("LAPACK ERROR (dggev): Argument #{} had an illegal value", -info);
-        return Err("LAPACK ERROR (dggev): An argument had an illegal value");
-    } else if info > 0 {
-        return Err("LAPACK ERROR (dggev): Iterations failed ");
-    }
+    // `u` and `v` are the compact LAPACK storage: for a conjugate pair, columns
+    // `j` and `j + 1` are the real and imaginary parts. `a` and `b` are
+    // overwritten, as the reference does, on either backend.
+    lapack_dispatch::dggev(
+        true,
+        true,
+        m,
+        a.as_mut_data(),
+        b.as_mut_data(),
+        alpha_real.as_mut_data(),
+        alpha_imag.as_mut_data(),
+        beta.as_mut_data(),
+        u.as_mut_data(),
+        v.as_mut_data(),
+    )
+    .map_err(|e| match e {
+        crate::native::lapack::LapackError::BadShape => "LAPACK ERROR (dggev): An argument had an illegal value",
+        _ => "LAPACK ERROR (dggev): Iterations failed ",
+    })?;
     Ok(())
 }
 

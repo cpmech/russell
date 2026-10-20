@@ -1,29 +1,5 @@
 use super::Matrix;
 use crate::StrError;
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-use crate::{CBLAS_COL_MAJOR, CBLAS_NO_TRANS, CBLAS_TRANS, to_i32};
-
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-unsafe extern "C" {
-    // Performs the matrix-matrix multiplication
-    // <https://www.netlib.org/lapack/explore-html/d7/d2b/dgemm_8f.html>
-    fn cblas_dgemm(
-        layout: i32,
-        transa: i32,
-        transb: i32,
-        m: i32,
-        n: i32,
-        k: i32,
-        alpha: f64,
-        a: *const f64,
-        lda: i32,
-        b: *const f64,
-        ldb: i32,
-        beta: f64,
-        c: *mut f64,
-        ldc: i32,
-    );
-}
 
 /// (dgemm) Performs the transpose(matrix)-matrix multiplication
 ///
@@ -75,34 +51,9 @@ pub fn mat_t_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix, beta: f
         c.fill(0.0);
         return Ok(());
     }
-    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-    {
-        let m_i32: i32 = to_i32(m);
-        let n_i32: i32 = to_i32(n);
-        let k_i32: i32 = to_i32(k);
-        let lda = k_i32;
-        let ldb = k_i32;
-        unsafe {
-            cblas_dgemm(
-                CBLAS_COL_MAJOR,
-                CBLAS_TRANS,
-                CBLAS_NO_TRANS,
-                m_i32,
-                n_i32,
-                k_i32,
-                alpha,
-                a.as_data().as_ptr(),
-                lda,
-                b.as_data().as_ptr(),
-                ldb,
-                beta,
-                c.as_mut_data().as_mut_ptr(),
-                m_i32,
-            );
-        }
-    }
-    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::portable::mat_t_mat_mul_data(c.as_mut_data(), alpha, a.as_data(), b.as_data(), beta, m, n, k);
+    // One dispatch for both backends: the transposed native kernel in the default
+    // build, the linked library's `dgemm('T','N')` through the shim otherwise.
+    crate::base::blas_dispatch::dgemm_tn(alpha, a.as_data(), b.as_data(), beta, c.as_mut_data(), m, n, k);
     Ok(())
 }
 
@@ -175,24 +126,25 @@ mod tests {
         }
     }
 
-    /// Note on the accelerated path: `mat_t_mat_mul` transposes `A` into a
-    /// temporary and then uses the plain `dgemm`. Reinterpreting the leading
-    /// dimensions -- the usual row/column-major trick of calling
-    /// `dgemm(b, a, ...)` and reading the result transposed -- does *not* work
-    /// here, and it fails silently: `dgemm` would write an `n x m` result with
-    /// column stride `n`, while `c` has stride `m`, so the layouts coincide only
-    /// when `m == n`. Measured, the transpose is ~130 us at m=n=k=400 against
-    /// ~25 ms for the multiplication, so the transpose is not the bottleneck --
-    /// the missing BLAS-3 is. Fixing this properly means a transposed `dgemm`
-    /// variant that packs `A`'s columns from `A`'s rows, as the reference's
-    /// `dgemm(..., 'T', 'N', ...)` does.
+    /// Note on the accelerated path: this calls `dgemm('T','N')` -- CBLAS's
+    /// `CblasTrans` through the shim, and `native::blas::dgemm_tn` in the default
+    /// build, which packs `A`'s columns from `A`'s rows. Until those kernels
+    /// existed the native path *transposed `A` into a temporary* and called the
+    /// plain `dgemm`; the transpose was measured at ~130 us at m=n=k=400 against
+    /// ~25 ms for the multiplication, so it was never the bottleneck, but it was
+    /// also a second m*k buffer and an extra pass over it.
+    ///
+    /// Reinterpreting the leading dimensions instead -- the usual row/column-major
+    /// trick of calling `dgemm(b, a, ...)` and reading the result transposed --
+    /// does *not* work here, and it fails silently: `dgemm` would write an `n x m`
+    /// result with column stride `n`, while `c` has stride `m`, so the layouts
+    /// coincide only when `m == n`.
     ///
     /// Sizes chosen to reach every branch and every padding/transpose path.
     ///
-    /// This matters more than usual here: the accelerated path computes `A^T B`
-    /// by *reinterpreting* the leading dimensions rather than transposing, so a
-    /// wrong leading dimension is silently a different product. The pre-existing
-    /// tests are all 2x2 or 3x2, which cannot distinguish the transposed leading
+    /// This matters more than usual here: a wrong leading dimension in the
+    /// transposed kernel is silently a different product. The pre-existing tests
+    /// are all 2x2 or 3x2, which cannot distinguish the transposed leading
     /// dimensions from the correct ones.
     #[test]
     fn mat_t_mat_mul_matches_naive_on_every_shape() {

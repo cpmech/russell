@@ -213,6 +213,232 @@ void c_zgemm(const COMPLEX64 *alpha,
                 (int)(*m));
 }
 
+// c := alpha aᵀ b + beta c; a is k×m (lda = k), b is k×n (ldb = k)
+void c_dgemm_tn(double alpha,
+                const double *a,
+                const double *b,
+                double beta,
+                double *c,
+                const int32_t *m,
+                const int32_t *n,
+                const int32_t *k) {
+    cblas_dgemm(CblasColMajor,
+                CblasTrans,
+                CblasNoTrans,
+                (int)(*m),
+                (int)(*n),
+                (int)(*k),
+                alpha,
+                a,
+                (int)(*k),
+                b,
+                (int)(*k),
+                beta,
+                c,
+                (int)(*m));
+}
+
+// c := alpha a bᵀ + beta c; a is m×k (lda = m), b is n×k (ldb = n)
+void c_dgemm_nt(double alpha,
+                const double *a,
+                const double *b,
+                double beta,
+                double *c,
+                const int32_t *m,
+                const int32_t *n,
+                const int32_t *k) {
+    cblas_dgemm(CblasColMajor,
+                CblasNoTrans,
+                CblasTrans,
+                (int)(*m),
+                (int)(*n),
+                (int)(*k),
+                alpha,
+                a,
+                (int)(*m),
+                b,
+                (int)(*n),
+                beta,
+                c,
+                (int)(*m));
+}
+
+// c := alpha aᵀ bᵀ + beta c; a is k×m (lda = k), b is n×k (ldb = n)
+void c_dgemm_tt(double alpha,
+                const double *a,
+                const double *b,
+                double beta,
+                double *c,
+                const int32_t *m,
+                const int32_t *n,
+                const int32_t *k) {
+    cblas_dgemm(CblasColMajor,
+                CblasTrans,
+                CblasTrans,
+                (int)(*m),
+                (int)(*n),
+                (int)(*k),
+                alpha,
+                a,
+                (int)(*k),
+                b,
+                (int)(*n),
+                beta,
+                c,
+                (int)(*m));
+}
+
+// c := alpha aᵀ b + beta c for complex data (not conjugated)
+void c_zgemm_tn(const COMPLEX64 *alpha,
+                const COMPLEX64 *a,
+                const COMPLEX64 *b,
+                const COMPLEX64 *beta,
+                COMPLEX64 *c,
+                const int32_t *m,
+                const int32_t *n,
+                const int32_t *k) {
+    cblas_zgemm(CblasColMajor,
+                CblasTrans,
+                CblasNoTrans,
+                (int)(*m),
+                (int)(*n),
+                (int)(*k),
+                (const void *)alpha,
+                (const void *)a,
+                (int)(*k),
+                (const void *)b,
+                (int)(*k),
+                (const void *)beta,
+                (void *)c,
+                (int)(*m));
+}
+
+// c := alpha a bᵀ + beta c for complex data (not conjugated)
+void c_zgemm_nt(const COMPLEX64 *alpha,
+                const COMPLEX64 *a,
+                const COMPLEX64 *b,
+                const COMPLEX64 *beta,
+                COMPLEX64 *c,
+                const int32_t *m,
+                const int32_t *n,
+                const int32_t *k) {
+    cblas_zgemm(CblasColMajor,
+                CblasNoTrans,
+                CblasTrans,
+                (int)(*m),
+                (int)(*n),
+                (int)(*k),
+                (const void *)alpha,
+                (const void *)a,
+                (int)(*m),
+                (const void *)b,
+                (int)(*n),
+                (const void *)beta,
+                (void *)c,
+                (int)(*m));
+}
+
+// c := alpha aᵀ bᵀ + beta c for complex data (not conjugated)
+void c_zgemm_tt(const COMPLEX64 *alpha,
+                const COMPLEX64 *a,
+                const COMPLEX64 *b,
+                const COMPLEX64 *beta,
+                COMPLEX64 *c,
+                const int32_t *m,
+                const int32_t *n,
+                const int32_t *k) {
+    cblas_zgemm(CblasColMajor,
+                CblasTrans,
+                CblasTrans,
+                (int)(*m),
+                (int)(*n),
+                (int)(*k),
+                (const void *)alpha,
+                (const void *)a,
+                (int)(*k),
+                (const void *)b,
+                (int)(*n),
+                (const void *)beta,
+                (void *)c,
+                (int)(*m));
+}
+
+// a := alpha x yᵀ + a (dger, the unconjugated rank-1 update)
+void c_dger(double alpha, const double *x, const double *y, double *a, const int32_t *m, const int32_t *n) {
+    cblas_dger(CblasColMajor, (int)(*m), (int)(*n), alpha, x, 1, y, 1, a, (int)(*m));
+}
+
+// a := alpha x yᵀ + a for complex data. BLAS's `zger` is the *unconjugated*
+// rank-1 update, which CBLAS spells `zgeru` (`zgerc` conjugates y).
+void c_zger(const COMPLEX64 *alpha,
+            const COMPLEX64 *x,
+            const COMPLEX64 *y,
+            COMPLEX64 *a,
+            const int32_t *m,
+            const int32_t *n) {
+    cblas_zgeru(CblasColMajor,
+                (int)(*m),
+                (int)(*n),
+                (const void *)alpha,
+                (const void *)x,
+                1,
+                (const void *)y,
+                1,
+                (void *)a,
+                (int)(*m));
+}
+
+// c := alpha a aᵀ + beta c, or c := alpha aᵀ a + beta c when `transposed`.
+//
+// The leading dimension follows the *stored* shape, which is the whole trap here:
+// `a` is n×k without the transpose and k×n with it, so lda is n and k
+// respectively. Only the requested triangle of c is written.
+void c_dsyrk(double alpha,
+             const double *a,
+             double beta,
+             double *c,
+             const int32_t *n,
+             const int32_t *k,
+             C_BOOL upper,
+             C_BOOL transposed) {
+    cblas_dsyrk(CblasColMajor,
+                upper == C_TRUE ? CblasUpper : CblasLower,
+                transposed == C_TRUE ? CblasTrans : CblasNoTrans,
+                (int)(*n),
+                (int)(*k),
+                alpha,
+                a,
+                transposed == C_TRUE ? (int)(*k) : (int)(*n),
+                beta,
+                c,
+                (int)(*n));
+}
+
+// c := alpha a aᴴ + beta c, or c := alpha aᴴ a + beta c when `conj_transposed`.
+//
+// `alpha` and `beta` are real, as `zherk` requires. Same leading-dimension rule
+// as `c_dsyrk`.
+void c_zherk(double alpha,
+             const COMPLEX64 *a,
+             double beta,
+             COMPLEX64 *c,
+             const int32_t *n,
+             const int32_t *k,
+             C_BOOL upper,
+             C_BOOL conj_transposed) {
+    cblas_zherk(CblasColMajor,
+                upper == C_TRUE ? CblasUpper : CblasLower,
+                conj_transposed == C_TRUE ? CblasConjTrans : CblasNoTrans,
+                (int)(*n),
+                (int)(*k),
+                alpha,
+                (const void *)a,
+                conj_transposed == C_TRUE ? (int)(*k) : (int)(*n),
+                beta,
+                (void *)c,
+                (int)(*n));
+}
+
 // Computes the solution to a system of linear equations
 // <https://www.netlib.org/lapack/explore-html/d8/d72/dgesv_8f.html>
 void c_dgesv(const int32_t *n,

@@ -1,0 +1,37 @@
+name: Wasm
+# The library builds for `wasm32-unknown-unknown` (that is checked nowhere here
+# because the build is the easy half), but running its tests needs a WASI target
+# and a runtime to execute a `.wasm` binary. This job is that half: it proves the
+# numeric path the wasm build takes -- the dispatcher's native arm -- computes
+# what x86 computes, instead of merely compiling.
+#
+# The file-I/O tests are gated out of wasm builds in the source, with the reason
+# stated there: WASI gives a program no filesystem unless the runtime preopens a
+# directory. Gating them beats preopening one here, because a preopen would make
+# the suite pass for a reason that depends on this file rather than on the code.
+on: [pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      RUST_BACKTRACE: 1
+      # Cargo cannot execute a wasm binary itself; it shells out to this.
+      CARGO_TARGET_WASM32_WASIP1_RUNNER: wasmtime
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust with the wasm target
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          targets: wasm32-wasip1
+      - name: Install wasmtime
+        run: |
+          curl -sSf https://wasmtime.dev/install.sh | bash
+          echo "$HOME/.wasmtime/bin" >> "$GITHUB_PATH"
+      - name: Report the toolchain
+        run: |
+          rustc --version
+          wasmtime --version
+      - name: Run the library tests on wasm
+        run: |
+          cargo test -p russell_lab --lib --target wasm32-wasip1

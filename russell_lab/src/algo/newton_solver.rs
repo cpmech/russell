@@ -233,13 +233,7 @@ impl NewtonSolver {
     ///     Ok(())
     /// }
     /// ```
-    pub fn solve<F, A, J>(
-        &mut self,
-        x: &mut Vector,
-        args: &mut A,
-        mut calc_f: F,
-        mut calc_jj: J,
-    ) -> Result<(), StrError>
+    pub fn solve<F, A, J>(&mut self, x: &mut Vector, args: &mut A, mut calc_f: F, mut calc_jj: J) -> Result<(), StrError>
     where
         F: FnMut(&mut Vector, &Vector, &mut A) -> Result<(), StrError>,
         J: FnMut(&mut Matrix, &Vector, &mut A) -> Result<(), StrError>,
@@ -350,10 +344,7 @@ mod tests {
     #[test]
     fn newton_solver_fields_are_mutable() {
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver
-            .set_max_iterations(100)
-            .set_tolerance(1e-12)
-            .set_use_line_search(true);
+        solver.set_max_iterations(100).set_tolerance(1e-12).set_use_line_search(true);
         assert_eq!(solver.max_iterations, 100);
         assert_eq!(solver.tolerance, 1e-12);
         assert!(solver.use_line_search);
@@ -440,10 +431,7 @@ mod tests {
 
         let mut solver = NewtonSolver::new(2).unwrap();
         solver.set_tolerance(0.0);
-        assert_eq!(
-            solver.validate_params().err(),
-            Some("tolerance must be >= 10 * f64::EPSILON")
-        );
+        assert_eq!(solver.validate_params().err(), Some("tolerance must be >= 10 * f64::EPSILON"));
 
         let mut solver = NewtonSolver::new(2).unwrap();
         solver.set_divergent_tol(0.5);

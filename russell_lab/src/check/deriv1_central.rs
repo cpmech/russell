@@ -181,22 +181,13 @@ mod tests {
     #[test]
     fn deriv1_central5_works() {
         let tests = testing::get_functions();
-        println!(
-            "{:>10}{:>15}{:>22}{:>11}",
-            "function", "numerical", "analytical", "|num-ana|"
-        );
+        println!("{:>10}{:>15}{:>22}{:>11}", "function", "numerical", "analytical", "|num-ana|");
         // for test in &[&tests[2]] {
         for test in &tests {
             let args = &mut 0;
             let d = deriv1_central5(test.at_x, args, test.f).unwrap();
             let d_correct = (test.g)(test.at_x, args).unwrap();
-            println!(
-                "{:>10}{:15.9}{:22}{:11.2e}",
-                test.name,
-                d,
-                d_correct,
-                f64::abs(d - d_correct),
-            );
+            println!("{:>10}{:15.9}{:22}{:11.2e}", test.name, d, d_correct, f64::abs(d - d_correct),);
             assert!(f64::abs(d - d_correct) < test.improv_tol_g_diff);
         }
     }

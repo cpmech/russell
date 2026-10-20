@@ -19,10 +19,7 @@ fn main() -> Result<(), StrError> {
     let y_approx = xx.get_mapped(|x| interp.eval(x).unwrap());
     let mut curve1 = Curve::new();
     let mut curve2 = Curve::new();
-    curve1
-        .set_label("exact")
-        .set_line_width(2.0)
-        .draw(xx.as_data(), y_original.as_data());
+    curve1.set_label("exact").set_line_width(2.0).draw(xx.as_data(), y_original.as_data());
     curve2
         .set_label("interpolated")
         .set_line_style("--")

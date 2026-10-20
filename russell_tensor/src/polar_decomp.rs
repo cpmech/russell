@@ -55,12 +55,7 @@ pub enum PolarAlgo {
 ///
 /// Default method: [PolarAlgo::Quaternion]
 #[inline]
-pub fn polar_decomp(
-    rr: &mut Tensor2<9>,
-    uu: &mut Tensor2<6>,
-    vv: Option<&mut Tensor2<6>>,
-    ff: &Tensor2<9>,
-) -> Result<usize, StrError> {
+pub fn polar_decomp(rr: &mut Tensor2<9>, uu: &mut Tensor2<6>, vv: Option<&mut Tensor2<6>>, ff: &Tensor2<9>) -> Result<usize, StrError> {
     polar_decomp_mx(rr, uu, vv, PolarAlgo::Quaternion, ff)
 }
 

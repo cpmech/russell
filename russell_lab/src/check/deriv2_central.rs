@@ -33,8 +33,7 @@ where
     let fp2 = f(at_x + 2.0 * h, args)?;
     let fp3 = f(at_x + 3.0 * h, args)?;
     let fp4 = f(at_x + 4.0 * h, args)?;
-    let approximation =
-        (C4 * fm4 + C3 * fm3 + C2 * fm2 + C1 * fm1 + C0 * fzz + C1 * fp1 + C2 * fp2 + C3 * fp3 + C4 * fp4) / hh;
+    let approximation = (C4 * fm4 + C3 * fm3 + C2 * fm2 + C1 * fm1 + C0 * fzz + C1 * fp1 + C2 * fp2 + C3 * fp3 + C4 * fp4) / hh;
     Ok(approximation)
 }
 
@@ -49,10 +48,7 @@ mod tests {
     #[test]
     fn deriv2_central9_works() {
         let tests = testing::get_functions();
-        println!(
-            "{:>10}{:>15}{:>22}{:>11}",
-            "function", "numerical", "analytical", "|num-ana|"
-        );
+        println!("{:>10}{:>15}{:>22}{:>11}", "function", "numerical", "analytical", "|num-ana|");
         for test in &tests {
             let args = &mut 0;
             let num = deriv2_central9(test.at_x, args, test.f).unwrap();

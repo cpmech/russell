@@ -240,10 +240,7 @@ fn test_arc_circle_min_u() {
 fn do_plot(name: &str, uu: &[f64], ll: &[f64], duds: &[f64], dlds: &[f64], stepsizes: &[f64]) {
     // Draw a reference circle
     let mut circle = Canvas::new();
-    circle
-        .set_edge_color("#00ba7f")
-        .set_face_color("None")
-        .draw_circle(0.0, 0.0, RADIUS);
+    circle.set_edge_color("#00ba7f").set_face_color("None").draw_circle(0.0, 0.0, RADIUS);
 
     // Draw a tangent line passing through the starting point
     let mut first_tangent = Canvas::new();
@@ -262,10 +259,7 @@ fn do_plot(name: &str, uu: &[f64], ll: &[f64], duds: &[f64], dlds: &[f64], steps
 
     // Draw arrows
     let mut arrows = Canvas::new();
-    arrows
-        .set_arrow_scale(15.0)
-        .set_edge_color("None")
-        .set_face_color("#515151ff");
+    arrows.set_arrow_scale(15.0).set_edge_color("None").set_face_color("#515151ff");
     for i in 0..na {
         let sigma = stepsizes[1 + i]; // the first stepsize is duplicated because of the initial state
         let xf = uu[i] + sigma * duds[i];

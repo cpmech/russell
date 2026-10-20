@@ -10,15 +10,7 @@ unsafe extern "C" {
 
     // Computes the inverse of a matrix using the LU factorization computed by zgetrf
     // <https://www.netlib.org/lapack/explore-html/d0/db3/zgetri_8f.html>
-    fn c_zgetri(
-        n: *const i32,
-        a: *mut Complex64,
-        lda: *const i32,
-        ipiv: *const i32,
-        work: *mut Complex64,
-        lwork: *const i32,
-        info: *mut i32,
-    );
+    fn c_zgetri(n: *const i32, a: *mut Complex64, lda: *const i32, ipiv: *const i32, work: *mut Complex64, lwork: *const i32, info: *mut i32);
 
 }
 
@@ -166,14 +158,7 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
     #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         unsafe {
-            c_zgetrf(
-                &m_i32,
-                &m_i32,
-                ai.as_mut_data().as_mut_ptr(),
-                &lda,
-                ipiv.as_mut_ptr(),
-                &mut info,
-            );
+            c_zgetrf(&m_i32, &m_i32, ai.as_mut_data().as_mut_ptr(), &lda, ipiv.as_mut_ptr(), &mut info);
         }
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
@@ -188,9 +173,7 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
             algebra_linear::lapack::LapackError::BadShape => "LAPACK ERROR (dgetrf): An argument had an illegal value",
             // LU has no iteration to converge, so this is unreachable; listed so
             // the match stays exhaustive if a variant is added.
-            algebra_linear::lapack::LapackError::Convergence => {
-                "LAPACK ERROR (dgetrf): The algorithm failed to converge"
-            }
+            algebra_linear::lapack::LapackError::Convergence => "LAPACK ERROR (dgetrf): The algorithm failed to converge",
             algebra_linear::lapack::LapackError::NotImplemented(r) => algebra_linear::lapack::not_implemented(r),
         })?;
         for (slot, p) in ipiv.iter_mut().zip(pivots) {
@@ -202,9 +185,7 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
         return Err("LAPACK ERROR (dgetrf): An argument had an illegal value");
     } else if info > 0 {
         println!("LAPACK ERROR (dgetrf): U({},{}) is exactly zero", info - 1, info - 1);
-        return Err(
-            "LAPACK ERROR (dgetrf): The factorization has been completed, but the factor U is exactly singular",
-        );
+        return Err("LAPACK ERROR (dgetrf): The factorization has been completed, but the factor U is exactly singular");
     }
 
     // first, compute the determinant ai.data from dgetrf
@@ -240,15 +221,11 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
         // Back to 0-based for the native kernel.
         let pivots: Vec<usize> = ipiv.iter().map(|&p| (p - 1) as usize).collect();
         algebra_linear::lapack::complex::zgetri(ai.as_mut_data(), m, &pivots).map_err(|e| match e {
-            algebra_linear::lapack::LapackError::Singular => {
-                "LAPACK ERROR (zgetri): U is exactly singular and the inverse could not be computed"
-            }
+            algebra_linear::lapack::LapackError::Singular => "LAPACK ERROR (zgetri): U is exactly singular and the inverse could not be computed",
             algebra_linear::lapack::LapackError::BadShape => "LAPACK ERROR (zgetri): An argument had an illegal value",
             // Unreachable: the inverse from an LU has no iteration. Listed for
             // exhaustiveness.
-            algebra_linear::lapack::LapackError::Convergence => {
-                "LAPACK ERROR (zgetri): The algorithm failed to converge"
-            }
+            algebra_linear::lapack::LapackError::Convergence => "LAPACK ERROR (zgetri): The algorithm failed to converge",
             algebra_linear::lapack::LapackError::NotImplemented(r) => algebra_linear::lapack::not_implemented(r),
         })?;
     }
@@ -286,14 +263,8 @@ mod tests {
         let mut ai_1x2 = ComplexMatrix::new(1, 2);
         let mut ai_2x1 = ComplexMatrix::new(2, 1);
         assert_eq!(complex_mat_inverse(&mut ai_1x2, &a_2x3), Err("matrix must be square"));
-        assert_eq!(
-            complex_mat_inverse(&mut ai_1x2, &a_2x2),
-            Err("matrices are incompatible")
-        );
-        assert_eq!(
-            complex_mat_inverse(&mut ai_2x1, &a_2x2),
-            Err("matrices are incompatible")
-        );
+        assert_eq!(complex_mat_inverse(&mut ai_1x2, &a_2x2), Err("matrices are incompatible"));
+        assert_eq!(complex_mat_inverse(&mut ai_2x1, &a_2x2), Err("matrices are incompatible"));
     }
 
     #[test]
@@ -337,18 +308,10 @@ mod tests {
         let mut ai = ComplexMatrix::new(2, 2);
         let det = complex_mat_inverse(&mut ai, &a).unwrap();
         assert_eq!(det, cpx!(-4.0, 0.0));
-        complex_mat_approx_eq(
-            &ai,
-            &[[cpx!(-0.5, 0.0), cpx!(0.5, 0.0)], [cpx!(0.75, 0.0), cpx!(-0.25, 0.0)]],
-            1e-15,
-        );
+        complex_mat_approx_eq(&ai, &[[cpx!(-0.5, 0.0), cpx!(0.5, 0.0)], [cpx!(0.75, 0.0), cpx!(-0.25, 0.0)]], 1e-15);
         let a_copy = ComplexMatrix::from(&data);
         let a_ai = get_a_times_ai(&a_copy, &ai);
-        complex_mat_approx_eq(
-            &a_ai,
-            &[[cpx!(1.0, 0.0), cpx!(0.0, 0.0)], [cpx!(0.0, 0.0), cpx!(1.0, 0.0)]],
-            1e-15,
-        );
+        complex_mat_approx_eq(&a_ai, &[[cpx!(1.0, 0.0), cpx!(0.0, 0.0)], [cpx!(0.0, 0.0), cpx!(1.0, 0.0)]], 1e-15);
     }
 
     #[test]

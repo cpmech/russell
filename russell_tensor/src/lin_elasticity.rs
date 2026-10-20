@@ -159,10 +159,7 @@ impl<const N: usize> LinElasticity<N> {
     ///
     /// Returns `(bulk, shear)`
     pub fn get_bulk_shear(&self) -> (f64, f64) {
-        (
-            self.young / (3.0 * (1.0 - 2.0 * self.poisson)),
-            self.young / (2.0 * (1.0 + self.poisson)),
-        )
+        (self.young / (3.0 * (1.0 - 2.0 * self.poisson)), self.young / (2.0 * (1.0 + self.poisson)))
     }
 
     /// Returns an access to the elastic stiffness tensor
@@ -381,9 +378,7 @@ impl<const N: usize> LinElasticity<N> {
         if self.plane_stress {
             return Err("The compliance modulus is not available for plane-stress");
         }
-        self.dd
-            .inverse(cc)
-            .map_err(|_| "cannot invert the rigidity modulus D")?;
+        self.dd.inverse(cc).map_err(|_| "cannot invert the rigidity modulus D")?;
         Ok(())
     }
 
@@ -630,10 +625,7 @@ mod tests {
             Some("The compliance modulus is not available for plane-stress")
         );
         let ela = LinElasticity::<4>::new(0.0, 0.0, false).unwrap(); // zero values (indeterminate)
-        assert_eq!(
-            ela.calc_compliance(&mut cc).err(),
-            Some("cannot invert the rigidity modulus D")
-        );
+        assert_eq!(ela.calc_compliance(&mut cc).err(), Some("cannot invert the rigidity modulus D"));
     }
 
     #[test]

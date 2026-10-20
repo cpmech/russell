@@ -78,8 +78,7 @@ fn test_2d_prob01_spc_map_mumps() -> Result<(), StrError> {
 
 fn run_spc(case_a: bool, lmm: bool, nn: usize, tol: f64, genie: Genie) -> Result<(), StrError> {
     // get the problem data
-    let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical, ana_flow) =
-        ProblemSamples::d2_problem_01(case_a);
+    let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical, ana_flow) = ProblemSamples::d2_problem_01(case_a);
 
     // allocate the solver
     let (nx, ny) = (nn + 1, nn + 1);
@@ -119,10 +118,7 @@ fn run_spc(case_a: bool, lmm: bool, nn: usize, tol: f64, genie: Genie) -> Result
             flow_err_max = err_wy;
         }
     });
-    println!(
-        "N = {:>2}, max(err) = {:>10.5e}, max(flow_err) = {:>10.5e}",
-        nn, err_max, flow_err_max
-    );
+    println!("N = {:>2}, max(err) = {:>10.5e}, max(flow_err) = {:>10.5e}", nn, err_max, flow_err_max);
 
     // plot results
     if SAVE_FIGURE {
@@ -201,18 +197,14 @@ fn run_spc(case_a: bool, lmm: bool, nn: usize, tol: f64, genie: Genie) -> Result
             .set_figure_size_points(600.0, 600.0)
             .save(&fn_a)
             .unwrap();
-        plot.add(&surf_ana)
-            .add(&surf_num)
-            .set_figure_size_points(600.0, 600.0)
-            .save(&fn_b)?;
+        plot.add(&surf_ana).add(&surf_num).set_figure_size_points(600.0, 600.0).save(&fn_b)?;
     }
     Ok(())
 }
 
 fn run_spc_map(case_a: bool, lmm: bool, nn: usize, tol: f64, genie: Genie) -> Result<(), StrError> {
     // get the problem data
-    let (xmin, xmax, ymin, ymax, k, _, ebcs, nbcs, source, analytical, ana_flow) =
-        ProblemSamples::d2_problem_01(case_a);
+    let (xmin, xmax, ymin, ymax, k, _, ebcs, nbcs, source, analytical, ana_flow) = ProblemSamples::d2_problem_01(case_a);
 
     // transfinite map
     let map = TransfiniteSamples::quadrilateral_2d(&[xmin, ymin], &[xmax, ymin], &[xmax, ymax], &[xmin, ymax]);
@@ -255,9 +247,6 @@ fn run_spc_map(case_a: bool, lmm: bool, nn: usize, tol: f64, genie: Genie) -> Re
             flow_err_max = err_wy;
         }
     });
-    println!(
-        "N = {:>2}, max(err) = {:>10.5e}, max(flow_err) = {:>10.5e}",
-        nn, err_max, flow_err_max
-    );
+    println!("N = {:>2}, max(err) = {:>10.5e}, max(flow_err) = {:>10.5e}", nn, err_max, flow_err_max);
     Ok(())
 }

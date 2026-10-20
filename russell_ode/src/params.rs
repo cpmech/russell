@@ -364,9 +364,7 @@ impl ParamsStiffness {
 impl ParamsBwEuler {
     /// Allocates a new instance
     pub(crate) fn new() -> Self {
-        ParamsBwEuler {
-            use_modified_newton: false,
-        }
+        ParamsBwEuler { use_modified_newton: false }
     }
 }
 
@@ -595,10 +593,7 @@ mod tests {
     fn params_newton_validate_works() {
         let mut params = ParamsNewton::new();
         params.n_iteration_max = 0;
-        assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: n_iteration_max ≥ 1")
-        );
+        assert_eq!(params.validate().err(), Some("parameter must satisfy: n_iteration_max ≥ 1"));
         params.n_iteration_max = 10;
         assert_eq!(params.validate().is_err(), false);
     }
@@ -635,21 +630,12 @@ mod tests {
         );
         params.m_max = 10.0;
         params.m_safety = 0.0;
-        assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: 0.1 ≤ m_safety ≤ 1")
-        );
+        assert_eq!(params.validate().err(), Some("parameter must satisfy: 0.1 ≤ m_safety ≤ 1"));
         params.m_safety = 1.2;
-        assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: 0.1 ≤ m_safety ≤ 1")
-        );
+        assert_eq!(params.validate().err(), Some("parameter must satisfy: 0.1 ≤ m_safety ≤ 1"));
         params.m_safety = 0.9;
         params.m_first_reject = -1.0;
-        assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: m_first_rejection ≥ 0")
-        );
+        assert_eq!(params.validate().err(), Some("parameter must satisfy: m_first_rejection ≥ 0"));
         params.m_first_reject = 0.0;
         params.h_ini = 0.0;
         assert_eq!(params.validate().err(), Some("parameter must satisfy: h_ini ≥ 1e-8"));
@@ -658,10 +644,7 @@ mod tests {
         assert_eq!(params.validate().err(), Some("parameter must satisfy: n_step_max ≥ 1"));
         params.n_step_max = 10;
         params.rel_error_prev_min = 0.0;
-        assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: rel_error_prev_min ≥ 1e-8")
-        );
+        assert_eq!(params.validate().err(), Some("parameter must satisfy: rel_error_prev_min ≥ 1e-8"));
         params.rel_error_prev_min = 1e-6;
         assert_eq!(params.validate().is_err(), false);
     }
@@ -670,33 +653,18 @@ mod tests {
     fn params_radau5_validate_works() {
         let mut params = ParamsRadau5::new();
         params.theta_max = 0.0;
-        assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: theta_max ≥ 1e-7")
-        );
+        assert_eq!(params.validate().err(), Some("parameter must satisfy: theta_max ≥ 1e-7"));
         params.theta_max = 1e-7;
         params.c1h = 0.0;
-        assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: 0.5 ≤ c1h ≤ 1.5 and c1h < c2h")
-        );
+        assert_eq!(params.validate().err(), Some("parameter must satisfy: 0.5 ≤ c1h ≤ 1.5 and c1h < c2h"));
         params.c1h = 2.0;
-        assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: 0.5 ≤ c1h ≤ 1.5 and c1h < c2h")
-        );
+        assert_eq!(params.validate().err(), Some("parameter must satisfy: 0.5 ≤ c1h ≤ 1.5 and c1h < c2h"));
         params.c1h = 1.3;
         params.c2h = 1.2;
-        assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: 0.5 ≤ c1h ≤ 1.5 and c1h < c2h")
-        );
+        assert_eq!(params.validate().err(), Some("parameter must satisfy: 0.5 ≤ c1h ≤ 1.5 and c1h < c2h"));
         params.c1h = 1.0;
         params.c2h = 3.0;
-        assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: 1 ≤ c2h ≤ 2 and c2h > c1h")
-        );
+        assert_eq!(params.validate().err(), Some("parameter must satisfy: 1 ≤ c2h ≤ 2 and c2h > c1h"));
         params.c2h = 1.2;
         assert_eq!(params.validate().is_err(), false);
     }
@@ -705,15 +673,9 @@ mod tests {
     fn params_erk_validate_works() {
         let mut params = ParamsERK::new(Method::DoPri5);
         params.lund_beta = -1.0;
-        assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: 0 ≤ lund_beta ≤ 0.1")
-        );
+        assert_eq!(params.validate().err(), Some("parameter must satisfy: 0 ≤ lund_beta ≤ 0.1"));
         params.lund_beta = 0.2;
-        assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: 0 ≤ lund_beta ≤ 0.1")
-        );
+        assert_eq!(params.validate().err(), Some("parameter must satisfy: 0 ≤ lund_beta ≤ 0.1"));
         params.lund_beta = 0.1;
         params.lund_m = -1.0;
         assert_eq!(params.validate().err(), Some("parameter must satisfy: 0 ≤ lund_m ≤ 1"));
@@ -727,10 +689,7 @@ mod tests {
     fn params_validate_works() {
         let mut params = Params::new(Method::Radau5);
         params.newton.n_iteration_max = 0;
-        assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: n_iteration_max ≥ 1")
-        );
+        assert_eq!(params.validate().err(), Some("parameter must satisfy: n_iteration_max ≥ 1"));
         params.newton.n_iteration_max = 10;
         params.step.m_min = 0.0;
         assert_eq!(
@@ -739,16 +698,10 @@ mod tests {
         );
         params.step.m_min = 0.001;
         params.radau5.theta_max = 0.0;
-        assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: theta_max ≥ 1e-7")
-        );
+        assert_eq!(params.validate().err(), Some("parameter must satisfy: theta_max ≥ 1e-7"));
         params.radau5.theta_max = 1e-7;
         params.erk.lund_beta = -0.1;
-        assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: 0 ≤ lund_beta ≤ 0.1")
-        );
+        assert_eq!(params.validate().err(), Some("parameter must satisfy: 0 ≤ lund_beta ≤ 0.1"));
         params.erk.lund_beta = 0.1;
         assert_eq!(params.validate().is_err(), false);
     }

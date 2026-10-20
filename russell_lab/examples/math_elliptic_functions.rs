@@ -9,10 +9,7 @@ fn main() -> Result<(), StrError> {
     let xx = Vector::linspace(0.0, PI / 2.0, 101)?;
     let yy = xx.get_mapped(|x| math::elliptic_f(x, 0.5).unwrap());
     let mut curve = Curve::new();
-    curve
-        .set_line_color("#E9708E")
-        .set_line_width(2.5)
-        .draw(xx.as_data(), yy.as_data());
+    curve.set_line_color("#E9708E").set_line_width(2.5).draw(xx.as_data(), yy.as_data());
     let path = format!("{}/math_elliptic_functions_f.svg", OUT_DIR);
     let mut plot = Plot::new();
     plot.add(&curve)
@@ -24,10 +21,7 @@ fn main() -> Result<(), StrError> {
     let xx = Vector::linspace(0.0, PI / 2.0, 101)?;
     let yy = xx.get_mapped(|x| math::elliptic_e(x, 0.5).unwrap());
     let mut curve = Curve::new();
-    curve
-        .set_line_color("#4C689C")
-        .set_line_width(2.5)
-        .draw(xx.as_data(), yy.as_data());
+    curve.set_line_color("#4C689C").set_line_width(2.5).draw(xx.as_data(), yy.as_data());
     let path = format!("{}/math_elliptic_functions_e.svg", OUT_DIR);
     let mut plot = Plot::new();
     plot.add(&curve)
@@ -39,10 +33,7 @@ fn main() -> Result<(), StrError> {
     let xx = Vector::linspace(0.0, 0.9 * PI / 2.0, 101)?;
     let yy = xx.get_mapped(|x| math::elliptic_pi(1.0, x, 0.5).unwrap());
     let mut curve = Curve::new();
-    curve
-        .set_line_color("#58B090")
-        .set_line_width(2.5)
-        .draw(xx.as_data(), yy.as_data());
+    curve.set_line_color("#58B090").set_line_width(2.5).draw(xx.as_data(), yy.as_data());
     let path = format!("{}/math_elliptic_functions_pi.svg", OUT_DIR);
     let mut plot = Plot::new();
     plot.add(&curve)

@@ -370,11 +370,7 @@ mod tests {
 
     #[test]
     fn set_matrix_info_from_coo_works() {
-        let (_, coo) = read_matrix_market(
-            "./data/matrix_market/ok_complex_symmetric_small.mtx",
-            MMsym::LeaveAsLower,
-        )
-        .unwrap();
+        let (_, coo) = read_matrix_market("./data/matrix_market/ok_complex_symmetric_small.mtx", MMsym::LeaveAsLower).unwrap();
         let mut stats = StatsLinSol::new();
         stats.set_matrix_info_from_coo(coo.as_ref().unwrap());
         assert_eq!(stats.matrix.nrow, 5);

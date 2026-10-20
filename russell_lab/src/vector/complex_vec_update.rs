@@ -47,10 +47,7 @@ mod tests {
     fn complex_vec_update_fails_on_wrong_dims() {
         let u = ComplexVector::new(4);
         let mut v = ComplexVector::new(3);
-        assert_eq!(
-            complex_vec_update(&mut v, cpx!(2.0, 0.0), &u),
-            Err("vectors are incompatible")
-        );
+        assert_eq!(complex_vec_update(&mut v, cpx!(2.0, 0.0), &u), Err("vectors are incompatible"));
     }
 
     #[test]

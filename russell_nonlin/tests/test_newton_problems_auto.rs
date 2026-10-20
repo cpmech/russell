@@ -16,15 +16,7 @@ fn test_newton_problems_ok_1_auto() {
     // solve problem
     let mut l = 0.0;
     let status = solver
-        .solve(
-            &mut args,
-            &mut u,
-            &mut l,
-            IniDir::Pos,
-            Stop::Steps(1),
-            &DeltaLambda::auto(1e-4),
-            None,
-        )
+        .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::auto(1e-4), None)
         .unwrap();
     assert_eq!(status, Status::Success);
 
@@ -50,10 +42,7 @@ fn test_newton_problems_fail_due_to_continued_failure_auto() {
 
     // configuration
     let mut config = Config::new();
-    config
-        .set_verbose(true, true, true)
-        .set_hide_timings(true)
-        .set_n_iteration_max(3);
+    config.set_verbose(true, true, true).set_hide_timings(true).set_n_iteration_max(3);
 
     // solver
     let mut solver = Solver::new(&config, system).unwrap();
@@ -61,15 +50,7 @@ fn test_newton_problems_fail_due_to_continued_failure_auto() {
     // solve problem
     let mut l = 0.0;
     let status = solver
-        .solve(
-            &mut args,
-            &mut u,
-            &mut l,
-            IniDir::Pos,
-            Stop::Steps(1),
-            &DeltaLambda::auto(1e-4),
-            None,
-        )
+        .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::auto(1e-4), None)
         .unwrap();
     assert_eq!(status, Status::ContinuedFailure);
 }
@@ -89,15 +70,7 @@ fn test_newton_problems_fail_oscillation_auto() {
     // solve problem
     let mut l = 0.0;
     let status = solver
-        .solve(
-            &mut args,
-            &mut u,
-            &mut l,
-            IniDir::Pos,
-            Stop::Steps(1),
-            &DeltaLambda::auto(1e-4),
-            None,
-        )
+        .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::auto(1e-4), None)
         .unwrap();
     assert_eq!(status, Status::ContinuedFailure);
 }
@@ -117,15 +90,7 @@ fn test_newton_problems_indeterminate_auto() {
     // solve problem
     let mut l = 0.0;
     let status = solver
-        .solve(
-            &mut args,
-            &mut u,
-            &mut l,
-            IniDir::Pos,
-            Stop::Steps(1),
-            &DeltaLambda::auto(1e-4),
-            None,
-        )
+        .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::auto(1e-4), None)
         .unwrap();
     assert_eq!(status, Status::ContinuedFailure);
 }
@@ -149,15 +114,7 @@ fn test_newton_problems_ok_2_auto() {
     // solve problem
     let mut l = 0.0;
     let status = solver
-        .solve(
-            &mut args,
-            &mut u,
-            &mut l,
-            IniDir::Pos,
-            Stop::Steps(1),
-            &DeltaLambda::auto(1e-4),
-            None,
-        )
+        .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::auto(1e-4), None)
         .unwrap();
     assert_eq!(status, Status::Success);
 
@@ -194,15 +151,7 @@ fn test_simple_fixed_continued_divergence_auto() {
     // solve problem
     let mut l = 0.0;
     let status = solver
-        .solve(
-            &mut args,
-            &mut u,
-            &mut l,
-            IniDir::Pos,
-            Stop::Steps(1),
-            &DeltaLambda::auto(1e-4),
-            None,
-        )
+        .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::auto(1e-4), None)
         .unwrap();
     assert_eq!(status, Status::ContinuedFailure);
 }
@@ -226,15 +175,7 @@ fn test_newton_problems_stepsize_becomes_small() {
     // solve problem
     let mut l = 0.0;
     let status = solver
-        .solve(
-            &mut args,
-            &mut u,
-            &mut l,
-            IniDir::Pos,
-            Stop::Steps(1),
-            &DeltaLambda::auto(1e-4),
-            None,
-        )
+        .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::auto(1e-4), None)
         .unwrap();
     assert_eq!(status, Status::SmallStepsize);
 }

@@ -22,15 +22,7 @@ fn test_newton_problems_ok_1() {
     // solve problem
     let mut l = 0.0;
     solver
-        .solve(
-            &mut args,
-            &mut u,
-            &mut l,
-            IniDir::Pos,
-            Stop::Steps(1),
-            &DeltaLambda::constant(1.0),
-            None,
-        )
+        .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::constant(1.0), None)
         .unwrap();
 
     // check
@@ -55,10 +47,7 @@ fn test_newton_problems_fail_due_to_max_iter() {
 
     // configuration
     let mut config = Config::new();
-    config
-        .set_verbose(true, true, true)
-        .set_hide_timings(true)
-        .set_n_iteration_max(3);
+    config.set_verbose(true, true, true).set_hide_timings(true).set_n_iteration_max(3);
 
     // solver
     let mut solver = Solver::new(&config, system).unwrap();
@@ -66,15 +55,7 @@ fn test_newton_problems_fail_due_to_max_iter() {
     // solve problem
     let mut l = 0.0;
     let status = solver
-        .solve(
-            &mut args,
-            &mut u,
-            &mut l,
-            IniDir::Pos,
-            Stop::Steps(1),
-            &DeltaLambda::constant(1.0),
-            None,
-        )
+        .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::constant(1.0), None)
         .unwrap();
     assert_eq!(status, Status::ReachedMaxIterations);
 }
@@ -94,15 +75,7 @@ fn test_newton_problems_fail_oscillation() {
     // solve problem
     let mut l = 0.0;
     let status = solver
-        .solve(
-            &mut args,
-            &mut u,
-            &mut l,
-            IniDir::Pos,
-            Stop::Steps(1),
-            &DeltaLambda::constant(1.0),
-            None,
-        )
+        .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::constant(1.0), None)
         .unwrap();
     assert_eq!(status, Status::ReachedMaxIterations);
 }
@@ -122,15 +95,7 @@ fn test_newton_problems_indeterminate() {
     // solve problem
     let mut l = 0.0;
     let status = solver
-        .solve(
-            &mut args,
-            &mut u,
-            &mut l,
-            IniDir::Pos,
-            Stop::Steps(1),
-            &DeltaLambda::constant(1.0),
-            None,
-        )
+        .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::constant(1.0), None)
         .unwrap();
     assert_eq!(status, Status::LargeDelta);
 }
@@ -154,15 +119,7 @@ fn test_newton_problems_ok_2() {
     // solve problem
     let mut l = 0.0;
     let status = solver
-        .solve(
-            &mut args,
-            &mut u,
-            &mut l,
-            IniDir::Pos,
-            Stop::Steps(1),
-            &DeltaLambda::constant(1.0),
-            None,
-        )
+        .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::constant(1.0), None)
         .unwrap();
     assert_eq!(status, Status::Success);
 
@@ -199,15 +156,7 @@ fn test_simple_fixed_continued_divergence() {
     // solve problem
     let mut l = 0.0;
     let status = solver
-        .solve(
-            &mut args,
-            &mut u,
-            &mut l,
-            IniDir::Pos,
-            Stop::Steps(1),
-            &DeltaLambda::constant(1.0),
-            None,
-        )
+        .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::constant(1.0), None)
         .unwrap();
     assert_eq!(status, Status::ContinuedDeltaDivergence);
 }
@@ -226,15 +175,7 @@ fn test_two_eq_nr_prob_1_singular() {
 
     // solve problem
     let mut l = 0.0;
-    let res = solver.solve(
-        &mut args,
-        &mut u,
-        &mut l,
-        IniDir::Pos,
-        Stop::Steps(1),
-        &DeltaLambda::constant(1.0),
-        None,
-    );
+    let res = solver.solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::constant(1.0), None);
     assert_eq!(res.err(), Some("Error(1): Matrix is singular"));
 }
 
@@ -247,25 +188,14 @@ fn _test_two_eq_nr_prob_1_singular_mumps() {
 
     // configuration
     let mut config = Config::new();
-    config
-        .set_verbose(true, true, true)
-        .set_hide_timings(true)
-        .set_genie(Genie::Mumps);
+    config.set_verbose(true, true, true).set_hide_timings(true).set_genie(Genie::Mumps);
 
     // solver
     let mut solver = Solver::new(&config, system).unwrap();
 
     // solve problem
     let mut l = 0.0;
-    let res = solver.solve(
-        &mut args,
-        &mut u,
-        &mut l,
-        IniDir::Pos,
-        Stop::Steps(1),
-        &DeltaLambda::constant(1.0),
-        None,
-    );
+    let res = solver.solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::constant(1.0), None);
     assert_eq!(res.err(), Some("Error(-10): numerically singular matrix"));
 }
 
@@ -276,10 +206,7 @@ fn test_two_eq_nr_prob_2() {
 
     // configuration
     let mut config = Config::new();
-    config
-        .set_verbose(true, true, false)
-        .set_hide_timings(true)
-        .set_n_iteration_max(20);
+    config.set_verbose(true, true, false).set_hide_timings(true).set_n_iteration_max(20);
 
     // solver
     let mut solver = Solver::new(&config, system).unwrap();

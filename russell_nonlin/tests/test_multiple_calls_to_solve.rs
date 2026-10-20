@@ -18,15 +18,7 @@ fn test_multiple_calls_to_solve_1() {
     // solve problem
     let mut l = 0.0;
     solver
-        .solve(
-            &mut args,
-            &mut u,
-            &mut l,
-            IniDir::Pos,
-            Stop::Steps(1),
-            &DeltaLambda::constant(1.0),
-            None,
-        )
+        .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::constant(1.0), None)
         .unwrap();
 
     // check
@@ -48,15 +40,7 @@ fn test_multiple_calls_to_solve_1() {
     // solve again
     println!();
     solver
-        .solve(
-            &mut args,
-            &mut u,
-            &mut l,
-            IniDir::Pos,
-            Stop::Steps(1),
-            &DeltaLambda::constant(1.0),
-            None,
-        )
+        .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::constant(1.0), None)
         .unwrap();
 
     // check again
@@ -94,15 +78,7 @@ fn test_multiple_calls_to_solve_2() {
     // solve problem
     let mut l = 0.0;
     solver
-        .solve(
-            &mut args,
-            &mut u,
-            &mut l,
-            IniDir::Pos,
-            Stop::Steps(1),
-            &DeltaLambda::constant(1.0),
-            None,
-        )
+        .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::constant(1.0), None)
         .unwrap();
 
     // check
@@ -124,15 +100,7 @@ fn test_multiple_calls_to_solve_2() {
     // solve again
     println!();
     solver
-        .solve(
-            &mut args,
-            &mut u,
-            &mut l,
-            IniDir::Pos,
-            Stop::Steps(1),
-            &DeltaLambda::constant(1.0),
-            None,
-        )
+        .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::constant(1.0), None)
         .unwrap();
 
     // check
@@ -167,15 +135,7 @@ fn test_multiple_calls_to_solve_1_auto() {
     // solve problem
     let mut l = 0.0;
     solver
-        .solve(
-            &mut args,
-            &mut u,
-            &mut l,
-            IniDir::Pos,
-            Stop::Steps(1),
-            &DeltaLambda::auto(1e-4),
-            None,
-        )
+        .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::auto(1e-4), None)
         .unwrap();
 
     // check
@@ -197,15 +157,7 @@ fn test_multiple_calls_to_solve_1_auto() {
     // solve again
     println!();
     solver
-        .solve(
-            &mut args,
-            &mut u,
-            &mut l,
-            IniDir::Pos,
-            Stop::Steps(1),
-            &DeltaLambda::auto(1e-4),
-            None,
-        )
+        .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::auto(1e-4), None)
         .unwrap();
 
     // check again
@@ -243,15 +195,7 @@ fn test_multiple_calls_to_solve_2_auto() {
     // solve problem
     let mut l = 0.0;
     solver
-        .solve(
-            &mut args,
-            &mut u,
-            &mut l,
-            IniDir::Pos,
-            Stop::Steps(1),
-            &DeltaLambda::auto(1e-4),
-            None,
-        )
+        .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::auto(1e-4), None)
         .unwrap();
 
     // check
@@ -273,15 +217,7 @@ fn test_multiple_calls_to_solve_2_auto() {
     // solve again
     println!();
     solver
-        .solve(
-            &mut args,
-            &mut u,
-            &mut l,
-            IniDir::Pos,
-            Stop::Steps(1),
-            &DeltaLambda::auto(1e-4),
-            None,
-        )
+        .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::auto(1e-4), None)
         .unwrap();
 
     // check

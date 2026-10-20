@@ -72,13 +72,7 @@ impl EigenProjDerivsT2 {
     /// The default method is [EigenValMethod::AnalyticalHZ]
     ///
     /// The default derivative method is `characteristic polynomial` (i.e., no inverse needed).
-    pub fn calculate(
-        &mut self,
-        ll: &mut [f64; 3],
-        projs: &mut [Tensor2<6>; 3],
-        dpp: &mut [Tensor4<6>; 3],
-        aa: &Tensor2<6>,
-    ) -> Result<(), StrError> {
+    pub fn calculate(&mut self, ll: &mut [f64; 3], projs: &mut [Tensor2<6>; 3], dpp: &mut [Tensor4<6>; 3], aa: &Tensor2<6>) -> Result<(), StrError> {
         self.calculate_mx(ll, projs, dpp, aa, EigenValMethod::AnalyticalHZ, false)
     }
 
@@ -358,9 +352,7 @@ mod tests {
     fn component_of_projector_kelvin(x: f64, args: &mut ArgsNumDerivProj) -> Result<f64, StrError> {
         let original = args.aa.get(args.n);
         args.aa.set(args.n, x);
-        args.calc
-            .calculate_mx(&mut args.ll, &mut args.projs, &args.aa, args.method)
-            .unwrap();
+        args.calc.calculate_mx(&mut args.ll, &mut args.projs, &args.aa, args.method).unwrap();
         args.aa.set(args.n, original);
         Ok(args.projs[args.k].get(args.m))
     }
@@ -458,8 +450,7 @@ mod tests {
             compare_with_numerical(method, aa.clone(), &ddp, tol_dpp);
 
             // public entry point selecting the inverse-based route
-            calc.calculate_mx(&mut ll, &mut projs, &mut ddp, &aa, method, true)
-                .unwrap();
+            calc.calculate_mx(&mut ll, &mut projs, &mut ddp, &aa, method, true).unwrap();
             compare_with_numerical(method, aa.clone(), &ddp, tol_dpp);
         }
     }
@@ -490,8 +481,7 @@ mod tests {
             if VERBOSE {
                 println!("A = \n{}", aa.as_std_matrix());
             }
-            calc.calc_with_char_poly(&mut ll, &mut projs, &mut ddp, &aa, method)
-                .unwrap();
+            calc.calc_with_char_poly(&mut ll, &mut projs, &mut ddp, &aa, method).unwrap();
 
             // check the derivatives using numerical differentiation
             let mut tol_dpp = TOL_DPP;

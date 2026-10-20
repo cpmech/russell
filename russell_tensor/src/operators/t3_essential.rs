@@ -6,13 +6,7 @@ use crate::{Tensor1, Tensor2, Tensor3};
 /// ```text
 /// c := α⋅a + β⋅b
 /// ```
-pub fn t3_add<const M: usize, const N: usize>(
-    c: &mut Tensor3<M, N>,
-    alpha: f64,
-    a: &Tensor3<M, N>,
-    beta: f64,
-    b: &Tensor3<M, N>,
-) {
+pub fn t3_add<const M: usize, const N: usize>(c: &mut Tensor3<M, N>, alpha: f64, a: &Tensor3<M, N>, beta: f64, b: &Tensor3<M, N>) {
     for i in 0..M {
         for j in 0..N {
             c.set(i, j, alpha * a.get(i, j) + beta * b.get(i, j));
@@ -61,13 +55,7 @@ pub fn t3_add<const M: usize, const N: usize>(
 /// * `alpha` -- the `α` multiplier
 /// * `hh` -- the third-order tensor (H)
 /// * `u` -- the 3D vector (first-order tensor)
-pub fn t3_dot_t1<const M: usize, const N: usize>(
-    tt: &mut Tensor2<M>,
-    op: u8,
-    alpha: f64,
-    hh: &Tensor3<M, N>,
-    u: &Tensor1,
-) {
+pub fn t3_dot_t1<const M: usize, const N: usize>(tt: &mut Tensor2<M>, op: u8, alpha: f64, hh: &Tensor3<M, N>, u: &Tensor1) {
     if op == ADD {
         for m in 0..M {
             tt.vec[m] += alpha * (hh.get(m, 0) * u.get(0) + hh.get(m, 1) * u.get(1) + hh.get(m, 2) * u.get(2));
@@ -120,13 +108,7 @@ pub fn t3_dot_t1<const M: usize, const N: usize>(
 /// * `alpha` -- the `α` multiplier
 /// * `tt` -- the second-order tensor (T)
 /// * `hh` -- the third-order tensor (H)
-pub fn t2_ddot_t3<const M: usize, const N: usize>(
-    u: &mut Tensor1,
-    op: u8,
-    alpha: f64,
-    tt: &Tensor2<M>,
-    hh: &Tensor3<M, N>,
-) {
+pub fn t2_ddot_t3<const M: usize, const N: usize>(u: &mut Tensor1, op: u8, alpha: f64, tt: &Tensor2<M>, hh: &Tensor3<M, N>) {
     if op == SET {
         u.set(0, 0.0);
         u.set(1, 0.0);
@@ -180,13 +162,7 @@ pub fn t2_ddot_t3<const M: usize, const N: usize>(
 /// * `alpha` -- the `α` multiplier
 /// * `hh` -- the third-order tensor (H)
 /// * `tt` -- the second-order tensor (T)
-pub fn t3_ddot_t2<const M: usize, const N: usize>(
-    u: &mut Tensor1,
-    op: u8,
-    alpha: f64,
-    hh: &Tensor3<M, N>,
-    tt: &Tensor2<N>,
-) {
+pub fn t3_ddot_t2<const M: usize, const N: usize>(u: &mut Tensor1, op: u8, alpha: f64, hh: &Tensor3<M, N>, tt: &Tensor2<N>) {
     if op == SET {
         u.set(0, 0.0);
         u.set(1, 0.0);
@@ -240,13 +216,7 @@ pub fn t3_ddot_t2<const M: usize, const N: usize>(
 /// * `alpha` -- the `α` multiplier
 /// * `u` -- the 3D vector (first-order tensor)
 /// * `hh` -- the third-order tensor (H)
-pub fn t1_dot_t3<const M: usize, const N: usize>(
-    tt: &mut Tensor2<N>,
-    op: u8,
-    alpha: f64,
-    u: &Tensor1,
-    hh: &Tensor3<M, N>,
-) {
+pub fn t1_dot_t3<const M: usize, const N: usize>(tt: &mut Tensor2<N>, op: u8, alpha: f64, u: &Tensor1, hh: &Tensor3<M, N>) {
     if op == ADD {
         for n in 0..N {
             tt.vec[n] += alpha * (u.get(0) * hh.get(0, n) + u.get(1) * hh.get(1, n) + u.get(2) * hh.get(2, n));

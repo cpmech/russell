@@ -115,9 +115,7 @@ where
     /// assert_eq!(format!("{}", u), correct);
     /// ```
     pub fn new(dim: usize) -> Self {
-        NumVector {
-            data: vec![T::zero(); dim],
-        }
+        NumVector { data: vec![T::zero(); dim] }
     }
 
     /// Creates new vector completely filled with the same value
@@ -674,13 +672,10 @@ where
                 let mut cumulative_sum = Vec::with_capacity(self.data.len() + 1);
 
                 // 2. Iterator Chain
-                cumulative_sum.extend(std::iter::once(initial_val).chain(self.data.iter().scan(
-                    initial_val,
-                    |state, diff| {
-                        *state = *state + *diff;
-                        Some(*state)
-                    },
-                )));
+                cumulative_sum.extend(std::iter::once(initial_val).chain(self.data.iter().scan(initial_val, |state, diff| {
+                    *state = *state + *diff;
+                    Some(*state)
+                })));
 
                 NumVector { data: cumulative_sum }
             }

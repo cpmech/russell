@@ -260,13 +260,7 @@ impl Quadrature {
         self.lr[1] = 1;
         let mut l = 1;
 
-        let mut est = gauss(
-            self.n_gauss,
-            self.aa[l] + 2.0 * self.hh[l],
-            2.0 * self.hh[l],
-            args,
-            &mut f,
-        )?;
+        let mut est = gauss(self.n_gauss, self.aa[l] + 2.0 * self.hh[l], 2.0 * self.hh[l], args, &mut f)?;
         self.stats.inc_n_function(self.n_gauss);
 
         let mut k = 8;
@@ -497,10 +491,7 @@ mod tests {
         assert_eq!(quad.validate().err(), Some("n_iteration_max must be ≥ 2"));
         quad.n_iteration_max = 2;
         quad.tolerance = 0.0;
-        assert_eq!(
-            quad.validate().err(),
-            Some("the tolerance must be ≥ 10.0 * f64::EPSILON")
-        );
+        assert_eq!(quad.validate().err(), Some("the tolerance must be ≥ 10.0 * f64::EPSILON"));
         quad.n_iteration_max = 2;
         quad.tolerance = 1e-7;
         quad.n_gauss = 7;
@@ -521,10 +512,7 @@ mod tests {
             Ok(x)
         };
         let args = &mut Args { count: 0, target: 0 };
-        assert_eq!(
-            gauss(7, 0.0, 0.0, args, &mut f).err(),
-            Some("n_gauss must be 6, 8, 10, 12, or 14")
-        );
+        assert_eq!(gauss(7, 0.0, 0.0, args, &mut f).err(), Some("n_gauss must be 6, 8, 10, 12, or 14"));
         for n_gauss in [6, 8, 10, 12, 14] {
             args.count = 0;
             args.target = 0;
@@ -545,16 +533,10 @@ mod tests {
             Some("the lower and upper bounds must be different from each other")
         );
         quad.n_iteration_max = 0;
-        assert_eq!(
-            quad.integrate(0.0, 1.0, args, f).err(),
-            Some("n_iteration_max must be ≥ 2")
-        );
+        assert_eq!(quad.integrate(0.0, 1.0, args, f).err(), Some("n_iteration_max must be ≥ 2"));
         quad.n_iteration_max = 2;
         quad.n_gauss = 6;
-        assert_eq!(
-            quad.integrate(-5.0, 5.0, args, f).err(),
-            Some("integrate failed to converge")
-        );
+        assert_eq!(quad.integrate(-5.0, 5.0, args, f).err(), Some("integrate failed to converge"));
     }
 
     #[test]
@@ -633,9 +615,7 @@ mod tests {
         for (n_gauss, n_f_eval) in [(6, 3066), (8, 2040), (10, 1270), (12, 1476), (14, 882)] {
             quad.n_gauss = n_gauss;
 
-            let ii = quad
-                .integrate(a, b, args, |x, _| Ok(amp * f64::sin(freq * x + phase)))
-                .unwrap();
+            let ii = quad.integrate(a, b, args, |x, _| Ok(amp * f64::sin(freq * x + phase))).unwrap();
 
             println!("\n=================================================");
             println!("\nn_gauss = {}", n_gauss);
@@ -661,9 +641,7 @@ mod tests {
         for (n_gauss, n_f_eval) in [(6, 1674), (8, 2040), (10, 2550), (12, 3060), (14, 3570)] {
             quad.n_gauss = n_gauss;
 
-            let ii = quad
-                .integrate(-PI, PI, args, |x, _| Ok(f64::ln(2.0 * f64::cos(x / 2.0))))
-                .unwrap();
+            let ii = quad.integrate(-PI, PI, args, |x, _| Ok(f64::ln(2.0 * f64::cos(x / 2.0)))).unwrap();
 
             println!("I = {}", format_fortran(ii));
             println!("\n{}", quad.get_stats().unwrap());

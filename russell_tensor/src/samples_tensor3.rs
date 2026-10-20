@@ -335,14 +335,12 @@ mod tests {
                     } else if i < j {
                         assert_eq!(
                             SamplesTensor3::CASE_A_SAMPLE1_KELVIN_MATRIX[m][n],
-                            (SamplesTensor3::CASE_A_SAMPLE1[i][j][k] + SamplesTensor3::CASE_A_SAMPLE1[j][i][k])
-                                / SQRT_2
+                            (SamplesTensor3::CASE_A_SAMPLE1[i][j][k] + SamplesTensor3::CASE_A_SAMPLE1[j][i][k]) / SQRT_2
                         );
                     } else {
                         assert_eq!(
                             SamplesTensor3::CASE_A_SAMPLE1_KELVIN_MATRIX[m][n],
-                            (SamplesTensor3::CASE_A_SAMPLE1[j][i][k] - SamplesTensor3::CASE_A_SAMPLE1[i][j][k])
-                                / SQRT_2
+                            (SamplesTensor3::CASE_A_SAMPLE1[j][i][k] - SamplesTensor3::CASE_A_SAMPLE1[i][j][k]) / SQRT_2
                         );
                     }
                 }
@@ -378,17 +376,14 @@ mod tests {
                     } else if i < j {
                         approx_eq(
                             SamplesTensor3::CASE_A_SYM_SAMPLE1_KELVIN_MATRIX[m][n],
-                            (SamplesTensor3::CASE_A_SYM_SAMPLE1[i][j][k] + SamplesTensor3::CASE_A_SYM_SAMPLE1[j][i][k])
-                                / SQRT_2,
+                            (SamplesTensor3::CASE_A_SYM_SAMPLE1[i][j][k] + SamplesTensor3::CASE_A_SYM_SAMPLE1[j][i][k]) / SQRT_2,
                             1e-14,
                         );
                     } else {
                         if m < 6 {
                             assert_eq!(
                                 SamplesTensor3::CASE_A_SYM_SAMPLE1_KELVIN_MATRIX[m][n],
-                                (SamplesTensor3::CASE_A_SYM_SAMPLE1[j][i][k]
-                                    - SamplesTensor3::CASE_A_SYM_SAMPLE1[i][j][k])
-                                    / SQRT_2
+                                (SamplesTensor3::CASE_A_SYM_SAMPLE1[j][i][k] - SamplesTensor3::CASE_A_SYM_SAMPLE1[i][j][k]) / SQRT_2
                             );
                         }
                     }
@@ -414,9 +409,7 @@ mod tests {
                         if m < 4 {
                             approx_eq(
                                 SamplesTensor3::CASE_A_SYM_2D_SAMPLE1_KELVIN_MATRIX[m][n],
-                                (SamplesTensor3::CASE_A_SYM_2D_SAMPLE1[i][j][k]
-                                    + SamplesTensor3::CASE_A_SYM_2D_SAMPLE1[j][i][k])
-                                    / SQRT_2,
+                                (SamplesTensor3::CASE_A_SYM_2D_SAMPLE1[i][j][k] + SamplesTensor3::CASE_A_SYM_2D_SAMPLE1[j][i][k]) / SQRT_2,
                                 1e-14,
                             );
                         }
@@ -424,9 +417,7 @@ mod tests {
                         if m < 4 {
                             assert_eq!(
                                 SamplesTensor3::CASE_A_SYM_2D_SAMPLE1_KELVIN_MATRIX[m][n],
-                                (SamplesTensor3::CASE_A_SYM_2D_SAMPLE1[j][i][k]
-                                    - SamplesTensor3::CASE_A_SYM_2D_SAMPLE1[i][j][k])
-                                    / SQRT_2
+                                (SamplesTensor3::CASE_A_SYM_2D_SAMPLE1[j][i][k] - SamplesTensor3::CASE_A_SYM_2D_SAMPLE1[i][j][k]) / SQRT_2
                             );
                         }
                     }
@@ -451,14 +442,12 @@ mod tests {
                     } else if j < k {
                         assert_eq!(
                             SamplesTensor3::CASE_B_SAMPLE1_KELVIN_MATRIX[m][n],
-                            (SamplesTensor3::CASE_B_SAMPLE1[i][j][k] + SamplesTensor3::CASE_B_SAMPLE1[i][k][j])
-                                / SQRT_2
+                            (SamplesTensor3::CASE_B_SAMPLE1[i][j][k] + SamplesTensor3::CASE_B_SAMPLE1[i][k][j]) / SQRT_2
                         );
                     } else {
                         assert_eq!(
                             SamplesTensor3::CASE_B_SAMPLE1_KELVIN_MATRIX[m][n],
-                            (SamplesTensor3::CASE_B_SAMPLE1[i][k][j] - SamplesTensor3::CASE_B_SAMPLE1[i][j][k])
-                                / SQRT_2
+                            (SamplesTensor3::CASE_B_SAMPLE1[i][k][j] - SamplesTensor3::CASE_B_SAMPLE1[i][j][k]) / SQRT_2
                         );
                     }
                 }
@@ -494,17 +483,14 @@ mod tests {
                     } else if j < k {
                         approx_eq(
                             SamplesTensor3::CASE_B_SYM_SAMPLE1_KELVIN_MATRIX[m][n],
-                            (SamplesTensor3::CASE_B_SYM_SAMPLE1[i][j][k] + SamplesTensor3::CASE_B_SYM_SAMPLE1[i][k][j])
-                                / SQRT_2,
+                            (SamplesTensor3::CASE_B_SYM_SAMPLE1[i][j][k] + SamplesTensor3::CASE_B_SYM_SAMPLE1[i][k][j]) / SQRT_2,
                             1e-14,
                         );
                     } else {
                         if n < 6 {
                             assert_eq!(
                                 SamplesTensor3::CASE_B_SYM_SAMPLE1_KELVIN_MATRIX[m][n],
-                                (SamplesTensor3::CASE_B_SYM_SAMPLE1[i][k][j]
-                                    - SamplesTensor3::CASE_B_SYM_SAMPLE1[i][j][k])
-                                    / SQRT_2
+                                (SamplesTensor3::CASE_B_SYM_SAMPLE1[i][k][j] - SamplesTensor3::CASE_B_SYM_SAMPLE1[i][j][k]) / SQRT_2
                             );
                         }
                     }
@@ -530,9 +516,7 @@ mod tests {
                         if n < 4 {
                             approx_eq(
                                 SamplesTensor3::CASE_B_SYM_2D_SAMPLE1_KELVIN_MATRIX[m][n],
-                                (SamplesTensor3::CASE_B_SYM_2D_SAMPLE1[i][j][k]
-                                    + SamplesTensor3::CASE_B_SYM_2D_SAMPLE1[i][k][j])
-                                    / SQRT_2,
+                                (SamplesTensor3::CASE_B_SYM_2D_SAMPLE1[i][j][k] + SamplesTensor3::CASE_B_SYM_2D_SAMPLE1[i][k][j]) / SQRT_2,
                                 1e-14,
                             );
                         }
@@ -540,9 +524,7 @@ mod tests {
                         if n < 4 {
                             assert_eq!(
                                 SamplesTensor3::CASE_B_SYM_2D_SAMPLE1_KELVIN_MATRIX[m][n],
-                                (SamplesTensor3::CASE_B_SYM_2D_SAMPLE1[i][k][j]
-                                    - SamplesTensor3::CASE_B_SYM_2D_SAMPLE1[i][j][k])
-                                    / SQRT_2
+                                (SamplesTensor3::CASE_B_SYM_2D_SAMPLE1[i][k][j] - SamplesTensor3::CASE_B_SYM_2D_SAMPLE1[i][j][k]) / SQRT_2
                             );
                         }
                     }

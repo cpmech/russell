@@ -96,14 +96,7 @@ pub fn t2_add<const N: usize>(c: &mut Tensor2<N>, alpha: f64, a: &Tensor2<N>, be
 pub fn t2_ddot_t2<const N: usize>(a: &Tensor2<N>, b: &Tensor2<N>) -> f64 {
     match N {
         4 => a.vec[0] * b.vec[0] + a.vec[1] * b.vec[1] + a.vec[2] * b.vec[2] + a.vec[3] * b.vec[3],
-        6 => {
-            a.vec[0] * b.vec[0]
-                + a.vec[1] * b.vec[1]
-                + a.vec[2] * b.vec[2]
-                + a.vec[3] * b.vec[3]
-                + a.vec[4] * b.vec[4]
-                + a.vec[5] * b.vec[5]
-        }
+        6 => a.vec[0] * b.vec[0] + a.vec[1] * b.vec[1] + a.vec[2] * b.vec[2] + a.vec[3] * b.vec[3] + a.vec[4] * b.vec[4] + a.vec[5] * b.vec[5],
         _ => {
             a.vec[0] * b.vec[0]
                 + a.vec[1] * b.vec[1]
@@ -336,13 +329,7 @@ pub fn t1_dot_t2<const N: usize>(v: &mut Tensor1, op: u8, alpha: f64, u: &Tensor
 ///     Ok(())
 /// }
 /// ```
-pub fn t1_dyad_t1<const N: usize>(
-    a: &mut Tensor2<N>,
-    op: u8,
-    alpha: f64,
-    u: &Tensor1,
-    v: &Tensor1,
-) -> Result<(), StrError> {
+pub fn t1_dyad_t1<const N: usize>(a: &mut Tensor2<N>, op: u8, alpha: f64, u: &Tensor1, v: &Tensor1) -> Result<(), StrError> {
     // check
     if N == 4 {
         if (u.get(0) * v.get(1)) != (u.get(1) * v.get(0)) {

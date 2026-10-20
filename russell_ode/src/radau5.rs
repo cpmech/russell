@@ -2,9 +2,7 @@ use crate::StrError;
 use crate::{OdeSolverTrait, Params, System, Workspace};
 use russell_lab::math::SQRT_6;
 use russell_lab::{ComplexVector, Vector, complex_vec_zip, cpx, format_fortran, vec_copy};
-use russell_sparse::{
-    ComplexCooMatrix, ComplexCscMatrix, ComplexLinSolver, CooMatrix, CscMatrix, Genie, LinSolver, numerical_jacobian,
-};
+use russell_sparse::{ComplexCooMatrix, ComplexCscMatrix, ComplexLinSolver, CooMatrix, CscMatrix, Genie, LinSolver, numerical_jacobian};
 use std::thread;
 
 /// Implements the Radau5 method (Radau IIA) (implicit, order 5, embedded) for ODEs and DAEs
@@ -258,12 +256,8 @@ impl<'a, A> Radau5<'a, A> {
 
     /// Factorizes the real and complex systems in serial
     fn factorize(&mut self) -> Result<(), StrError> {
-        self.solver_real
-            .actual
-            .factorize(&self.kk_real, self.params.newton.lin_sol_params)?;
-        self.solver_comp
-            .actual
-            .factorize(&self.kk_comp, self.params.newton.lin_sol_params)
+        self.solver_real.actual.factorize(&self.kk_real, self.params.newton.lin_sol_params)?;
+        self.solver_comp.actual.factorize(&self.kk_comp, self.params.newton.lin_sol_params)
     }
 
     /// Factorizes the real and complex systems concurrently
@@ -586,14 +580,7 @@ impl<'a, A> OdeSolverTrait<A> for Radau5<'a, A> {
     }
 
     /// Updates x and y and computes the next stepsize
-    fn accept(
-        &mut self,
-        work: &mut Workspace,
-        x: &mut f64,
-        y: &mut Vector,
-        h: f64,
-        args: &mut A,
-    ) -> Result<(), StrError> {
+    fn accept(&mut self, work: &mut Workspace, x: &mut f64, y: &mut Vector, h: f64, args: &mut A) -> Result<(), StrError> {
         // do not reuse current Jacobian and decomposition by default
         self.reuse_jacobian_kk_and_fact = false;
         self.reuse_jacobian = false;
@@ -632,9 +619,8 @@ impl<'a, A> OdeSolverTrait<A> for Radau5<'a, A> {
 
         // update h_new if not reusing factorizations
         let h_ratio = h_new / h;
-        self.reuse_jacobian_kk_and_fact = self.theta <= self.params.radau5.theta_max
-            && h_ratio >= self.params.radau5.c1h
-            && h_ratio <= self.params.radau5.c2h;
+        self.reuse_jacobian_kk_and_fact =
+            self.theta <= self.params.radau5.theta_max && h_ratio >= self.params.radau5.c1h && h_ratio <= self.params.radau5.c2h;
         if !self.reuse_jacobian_kk_and_fact {
             work.h_new = h_new;
         }
@@ -709,11 +695,7 @@ const MU5: f64 = -0.48989794855663561963945681494117827839318949613133;
 const C: [f64; 3] = [(4.0 - SQRT_6) / 10.0, (4.0 + SQRT_6) / 10.0, 1.0];
 
 const T: [[f64; 3]; 3] = [
-    [
-        9.1232394870892942792e-02,
-        -0.14125529502095420843,
-        -3.0029194105147424492e-02,
-    ],
+    [9.1232394870892942792e-02, -0.14125529502095420843, -3.0029194105147424492e-02],
     [0.24171793270710701896, 0.20412935229379993199, 0.38294211275726193779],
     [0.96604818261509293619, 1.0, 0.0],
 ];
@@ -906,10 +888,7 @@ mod tests {
         let y = Vector::from(&[0.0]);
         let h = 0.1;
         let mut args = Args { count_f: 0 };
-        assert_eq!(
-            solver.step(&mut work, x, &y, h, &mut args).err(),
-            Some("f: stop (count = 1; initialize)")
-        );
+        assert_eq!(solver.step(&mut work, x, &y, h, &mut args).err(), Some("f: stop (count = 1; initialize)"));
         assert_eq!(solver.step(&mut work, x, &y, h, &mut args).err(), Some("jj: stop"));
         solver.params.newton.use_numerical_jacobian = true;
         assert_eq!(
@@ -937,10 +916,7 @@ mod tests {
                 let mut work = Workspace::new(Method::Radau5);
 
                 // message
-                println!(
-                    "\nsymmetric = {:?} --- numerical = {:?} --- genie = {:?}",
-                    symmetric, numerical, genie
-                );
+                println!("\nsymmetric = {:?} --- numerical = {:?} --- genie = {:?}", symmetric, numerical, genie);
                 println!("{:>4}{:>10}{:>10}{:>10}", "step", "err_y0", "err_y1", "err_y2");
 
                 // numerical approximation
@@ -1001,10 +977,7 @@ mod tests {
                 let mut work = Workspace::new(Method::Radau5);
 
                 // message
-                println!(
-                    "\nsymmetric = {:?} --- numerical = {:?} --- genie = {:?}",
-                    symmetric, numerical, genie
-                );
+                println!("\nsymmetric = {:?} --- numerical = {:?} --- genie = {:?}", symmetric, numerical, genie);
                 println!("{:>4}{:>10}{:>10}{:>10}", "step", "err_y0", "err_y1", "err_y2");
 
                 // numerical approximation

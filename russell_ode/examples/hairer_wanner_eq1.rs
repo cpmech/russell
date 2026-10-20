@@ -76,9 +76,7 @@ fn main() -> Result<(), StrError> {
     let mut curve2 = Curve::new();
     let mut curve3 = Curve::new();
     curve2.set_label("FwEuler h = 1.974/50").draw(&out2_x, &out2_y);
-    curve3
-        .set_label("FwEuler h = 1.875/50")
-        .draw(out3.step_x(), out3.step_y(0));
+    curve3.set_label("FwEuler h = 1.875/50").draw(out3.step_x(), out3.step_y(0));
 
     // save figure
     let mut plot = Plot::new();

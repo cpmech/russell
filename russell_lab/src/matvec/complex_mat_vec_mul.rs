@@ -46,12 +46,7 @@ use crate::{Complex64, StrError};
 ///     Ok(())
 /// }
 /// ```
-pub fn complex_mat_vec_mul(
-    v: &mut ComplexVector,
-    alpha: Complex64,
-    a: &ComplexMatrix,
-    u: &ComplexVector,
-) -> Result<(), StrError> {
+pub fn complex_mat_vec_mul(v: &mut ComplexVector, alpha: Complex64, a: &ComplexMatrix, u: &ComplexVector) -> Result<(), StrError> {
     let m = v.dim();
     let n = u.dim();
     if m != a.nrow() || n != a.ncol() {
@@ -83,14 +78,8 @@ mod tests {
         let a_3x1 = ComplexMatrix::new(3, 1);
         let mut v = ComplexVector::new(3);
         let one = cpx!(1.0, 0.0);
-        assert_eq!(
-            complex_mat_vec_mul(&mut v, one, &a_1x2, &u),
-            Err("matrix and vectors are incompatible")
-        );
-        assert_eq!(
-            complex_mat_vec_mul(&mut v, one, &a_3x1, &u),
-            Err("matrix and vectors are incompatible")
-        );
+        assert_eq!(complex_mat_vec_mul(&mut v, one, &a_1x2, &u), Err("matrix and vectors are incompatible"));
+        assert_eq!(complex_mat_vec_mul(&mut v, one, &a_3x1, &u), Err("matrix and vectors are incompatible"));
     }
 
     #[test]

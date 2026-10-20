@@ -144,18 +144,12 @@ impl<'de, const N: usize> Deserialize<'de> for Tensor4<N> {
     {
         let data = Vec::<Vec<f64>>::deserialize(deserializer)?;
         if data.len() != N {
-            return Err(serde::de::Error::invalid_length(
-                data.len(),
-                &"Tensor4 must have N rows",
-            ));
+            return Err(serde::de::Error::invalid_length(data.len(), &"Tensor4 must have N rows"));
         }
         let mut mat = [[0.0; N]; N];
         for m in 0..N {
             if data[m].len() != N {
-                return Err(serde::de::Error::invalid_length(
-                    data[m].len(),
-                    &"Tensor4 must have N columns",
-                ));
+                return Err(serde::de::Error::invalid_length(data[m].len(), &"Tensor4 must have N columns"));
             }
             for n in 0..N {
                 mat[m][n] = data[m][n];
@@ -342,19 +336,14 @@ impl<const N: usize> Tensor4<N> {
                         for l in 0..3 {
                             // check minor-symmetry
                             if i > j || k > l {
-                                if inp[i][j][k][l] != inp[j][i][k][l]
-                                    || inp[i][j][k][l] != inp[i][j][l][k]
-                                    || inp[i][j][k][l] != inp[j][i][l][k]
-                                {
+                                if inp[i][j][k][l] != inp[j][i][k][l] || inp[i][j][k][l] != inp[i][j][l][k] || inp[i][j][k][l] != inp[j][i][l][k] {
                                     return Err("the input data does not correspond to a minor-symmetric tensor");
                                 }
                             } else {
                                 let (m, n) = IJKL_TO_MN[i][j][k][l];
                                 if m > max || n > max {
                                     if inp[i][j][k][l] != 0.0 {
-                                        return Err(
-                                            "the input data does not correspond to a generalized plane minor-symmetric tensor",
-                                        );
+                                        return Err("the input data does not correspond to a generalized plane minor-symmetric tensor");
                                     }
                                     continue;
                                 } else if m < 3 && n < 3 {
@@ -391,36 +380,20 @@ impl<const N: usize> Tensor4<N> {
                                 self.set(m, n, (inp[i][j][k][l] + inp[j][i][k][l]) / SQRT_2);
                             // 5
                             } else if i < j && k < l {
-                                self.set(
-                                    m,
-                                    n,
-                                    (inp[i][j][k][l] + inp[i][j][l][k] + inp[j][i][k][l] + inp[j][i][l][k]) / 2.0,
-                                );
+                                self.set(m, n, (inp[i][j][k][l] + inp[i][j][l][k] + inp[j][i][k][l] + inp[j][i][l][k]) / 2.0);
                             // 6
                             } else if i < j && k > l {
-                                self.set(
-                                    m,
-                                    n,
-                                    (inp[i][j][l][k] - inp[i][j][k][l] + inp[j][i][l][k] - inp[j][i][k][l]) / 2.0,
-                                );
+                                self.set(m, n, (inp[i][j][l][k] - inp[i][j][k][l] + inp[j][i][l][k] - inp[j][i][k][l]) / 2.0);
                             // ** i > j **
                             // 7
                             } else if i > j && k == l {
                                 self.set(m, n, (inp[j][i][k][l] - inp[i][j][k][l]) / SQRT_2);
                             // 8
                             } else if i > j && k < l {
-                                self.set(
-                                    m,
-                                    n,
-                                    (inp[j][i][k][l] + inp[j][i][l][k] - inp[i][j][k][l] - inp[i][j][l][k]) / 2.0,
-                                );
+                                self.set(m, n, (inp[j][i][k][l] + inp[j][i][l][k] - inp[i][j][k][l] - inp[i][j][l][k]) / 2.0);
                             // 9
                             } else if i > j && k > l {
-                                self.set(
-                                    m,
-                                    n,
-                                    (inp[j][i][l][k] - inp[j][i][k][l] - inp[i][j][l][k] + inp[i][j][k][l]) / 2.0,
-                                );
+                                self.set(m, n, (inp[j][i][l][k] - inp[j][i][k][l] - inp[i][j][l][k] + inp[i][j][k][l]) / 2.0);
                             }
                         }
                     }
@@ -502,18 +475,13 @@ impl<const N: usize> Tensor4<N> {
                             let (u, v) = IJKL_TO_MN[j][i][l][k];
                             // check minor-symmetry
                             if i > j || k > l {
-                                if inp.at(m, n) != inp.at(p, q)
-                                    || inp.at(m, n) != inp.at(r, s)
-                                    || inp.at(m, n) != inp.at(u, v)
-                                {
+                                if inp.at(m, n) != inp.at(p, q) || inp.at(m, n) != inp.at(r, s) || inp.at(m, n) != inp.at(u, v) {
                                     return Err("the input data does not correspond to a minor-symmetric tensor");
                                 }
                             } else {
                                 if m > max || n > max {
                                     if inp.at(m, n) != 0.0 {
-                                        return Err(
-                                            "the input data does not correspond to a generalized plane minor-symmetric tensor",
-                                        );
+                                        return Err("the input data does not correspond to a generalized plane minor-symmetric tensor");
                                     }
                                     continue;
                                 } else if m < 3 && n < 3 {
@@ -1823,10 +1791,7 @@ mod tests {
         assert_eq!(dd.eigenvalues_sym(&mut l).err(), Some("the tensor must be symmetric"));
         let dd = Tensor4::<6>::new();
         let mut l = Vector::new(4);
-        assert_eq!(
-            dd.eigenvalues_sym(&mut l).err(),
-            Some("l.dim must be equal to the tensor dimension")
-        );
+        assert_eq!(dd.eigenvalues_sym(&mut l).err(), Some("l.dim must be equal to the tensor dimension"));
     }
 
     #[test]
@@ -1984,10 +1949,7 @@ mod tests {
         // error: wrong dimensions
         let mut dd = Tensor4::<6>::new();
         let mat = [[0.0; 5]; 5];
-        assert_eq!(
-            dd.set_matrix(&mat).err(),
-            Some("the input matrix must have dimensions equal to N")
-        );
+        assert_eq!(dd.set_matrix(&mat).err(), Some("the input matrix must have dimensions equal to N"));
 
         // error: not symmetric
         let mut dd = Tensor4::<6>::new();
@@ -2038,10 +2000,7 @@ mod tests {
     #[test]
     fn from_std_array_fails_captures_errors() {
         let res = Tensor4::<6>::from_std_array(&SamplesTensor4::SAMPLE1);
-        assert_eq!(
-            res.err(),
-            Some("the input data does not correspond to a minor-symmetric tensor")
-        );
+        assert_eq!(res.err(), Some("the input data does not correspond to a minor-symmetric tensor"));
 
         let res = Tensor4::<4>::from_std_array(&SamplesTensor4::SYM_SAMPLE1);
         assert_eq!(
@@ -2082,10 +2041,7 @@ mod tests {
         let mut inp = [[0.0; 9]; 9];
         inp[0][3] = 1e-15;
         let res = Tensor4::<6>::from_std_matrix(&inp);
-        assert_eq!(
-            res.err(),
-            Some("the input data does not correspond to a minor-symmetric tensor")
-        );
+        assert_eq!(res.err(), Some("the input data does not correspond to a minor-symmetric tensor"));
 
         inp[0][3] = 0.0;
         inp[0][4] = 1.0;
@@ -2164,11 +2120,7 @@ mod tests {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
-                        approx_eq(
-                            dd.get_std(i, j, k, l),
-                            SamplesTensor4::SYM_2D_SAMPLE1[i][j][k][l],
-                            1e-14,
-                        );
+                        approx_eq(dd.get_std(i, j, k, l), SamplesTensor4::SYM_2D_SAMPLE1[i][j][k][l], 1e-14);
                     }
                 }
             }
@@ -2184,11 +2136,7 @@ mod tests {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
-                        approx_eq(
-                            dd.get_std(i, j, k, l),
-                            2.0 * SamplesTensor4::SYM_2D_SAMPLE1[i][j][k][l],
-                            1e-14,
-                        );
+                        approx_eq(dd.get_std(i, j, k, l), 2.0 * SamplesTensor4::SYM_2D_SAMPLE1[i][j][k][l], 1e-14);
                     }
                 }
             }
@@ -2619,9 +2567,7 @@ mod tests {
         struct Wrapper<const N: usize> {
             dd: Tensor4<N>,
         }
-        let w = Wrapper::<9> {
-            dd: Tensor4::<9>::new(),
-        };
+        let w = Wrapper::<9> { dd: Tensor4::<9>::new() };
         let json = serde_json::to_string(&w).unwrap();
         let back: Wrapper<9> = serde_json::from_str(&json).unwrap();
         assert_eq!(back.dd.get(0, 0), 0.0);

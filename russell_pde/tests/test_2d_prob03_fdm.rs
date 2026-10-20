@@ -52,19 +52,10 @@ fn test_2d_prob03_fdm_mumps_sym() -> Result<(), StrError> {
     Ok(())
 }
 
-fn run(
-    bc_combo: &str,
-    helmholtz: bool,
-    lmm: bool,
-    nd: usize,
-    tol: f64,
-    genie: Genie,
-    sym: bool,
-) -> Result<(), StrError> {
+fn run(bc_combo: &str, helmholtz: bool, lmm: bool, nd: usize, tol: f64, genie: Genie, sym: bool) -> Result<(), StrError> {
     // get the problem data
     let alpha = if helmholtz { 1.0 } else { 0.0 };
-    let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical, _) =
-        ProblemSamples::d2_problem_03(1.0, alpha, bc_combo);
+    let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical, _) = ProblemSamples::d2_problem_03(1.0, alpha, bc_combo);
 
     // allocate the grid
     let (nx, ny) = (nd, nd);

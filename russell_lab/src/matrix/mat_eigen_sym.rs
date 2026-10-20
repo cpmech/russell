@@ -132,20 +132,11 @@ mod tests {
     fn mat_eigen_sym_handles_errors() {
         let mut a = Matrix::new(0, 1);
         let mut l = Vector::new(0);
-        assert_eq!(
-            mat_eigen_sym(&mut l, &mut a, false).err(),
-            Some("matrix must be square")
-        );
+        assert_eq!(mat_eigen_sym(&mut l, &mut a, false).err(), Some("matrix must be square"));
         let mut a = Matrix::new(0, 0);
-        assert_eq!(
-            mat_eigen_sym(&mut l, &mut a, false).err(),
-            Some("matrix dimension must be ≥ 1")
-        );
+        assert_eq!(mat_eigen_sym(&mut l, &mut a, false).err(), Some("matrix dimension must be ≥ 1"));
         let mut a = Matrix::new(1, 1);
-        assert_eq!(
-            mat_eigen_sym(&mut l, &mut a, false).err(),
-            Some("l vector has incompatible dimension")
-        );
+        assert_eq!(mat_eigen_sym(&mut l, &mut a, false).err(), Some("l vector has incompatible dimension"));
     }
 
     #[test]
@@ -159,11 +150,7 @@ mod tests {
         // 2x2 matrix
         let data = &[[2.0, 1.0], [1.0, 2.0]];
         let (l, v) = calc_eigen_lower(data);
-        mat_approx_eq(
-            &v,
-            &[[-1.0 / SQRT_2, 1.0 / SQRT_2], [1.0 / SQRT_2, 1.0 / SQRT_2]],
-            1e-15,
-        );
+        mat_approx_eq(&v, &[[-1.0 / SQRT_2, 1.0 / SQRT_2], [1.0 / SQRT_2, 1.0 / SQRT_2]], 1e-15);
         vec_approx_eq(&l, &[1.0, 3.0], 1e-15);
     }
 

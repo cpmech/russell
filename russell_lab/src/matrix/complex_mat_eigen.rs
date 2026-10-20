@@ -124,13 +124,12 @@ pub fn complex_mat_eigen(l: &mut ComplexVector, v: &mut ComplexMatrix, a: &mut C
         // JOBVR='V', ...)`: `a` is destroyed, `l` receives the eigenvalues and
         // `v` the right eigenvectors as columns. No left eigenvectors are asked
         // for, so no buffer is supplied for them.
-        algebra_linear::lapack::zeig::zgeev(l.as_mut_data(), a.as_mut_data(), m, None, Some(v.as_mut_data()))
-            .map_err(|e| match e {
-                algebra_linear::lapack::LapackError::Convergence => {
-                    "LAPACK ERROR (zgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed"
-                }
-                _ => "LAPACK ERROR (zgeev): An argument had an illegal value",
-            })?;
+        algebra_linear::lapack::zeig::zgeev(l.as_mut_data(), a.as_mut_data(), m, None, Some(v.as_mut_data())).map_err(|e| match e {
+            algebra_linear::lapack::LapackError::Convergence => {
+                "LAPACK ERROR (zgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed"
+            }
+            _ => "LAPACK ERROR (zgeev): An argument had an illegal value",
+        })?;
         return Ok(());
     }
     #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
@@ -162,9 +161,7 @@ pub fn complex_mat_eigen(l: &mut ComplexVector, v: &mut ComplexMatrix, a: &mut C
             "LAPACK ERROR (zgeev): The QR algorithm failed. Elements {}+1:N of l contain eigenvalues which have converged",
             info - 1
         );
-        return Err(
-            "LAPACK ERROR (zgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed",
-        );
+        return Err("LAPACK ERROR (zgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed");
     }
     Ok(())
 }
@@ -258,12 +255,7 @@ pub fn complex_mat_eigen(l: &mut ComplexVector, v: &mut ComplexMatrix, a: &mut C
 ///     Ok(())
 /// }
 /// ```
-pub fn complex_mat_eigen_lr(
-    l: &mut ComplexVector,
-    u: &mut ComplexMatrix,
-    v: &mut ComplexMatrix,
-    a: &mut ComplexMatrix,
-) -> Result<(), StrError> {
+pub fn complex_mat_eigen_lr(l: &mut ComplexVector, u: &mut ComplexMatrix, v: &mut ComplexMatrix, a: &mut ComplexMatrix) -> Result<(), StrError> {
     let (m, n) = a.dims();
     if m != n {
         return Err("matrix must be square");
@@ -287,19 +279,14 @@ pub fn complex_mat_eigen_lr(
     {
         // `zgeev(JOBVL='V', JOBVR='V', ...)`: `u` and `v` receive the left and
         // right eigenvectors, computed from the one Schur factorization.
-        algebra_linear::lapack::zeig::zgeev(
-            l.as_mut_data(),
-            a.as_mut_data(),
-            m,
-            Some(u.as_mut_data()),
-            Some(v.as_mut_data()),
-        )
-        .map_err(|e| match e {
-            algebra_linear::lapack::LapackError::Convergence => {
-                "LAPACK ERROR (zgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed"
-            }
-            _ => "LAPACK ERROR (zgeev): An argument had an illegal value",
-        })?;
+        algebra_linear::lapack::zeig::zgeev(l.as_mut_data(), a.as_mut_data(), m, Some(u.as_mut_data()), Some(v.as_mut_data())).map_err(
+            |e| match e {
+                algebra_linear::lapack::LapackError::Convergence => {
+                    "LAPACK ERROR (zgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed"
+                }
+                _ => "LAPACK ERROR (zgeev): An argument had an illegal value",
+            },
+        )?;
         return Ok(());
     }
     #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
@@ -331,9 +318,7 @@ pub fn complex_mat_eigen_lr(
             "LAPACK ERROR (zgeev): The QR algorithm failed. Elements {}+1:N of l contain eigenvalues which have converged",
             info - 1
         );
-        return Err(
-            "LAPACK ERROR (zgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed",
-        );
+        return Err("LAPACK ERROR (zgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed");
     }
     Ok(())
 }
@@ -363,14 +348,8 @@ mod tests {
         let mut v = ComplexMatrix::new(m, m);
         let mut l_wrong = ComplexVector::new(m + 1);
         let mut v_wrong = ComplexMatrix::new(m + 1, m);
-        assert_eq!(
-            complex_mat_eigen(&mut l_wrong, &mut v, &mut a),
-            Err("vectors are incompatible")
-        );
-        assert_eq!(
-            complex_mat_eigen(&mut l, &mut v_wrong, &mut a),
-            Err("matrices are incompatible")
-        );
+        assert_eq!(complex_mat_eigen(&mut l_wrong, &mut v, &mut a), Err("vectors are incompatible"));
+        assert_eq!(complex_mat_eigen(&mut l, &mut v_wrong, &mut a), Err("matrices are incompatible"));
     }
 
     #[test]
@@ -380,10 +359,7 @@ mod tests {
         let mut l = ComplexVector::new(m);
         let mut u = ComplexMatrix::new(m, m);
         let mut v = ComplexMatrix::new(m, m);
-        assert_eq!(
-            complex_mat_eigen_lr(&mut l, &mut u, &mut v, &mut a,),
-            Err("matrix must be square"),
-        );
+        assert_eq!(complex_mat_eigen_lr(&mut l, &mut u, &mut v, &mut a,), Err("matrix must be square"),);
     }
 
     #[test]
@@ -484,12 +460,7 @@ mod tests {
         let mut l = ComplexVector::new(m);
         let mut v = ComplexMatrix::new(m, m);
         complex_mat_eigen(&mut l, &mut v, &mut a).unwrap();
-        let l_correct = &[
-            cpx!(2.0000, 6.0000),
-            cpx!(4.0000, 8.0000),
-            cpx!(3.0000, 7.0000),
-            cpx!(1.0000, 5.0000),
-        ];
+        let l_correct = &[cpx!(2.0000, 6.0000), cpx!(4.0000, 8.0000), cpx!(3.0000, 7.0000), cpx!(1.0000, 5.0000)];
         complex_vec_approx_eq(&l, l_correct, 1e-13);
     }
 }

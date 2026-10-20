@@ -82,13 +82,7 @@ fn print_rule(name: &str, ok: bool, error: f64, tol: f64) {
 /// are mathematically impossible for a finite family of operators.
 /// If either combination is reported, the tolerances may be too loose
 /// or the input tensors may only approximately satisfy the projector properties.
-pub fn eigenprojector_rules(
-    proj: &[Tensor2<6>],
-    tol_idempotent: f64,
-    tol_orthogonal: f64,
-    tol_complete: f64,
-    verbose: bool,
-) -> usize {
+pub fn eigenprojector_rules(proj: &[Tensor2<6>], tol_idempotent: f64, tol_orthogonal: f64, tol_complete: f64, verbose: bool) -> usize {
     // auxiliary arrays
     const ZERO_3X3_MAT: [[f64; 3]; 3] = [[0.0; 3]; 3];
     let mut aux = [[0.0; 3]; 3];

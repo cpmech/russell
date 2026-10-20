@@ -306,10 +306,7 @@ impl Samples {
     /// One equation with singular initial state
     ///
     /// Returns `(system, u, l, lambda_ana, args)` where `lambda_ana` is `f(u) -> λ`
-    pub fn singular_initial_state<'a>(
-        alpha: f64,
-        perturbation: f64,
-    ) -> (System<'a, NoArgs>, Vector, f64, impl Fn(f64) -> f64, NoArgs) {
+    pub fn singular_initial_state<'a>(alpha: f64, perturbation: f64) -> (System<'a, NoArgs>, Vector, f64, impl Fn(f64) -> f64, NoArgs) {
         // system
         let ndim = 1;
         let nnz = Some(1);
@@ -345,9 +342,7 @@ impl Samples {
     /// B-spline problem # 1
     ///
     /// Returns `(system, u, l, args)`
-    pub fn bspline_problem_1<'a>(
-        snap_back_delta: f64,
-    ) -> (System<'a, SampleBsplineArgs>, Vector, f64, SampleBsplineArgs) {
+    pub fn bspline_problem_1<'a>(snap_back_delta: f64) -> (System<'a, SampleBsplineArgs>, Vector, f64, SampleBsplineArgs) {
         // define the nonlinear system: G(u, λ)
         let ndim = 2;
         let nnz = Some(2);

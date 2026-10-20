@@ -1096,10 +1096,7 @@ mod tests {
     use crate::algo::NoArgs;
     use crate::math::SQRT_3;
     use crate::{Vector, mat_vec_mul};
-    use crate::{
-        approx_eq, deriv1_approx_eq, deriv1_approx_eq_bw, deriv1_approx_eq_fw, deriv2_approx_eq, deriv2_approx_eq_bw,
-        deriv2_approx_eq_fw,
-    };
+    use crate::{approx_eq, deriv1_approx_eq, deriv1_approx_eq_bw, deriv1_approx_eq_fw, deriv2_approx_eq, deriv2_approx_eq_bw, deriv2_approx_eq_fw};
     // use plotpy::{Curve, Plot};
 
     #[test]
@@ -1324,17 +1321,11 @@ mod tests {
             let xi = interp.xx[i];
             for j in 0..npoint {
                 if i == 0 {
-                    deriv1_approx_eq_fw(interp.dd1.get(i, j), xi, args, tol, |x, _| {
-                        Ok(interp.psi(j, x).unwrap())
-                    });
+                    deriv1_approx_eq_fw(interp.dd1.get(i, j), xi, args, tol, |x, _| Ok(interp.psi(j, x).unwrap()));
                 } else if i == nn {
-                    deriv1_approx_eq_bw(interp.dd1.get(i, j), xi, args, tol, |x, _| {
-                        Ok(interp.psi(j, x).unwrap())
-                    });
+                    deriv1_approx_eq_bw(interp.dd1.get(i, j), xi, args, tol, |x, _| Ok(interp.psi(j, x).unwrap()));
                 } else {
-                    deriv1_approx_eq(interp.dd1.get(i, j), xi, args, tol, |x, _| {
-                        Ok(interp.psi(j, x).unwrap())
-                    });
+                    deriv1_approx_eq(interp.dd1.get(i, j), xi, args, tol, |x, _| Ok(interp.psi(j, x).unwrap()));
                 }
             }
         }
@@ -1375,17 +1366,11 @@ mod tests {
             let xi = interp.xx[i];
             for j in 0..npoint {
                 if i == 0 {
-                    deriv2_approx_eq_fw(interp.dd2.get(i, j), xi, args, tol, |x, _| {
-                        Ok(interp.psi(j, x).unwrap())
-                    });
+                    deriv2_approx_eq_fw(interp.dd2.get(i, j), xi, args, tol, |x, _| Ok(interp.psi(j, x).unwrap()));
                 } else if i == nn {
-                    deriv2_approx_eq_bw(interp.dd2.get(i, j), xi, args, tol, |x, _| {
-                        Ok(interp.psi(j, x).unwrap())
-                    });
+                    deriv2_approx_eq_bw(interp.dd2.get(i, j), xi, args, tol, |x, _| Ok(interp.psi(j, x).unwrap()));
                 } else {
-                    deriv2_approx_eq(interp.dd2.get(i, j), xi, args, tol, |x, _| {
-                        Ok(interp.psi(j, x).unwrap())
-                    });
+                    deriv2_approx_eq(interp.dd2.get(i, j), xi, args, tol, |x, _| Ok(interp.psi(j, x).unwrap()));
                 }
             }
         }
@@ -1772,25 +1757,13 @@ mod tests {
 
         args.counter = 0;
         args.target = 0;
-        assert_eq!(
-            interp.estimate_max_error_all(true, args, f_err, g, h).err(),
-            Some("f: stop")
-        );
+        assert_eq!(interp.estimate_max_error_all(true, args, f_err, g, h).err(), Some("f: stop"));
         args.counter = 0;
         args.target = npoint;
-        assert_eq!(
-            interp.estimate_max_error_all(true, args, f_err, g, h).err(),
-            Some("f: stop")
-        );
+        assert_eq!(interp.estimate_max_error_all(true, args, f_err, g, h).err(), Some("f: stop"));
 
-        assert_eq!(
-            interp.estimate_max_error_all(true, args, f, g_err, h).err(),
-            Some("g: stop")
-        );
-        assert_eq!(
-            interp.estimate_max_error_all(true, args, f, g, h_err).err(),
-            Some("h: stop")
-        );
+        assert_eq!(interp.estimate_max_error_all(true, args, f, g_err, h).err(), Some("g: stop"));
+        assert_eq!(interp.estimate_max_error_all(true, args, f, g, h_err).err(), Some("h: stop"));
     }
 
     // --- getters ------------------------------------------------------------------------------------
@@ -1823,20 +1796,11 @@ mod tests {
 
     #[test]
     fn new_captures_errors() {
-        assert_eq!(
-            InterpLagrange::new(0, None).err(),
-            Some("the polynomial degree must be in [1, 2048]")
-        );
-        assert_eq!(
-            InterpLagrange::new(0, None).err(),
-            Some("the polynomial degree must be in [1, 2048]")
-        );
+        assert_eq!(InterpLagrange::new(0, None).err(), Some("the polynomial degree must be in [1, 2048]"));
+        assert_eq!(InterpLagrange::new(0, None).err(), Some("the polynomial degree must be in [1, 2048]"));
         let mut params = InterpParams::new();
         params.lebesgue_estimate_nstation = 0;
-        assert_eq!(
-            InterpLagrange::new(2, Some(params)).err(),
-            Some("lebesgue_estimate_nstation must be ≥ 2")
-        );
+        assert_eq!(InterpLagrange::new(2, Some(params)).err(), Some("lebesgue_estimate_nstation must be ≥ 2"));
     }
 
     #[test]

@@ -212,17 +212,7 @@ impl Metrics {
                 return Err("d2x_dst must be provided for non-homogeneous metrics");
             }
         }
-        self.calculate(
-            dx_dr,
-            dx_ds,
-            Some(dx_dt),
-            d2x_dr2,
-            d2x_ds2,
-            d2x_dt2,
-            d2x_drs,
-            d2x_drt,
-            d2x_dst,
-        )
+        self.calculate(dx_dr, dx_ds, Some(dx_dt), d2x_dr2, d2x_ds2, d2x_dt2, d2x_drs, d2x_drt, d2x_dst)
     }
 
     /// Calculates the metrics at a given position and returns the determinant of the covariant matrix
@@ -414,9 +404,7 @@ mod tests {
 
         // calculate metrics
         let mut met = Metrics::new(3, true);
-        let g = met
-            .calculate_3d(&dx_dr, &dx_ds, &dx_dt, None, None, None, None, None, None)
-            .unwrap();
+        let g = met.calculate_3d(&dx_dr, &dx_ds, &dx_dt, None, None, None, None, None, None).unwrap();
 
         // check [g] and [G] matrices
         println!("g = det([g]) = {}", g);
@@ -475,9 +463,7 @@ mod tests {
 
         // calculate metrics
         let mut met = Metrics::new(2, false);
-        let g = met
-            .calculate_2d(&dx_dr, &dx_ds, Some(&d2x_dr2), Some(&d2x_ds2), Some(&d2x_drs))
-            .unwrap();
+        let g = met.calculate_2d(&dx_dr, &dx_ds, Some(&d2x_dr2), Some(&d2x_ds2), Some(&d2x_drs)).unwrap();
 
         // check covariant vectors
         vec_approx_eq(&met.g_cov[0], &[ct, st], 1e-15);
@@ -686,9 +672,7 @@ mod tests {
                 );
 
                 // calculate the base vectors and metrics
-                let g = met
-                    .calculate_2d(&dx_dr, &dx_ds, Some(&d2x_dr2), Some(&d2x_ds2), Some(&d2x_drs))
-                    .unwrap();
+                let g = met.calculate_2d(&dx_dr, &dx_ds, Some(&d2x_dr2), Some(&d2x_ds2), Some(&d2x_drs)).unwrap();
 
                 // check x and g_cov
                 let rho = (b + a) / 2.0 + (b - a) * r / 2.0;
@@ -846,11 +830,7 @@ mod tests {
                     // check g_ctr
                     vec_approx_eq(&met.g_ctr[0], &[2.0 / h, 0.0, 0.0], 1e-14);
                     vec_approx_eq(&met.g_ctr[1], &[0.0, ct / p, st / p], 1e-14);
-                    vec_approx_eq(
-                        &met.g_ctr[2],
-                        &[0.0, -rho * st / (rho * rho * q), rho * ct / (rho * rho * q)],
-                        1e-15,
-                    );
+                    vec_approx_eq(&met.g_ctr[2], &[0.0, -rho * st / (rho * rho * q), rho * ct / (rho * rho * q)], 1e-15);
 
                     // check Christoffel symbols of the second kind
                     // k = 0
@@ -922,46 +902,32 @@ mod tests {
         let v2 = Vector::new(2);
         let v3 = Vector::new(3);
         assert_eq!(
-            metrics
-                .calculate_3d(&v3, &v3, &v3, None, None, None, None, None, None)
-                .err(),
+            metrics.calculate_3d(&v3, &v3, &v3, None, None, None, None, None, None).err(),
             Some("calculate_3d only works for ndim = 3")
         );
         let mut metrics = Metrics::new(3, false);
         assert_eq!(
-            metrics
-                .calculate_3d(&v2, &v3, &v3, None, None, None, None, None, None)
-                .err(),
+            metrics.calculate_3d(&v2, &v3, &v3, None, None, None, None, None, None).err(),
             Some("dx_dr must have dimension 3")
         );
         assert_eq!(
-            metrics
-                .calculate_3d(&v3, &v2, &v3, None, None, None, None, None, None)
-                .err(),
+            metrics.calculate_3d(&v3, &v2, &v3, None, None, None, None, None, None).err(),
             Some("dx_ds must have dimension 3")
         );
         assert_eq!(
-            metrics
-                .calculate_3d(&v3, &v3, &v2, None, None, None, None, None, None)
-                .err(),
+            metrics.calculate_3d(&v3, &v3, &v2, None, None, None, None, None, None).err(),
             Some("dx_dt must have dimension 3")
         );
         assert_eq!(
-            metrics
-                .calculate_3d(&v3, &v3, &v3, None, None, None, None, None, None)
-                .err(),
+            metrics.calculate_3d(&v3, &v3, &v3, None, None, None, None, None, None).err(),
             Some("d2x_dr2 must be provided for non-homogeneous metrics")
         );
         assert_eq!(
-            metrics
-                .calculate_3d(&v3, &v3, &v3, Some(&v3), None, None, None, None, None)
-                .err(),
+            metrics.calculate_3d(&v3, &v3, &v3, Some(&v3), None, None, None, None, None).err(),
             Some("d2x_ds2 must be provided for non-homogeneous metrics")
         );
         assert_eq!(
-            metrics
-                .calculate_3d(&v3, &v3, &v3, Some(&v3), Some(&v3), None, None, None, None)
-                .err(),
+            metrics.calculate_3d(&v3, &v3, &v3, Some(&v3), Some(&v3), None, None, None, None).err(),
             Some("d2x_dt2 must be provided for non-homogeneous metrics")
         );
         assert_eq!(
@@ -978,17 +944,7 @@ mod tests {
         );
         assert_eq!(
             metrics
-                .calculate_3d(
-                    &v3,
-                    &v3,
-                    &v3,
-                    Some(&v3),
-                    Some(&v3),
-                    Some(&v3),
-                    Some(&v3),
-                    Some(&v3),
-                    None
-                )
+                .calculate_3d(&v3, &v3, &v3, Some(&v3), Some(&v3), Some(&v3), Some(&v3), Some(&v3), None)
                 .err(),
             Some("d2x_dst must be provided for non-homogeneous metrics")
         );

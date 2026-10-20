@@ -13,9 +13,7 @@ fn main() -> Result<(), StrError> {
     let mut quad = Quadrature::new();
     let args = &mut 0;
     let perimeter = quad.integrate(0.0, 2.0 * PI, args, |theta, _| {
-        Ok(f64::sqrt(
-            0.25 * f64::powi(f64::sin(theta), 2) + f64::powi(f64::cos(theta), 2),
-        ))
+        Ok(f64::sqrt(0.25 * f64::powi(f64::sin(theta), 2) + f64::powi(f64::cos(theta), 2)))
     })?;
     println!("\nperimeter = {}", perimeter);
 

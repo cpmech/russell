@@ -44,10 +44,7 @@ pub fn t1_approx_eq(u: &Tensor1, v: &Tensor1, tol: f64) {
             panic!("t1_approx_eq found Inf");
         }
         if diff > tol {
-            panic!(
-                "first-order tensors are not approximately equal. @ ({}) diff = {:?}",
-                m, diff
-            );
+            panic!("first-order tensors are not approximately equal. @ ({}) diff = {:?}", m, diff);
         }
     }
 }
@@ -104,10 +101,7 @@ pub fn t2_approx_eq<const N: usize>(u: &Tensor2<N>, v: &Tensor2<N>, tol: f64) {
             panic!("t2_approx_eq found Inf");
         }
         if diff > tol {
-            panic!(
-                "second-order tensors are not approximately equal. @ ({}) diff = {:?}",
-                m, diff
-            );
+            panic!("second-order tensors are not approximately equal. @ ({}) diff = {:?}", m, diff);
         }
     }
 }
@@ -159,10 +153,7 @@ pub fn t3_approx_eq<const M: usize, const N: usize>(u: &Tensor3<M, N>, v: &Tenso
                 panic!("t3_approx_eq found Inf");
             }
             if diff > tol {
-                panic!(
-                    "third-order tensors are not approximately equal. @ ({},{}) diff = {:?}",
-                    i, j, diff
-                );
+                panic!("third-order tensors are not approximately equal. @ ({},{}) diff = {:?}", i, j, diff);
             }
         }
     }
@@ -215,10 +206,7 @@ pub fn t4_approx_eq<const N: usize>(u: &Tensor4<N>, v: &Tensor4<N>, tol: f64) {
                 panic!("t4_approx_eq found Inf");
             }
             if diff > tol {
-                panic!(
-                    "fourth-order tensors are not approximately equal. @ ({},{}) diff = {:?}",
-                    i, j, diff
-                );
+                panic!("fourth-order tensors are not approximately equal. @ ({},{}) diff = {:?}", i, j, diff);
             }
         }
     }

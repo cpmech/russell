@@ -62,11 +62,7 @@ fn main() -> Result<(), StrError> {
             "δ", "HZ", "HA22", "HA23", "Jacobi", "Naive"
         );
         for &delta in &deltas {
-            let d = if is_d1 {
-                [1.0, 1.0, 1.0 + delta]
-            } else {
-                [-1.0, 1.0, 1.0 + delta]
-            };
+            let d = if is_d1 { [1.0, 1.0, 1.0 + delta] } else { [-1.0, 1.0, 1.0 + delta] };
             let a = build_a(&q, &d);
             let tt = Tensor2::<6>::from_std_matrix(&a)?;
             let mut exact = d;

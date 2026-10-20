@@ -1,8 +1,7 @@
 use plotpy::{Curve, Plot, SuperTitleParams};
 use russell_lab::*;
 use russell_stat::{
-    DistributionFrechet, DistributionGumbel, DistributionLognormal, DistributionNormal, DistributionUniform,
-    ProbabilityDistribution,
+    DistributionFrechet, DistributionGumbel, DistributionLognormal, DistributionNormal, DistributionUniform, ProbabilityDistribution,
 };
 
 const OUT_DIR: &str = "/tmp/russell_stat/";
@@ -21,10 +20,7 @@ fn main() -> Result<(), StrError> {
     curve_pdf.draw(xx.as_data(), pdf.as_data());
     curve_cdf.draw(xx.as_data(), cdf.as_data());
     let mut plot = Plot::new();
-    let title = format!(
-        "Frechet: location(min) = {}, scale = {}, shape = {}",
-        location, scale, shape
-    );
+    let title = format!("Frechet: location(min) = {}, scale = {}, shape = {}", location, scale, shape);
     let path = format!("{}/plot_distribution_functions_frechet.svg", OUT_DIR);
     let mut params = SuperTitleParams::new();
     params.set_y(0.92);

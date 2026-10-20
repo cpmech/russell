@@ -44,9 +44,7 @@ fn main() -> Result<(), StrError> {
 
     // text
     let mut text = Text::new();
-    text.set_bbox(true)
-        .set_bbox_facecolor("pink")
-        .set_bbox_edgecolor("black");
+    text.set_bbox(true).set_bbox_facecolor("pink").set_bbox_edgecolor("black");
     text.draw(-1.0, 4.0, &format!("$N = {}$", nn));
 
     // save figure

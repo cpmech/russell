@@ -529,20 +529,12 @@ mod tests {
         //
         // xx > 2.0  and  xx >= 8.0  and  xx < TWO_58
         //
-        approx_eq(
-            ln_gamma(8.0).0,
-            8.5251613610654143001655310363471250507596677369369,
-            1e-14,
-        ); // Mathematica: NumberForm[N[LogGamma[8], 50], 50]
+        approx_eq(ln_gamma(8.0).0, 8.5251613610654143001655310363471250507596677369369, 1e-14); // Mathematica: NumberForm[N[LogGamma[8], 50], 50]
 
         //
         // xx > 2.0  and  xx >= 8.0  and  xx >= TWO_58
         //
-        approx_eq(
-            ln_gamma(TWO_58).0,
-            1.1299361833563194928501116868607855707791504631856e19,
-            1e-50,
-        ); // Mathematica: NumberForm[N[LogGamma[2^58], 50], 50]
+        approx_eq(ln_gamma(TWO_58).0, 1.1299361833563194928501116868607855707791504631856e19, 1e-50); // Mathematica: NumberForm[N[LogGamma[2^58], 50], 50]
 
         //
         // sin_pi_times_neg_x_given_abs_x

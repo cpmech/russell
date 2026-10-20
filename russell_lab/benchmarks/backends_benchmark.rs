@@ -114,14 +114,7 @@ mod lib {
             y: *mut Complex64,
             incy: i32,
         );
-        pub fn cblas_zaxpy(
-            n: i32,
-            alpha: *const Complex64,
-            x: *const Complex64,
-            incx: i32,
-            y: *mut Complex64,
-            incy: i32,
-        );
+        pub fn cblas_zaxpy(n: i32, alpha: *const Complex64, x: *const Complex64, incx: i32, y: *mut Complex64, incy: i32);
         pub fn cblas_zcopy(n: i32, x: *const Complex64, incx: i32, y: *mut Complex64, incy: i32);
         pub fn cblas_zscal(n: i32, alpha: *const Complex64, x: *mut Complex64, incx: i32);
         pub fn cblas_dznrm2(n: i32, x: *const Complex64, incx: i32) -> f64;
@@ -488,15 +481,7 @@ fn bench_public(c: &mut Criterion) {
         });
         group.bench_with_input(BenchmarkId::new("complex_mat_sym_rank_op", n), &n, |bench, _| {
             bench.iter(|| {
-                russell_lab::complex_mat_sym_rank_op(
-                    &mut c_mat,
-                    &a,
-                    russell_lab::cpx!(1.0, 0.0),
-                    russell_lab::cpx!(0.0, 0.0),
-                    false,
-                    false,
-                )
-                .unwrap()
+                russell_lab::complex_mat_sym_rank_op(&mut c_mat, &a, russell_lab::cpx!(1.0, 0.0), russell_lab::cpx!(0.0, 0.0), false, false).unwrap()
             });
         });
     }
@@ -576,8 +561,7 @@ fn general_complex(n: usize) -> Vec<Complex64> {
 fn bench_lapack(c: &mut Criterion) {
     use russell_lab::{ComplexMatrix, ComplexVector};
     use russell_lab::{
-        Matrix, Vector, complex_mat_gen_eigen, mat_cholesky, mat_eigen, mat_eigen_sym, mat_gen_eigen, mat_inverse,
-        mat_svd, solve_lin_sys,
+        Matrix, Vector, complex_mat_gen_eigen, mat_cholesky, mat_eigen, mat_eigen_sym, mat_gen_eigen, mat_inverse, mat_svd, solve_lin_sys,
     };
 
     // These are O(n^3) in the native kernels and take hundreds of milliseconds at
@@ -618,11 +602,7 @@ fn bench_lapack(c: &mut Criterion) {
         let a_base = symmetric_dominant(n);
         group.bench_with_input(BenchmarkId::new("native", n), &n, |bench, _| {
             let a = a_base.clone();
-            bench.iter_batched(
-                || a.clone(),
-                |mut a| native::lapack::dpotrf(&mut a, n).unwrap(),
-                BatchSize::SmallInput,
-            );
+            bench.iter_batched(|| a.clone(), |mut a| native::lapack::dpotrf(&mut a, n).unwrap(), BatchSize::SmallInput);
         });
         group.bench_with_input(BenchmarkId::new("public", n), &n, |bench, _| {
             let a = a_base.clone();
@@ -672,9 +652,7 @@ fn bench_lapack(c: &mut Criterion) {
             let a = a_base.clone();
             bench.iter_batched(
                 || (a.clone(), vec![0.0; n], vec![0.0; n * n], vec![0.0; n * n]),
-                |(mut a, mut s, mut u, mut vt)| {
-                    native::lapack::svd::dgesvd(&mut a, n, n, &mut s, &mut u, &mut vt).unwrap()
-                },
+                |(mut a, mut s, mut u, mut vt)| native::lapack::svd::dgesvd(&mut a, n, n, &mut s, &mut u, &mut vt).unwrap(),
                 BatchSize::SmallInput,
             );
         });
@@ -730,30 +708,9 @@ fn bench_lapack(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::new("native", n), &n, |bench, _| {
             let (a, b) = (a_base.clone(), b_base.clone());
             bench.iter_batched(
-                || {
-                    (
-                        a.clone(),
-                        b.clone(),
-                        vec![0.0; n],
-                        vec![0.0; n],
-                        vec![0.0; n],
-                        vec![0.0; n * n],
-                    )
-                },
+                || (a.clone(), b.clone(), vec![0.0; n], vec![0.0; n], vec![0.0; n], vec![0.0; n * n]),
                 |(mut a, mut b, mut ar, mut ai, mut be, mut vr)| {
-                    native::lapack::qz::dggev(
-                        false,
-                        true,
-                        n,
-                        &mut a,
-                        &mut b,
-                        &mut ar,
-                        &mut ai,
-                        &mut be,
-                        &mut [],
-                        &mut vr,
-                    )
-                    .unwrap()
+                    native::lapack::qz::dggev(false, true, n, &mut a, &mut b, &mut ar, &mut ai, &mut be, &mut [], &mut vr).unwrap()
                 },
                 BatchSize::SmallInput,
             );
@@ -766,18 +723,9 @@ fn bench_lapack(c: &mut Criterion) {
                     ma.as_mut_data().copy_from_slice(&a);
                     let mut mb = Matrix::new(n, n);
                     mb.as_mut_data().copy_from_slice(&b);
-                    (
-                        ma,
-                        mb,
-                        Vector::new(n),
-                        Vector::new(n),
-                        Vector::new(n),
-                        Matrix::new(n, n),
-                    )
+                    (ma, mb, Vector::new(n), Vector::new(n), Vector::new(n), Matrix::new(n, n))
                 },
-                |(mut ma, mut mb, mut ar, mut ai, mut be, mut v)| {
-                    mat_gen_eigen(&mut ar, &mut ai, &mut be, &mut v, &mut ma, &mut mb).unwrap()
-                },
+                |(mut ma, mut mb, mut ar, mut ai, mut be, mut v)| mat_gen_eigen(&mut ar, &mut ai, &mut be, &mut v, &mut ma, &mut mb).unwrap(),
                 BatchSize::SmallInput,
             );
         });
@@ -810,8 +758,7 @@ fn bench_lapack(c: &mut Criterion) {
                     )
                 },
                 |(mut a, mut b, mut alpha, mut beta, mut vr)| {
-                    native::lapack::qz::zggev(false, true, n, &mut a, &mut b, &mut alpha, &mut beta, &mut [], &mut vr)
-                        .unwrap()
+                    native::lapack::qz::zggev(false, true, n, &mut a, &mut b, &mut alpha, &mut beta, &mut [], &mut vr).unwrap()
                 },
                 BatchSize::SmallInput,
             );
@@ -824,17 +771,9 @@ fn bench_lapack(c: &mut Criterion) {
                     ma.as_mut_data().copy_from_slice(&a);
                     let mut mb = ComplexMatrix::new(n, n);
                     mb.as_mut_data().copy_from_slice(&b);
-                    (
-                        ma,
-                        mb,
-                        ComplexVector::new(n),
-                        ComplexVector::new(n),
-                        ComplexMatrix::new(n, n),
-                    )
+                    (ma, mb, ComplexVector::new(n), ComplexVector::new(n), ComplexMatrix::new(n, n))
                 },
-                |(mut ma, mut mb, mut alpha, mut beta, mut v)| {
-                    complex_mat_gen_eigen(&mut alpha, &mut beta, &mut v, &mut ma, &mut mb).unwrap()
-                },
+                |(mut ma, mut mb, mut alpha, mut beta, mut v)| complex_mat_gen_eigen(&mut alpha, &mut beta, &mut v, &mut ma, &mut mb).unwrap(),
                 BatchSize::SmallInput,
             );
         });
@@ -861,9 +800,7 @@ fn bench_lapack(c: &mut Criterion) {
                     ma.as_mut_data().copy_from_slice(&a);
                     (ma, Vector::new(n), Vector::new(n), Matrix::new(n, n), Matrix::new(n, n))
                 },
-                |(mut ma, mut lr, mut li, mut vr, mut vi)| {
-                    mat_eigen(&mut lr, &mut li, &mut vr, &mut vi, &mut ma).unwrap()
-                },
+                |(mut ma, mut lr, mut li, mut vr, mut vi)| mat_eigen(&mut lr, &mut li, &mut vr, &mut vi, &mut ma).unwrap(),
                 BatchSize::SmallInput,
             );
         });

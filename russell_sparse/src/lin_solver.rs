@@ -192,13 +192,7 @@ impl<'a> LinSolver<'a> {
     ///     Ok(())
     /// }
     /// ```
-    pub fn compute(
-        genie: Genie,
-        x: &mut Vector,
-        mat: &CooMatrix,
-        rhs: &Vector,
-        params: Option<LinSolParams>,
-    ) -> Result<Self, StrError> {
+    pub fn compute(genie: Genie, x: &mut Vector, mat: &CooMatrix, rhs: &Vector, params: Option<LinSolParams>) -> Result<Self, StrError> {
         let mut solver = LinSolver::new(genie)?;
         solver.actual.factorize(mat, params)?;
         let verbose = if let Some(p) = params { p.verbose } else { false };

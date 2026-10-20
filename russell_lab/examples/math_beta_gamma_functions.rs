@@ -54,10 +54,7 @@ fn main() -> Result<(), StrError> {
     let path = format!("{}/math_beta_gamma_functions_lb.svg", OUT_DIR);
     let mut plot = Plot::new();
     plot.add(&curve)
-        .grid_labels_legend(
-            "$x$",
-            "${\\mathrm{Real}}\\left[\\log_e(B\\left(\\frac{1}{2},x\\right)\\right]$",
-        )
+        .grid_labels_legend("$x$", "${\\mathrm{Real}}\\left[\\log_e(B\\left(\\frac{1}{2},x\\right)\\right]$")
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
         .save(&path)?;
 

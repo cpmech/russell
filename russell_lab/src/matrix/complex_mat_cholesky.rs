@@ -117,17 +117,13 @@ pub fn complex_mat_cholesky(a: &mut ComplexMatrix, upper: bool) -> Result<(), St
         // mat_cholesky does for the real dpotrf, which is lower-only) is needed,
         // and none is wanted: for `upper` the strict lower triangle must survive
         // untouched.
-        algebra_linear::lapack::complex::zpotrf(a.as_mut_data(), m, upper)
-            .map_err(|_| "LAPACK ERROR (zpotrf): Positive definite check failed")?;
+        algebra_linear::lapack::complex::zpotrf(a.as_mut_data(), m, upper).map_err(|_| "LAPACK ERROR (zpotrf): Positive definite check failed")?;
     }
     if info < 0 {
         println!("LAPACK ERROR (zpotrf): Argument #{} had an illegal value", -info);
         return Err("LAPACK ERROR (zpotrf): An argument had an illegal value");
     } else if info > 0 {
-        println!(
-            "LAPACK ERROR (zpotrf): The leading minor of order {} is not positive definite",
-            info
-        );
+        println!("LAPACK ERROR (zpotrf): The leading minor of order {} is not positive definite", info);
         return Err("LAPACK ERROR (zpotrf): Positive definite check failed");
     }
     Ok(())
@@ -177,10 +173,7 @@ mod tests {
     #[test]
     fn complex_mat_cholesky_fails_on_wrong_dims() {
         let mut a_wrong = ComplexMatrix::new(2, 3);
-        assert_eq!(
-            complex_mat_cholesky(&mut a_wrong, false),
-            Err("the matrix must be square")
-        );
+        assert_eq!(complex_mat_cholesky(&mut a_wrong, false), Err("the matrix must be square"));
     }
 
     #[test]

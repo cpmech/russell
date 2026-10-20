@@ -48,8 +48,7 @@ fn test_2d_prob03_spc_map() -> Result<(), StrError> {
 fn run_spc(bc_combo: &str, helmholtz: bool, lmm: bool, nn: usize, tol: f64) -> Result<(), StrError> {
     // get the problem data
     let alpha = if helmholtz { 1.0 } else { 0.0 };
-    let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical, ana_flow) =
-        ProblemSamples::d2_problem_03(1.0, alpha, bc_combo);
+    let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical, ana_flow) = ProblemSamples::d2_problem_03(1.0, alpha, bc_combo);
 
     // allocate the solver
     let (nx, ny) = (nn + 1, nn + 1);
@@ -88,10 +87,7 @@ fn run_spc(bc_combo: &str, helmholtz: bool, lmm: bool, nn: usize, tol: f64) -> R
             flow_err_max = err_wy;
         }
     });
-    println!(
-        "N = {:>2}, max(err) = {:>10.5e}, max(flow_err) = {:>10.5e}",
-        nn, err_max, flow_err_max
-    );
+    println!("N = {:>2}, max(err) = {:>10.5e}, max(flow_err) = {:>10.5e}", nn, err_max, flow_err_max);
 
     // plot results
     if SAVE_FIGURE {
@@ -170,10 +166,7 @@ fn run_spc(bc_combo: &str, helmholtz: bool, lmm: bool, nn: usize, tol: f64) -> R
             .set_figure_size_points(600.0, 600.0)
             .save(&fn_a)
             .unwrap();
-        plot.add(&surf_ana)
-            .add(&surf_num)
-            .set_figure_size_points(600.0, 600.0)
-            .save(&fn_b)?;
+        plot.add(&surf_ana).add(&surf_num).set_figure_size_points(600.0, 600.0).save(&fn_b)?;
     }
     Ok(())
 }
@@ -181,8 +174,7 @@ fn run_spc(bc_combo: &str, helmholtz: bool, lmm: bool, nn: usize, tol: f64) -> R
 fn run_spc_map(bc_combo: &str, helmholtz: bool, lmm: bool, nn: usize, tol: f64) -> Result<(), StrError> {
     // get the problem data
     let alpha = if helmholtz { 1.0 } else { 0.0 };
-    let (xmin, xmax, ymin, ymax, k, _, ebcs, nbcs, source, analytical, ana_flow) =
-        ProblemSamples::d2_problem_03(1.0, alpha, bc_combo);
+    let (xmin, xmax, ymin, ymax, k, _, ebcs, nbcs, source, analytical, ana_flow) = ProblemSamples::d2_problem_03(1.0, alpha, bc_combo);
 
     // transfinite map
     let map = TransfiniteSamples::quadrilateral_2d(&[xmin, ymin], &[xmax, ymin], &[xmax, ymax], &[xmin, ymax]);
@@ -224,22 +216,13 @@ fn run_spc_map(bc_combo: &str, helmholtz: bool, lmm: bool, nn: usize, tol: f64) 
             flow_err_max = err_wy;
         }
     });
-    println!(
-        "N = {:>2}, max(err) = {:>10.5e}, max(flow_err) = {:>10.5e}",
-        nn, err_max, flow_err_max
-    );
+    println!("N = {:>2}, max(err) = {:>10.5e}, max(flow_err) = {:>10.5e}", nn, err_max, flow_err_max);
 
     // plot results
     if SAVE_FIGURE {
         let prob = if helmholtz { "hz" } else { "ps" };
-        let fn_a = format!(
-            "/tmp/russell_pde/test_2d_prob03_spc_map_{}_{}_contour.svg",
-            bc_combo, prob
-        );
-        let fn_b = format!(
-            "/tmp/russell_pde/test_2d_prob03_spc_map_{}_{}_surface.svg",
-            bc_combo, prob
-        );
+        let fn_a = format!("/tmp/russell_pde/test_2d_prob03_spc_map_{}_{}_contour.svg", bc_combo, prob);
+        let fn_b = format!("/tmp/russell_pde/test_2d_prob03_spc_map_{}_{}_surface.svg", bc_combo, prob);
         let mut points = Curve::new();
         let mut surf_num = Surface::new();
         let mut surf_ana = Surface::new();
@@ -312,10 +295,7 @@ fn run_spc_map(bc_combo: &str, helmholtz: bool, lmm: bool, nn: usize, tol: f64) 
             .set_figure_size_points(600.0, 600.0)
             .save(&fn_a)
             .unwrap();
-        plot.add(&surf_ana)
-            .add(&surf_num)
-            .set_figure_size_points(600.0, 600.0)
-            .save(&fn_b)?;
+        plot.add(&surf_ana).add(&surf_num).set_figure_size_points(600.0, 600.0).save(&fn_b)?;
     }
     Ok(())
 }

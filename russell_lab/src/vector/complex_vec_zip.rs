@@ -49,14 +49,8 @@ mod tests {
         let mut v = ComplexVector::new(2);
         let wrong = Vector::new(1);
         let ok = Vector::new(2);
-        assert_eq!(
-            complex_vec_zip(&mut v, &wrong, &ok).err(),
-            Some("vectors are incompatible")
-        );
-        assert_eq!(
-            complex_vec_zip(&mut v, &ok, &wrong).err(),
-            Some("vectors are incompatible")
-        );
+        assert_eq!(complex_vec_zip(&mut v, &wrong, &ok).err(), Some("vectors are incompatible"));
+        assert_eq!(complex_vec_zip(&mut v, &ok, &wrong).err(), Some("vectors are incompatible"));
     }
 
     #[test]

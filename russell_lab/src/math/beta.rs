@@ -377,11 +377,7 @@ mod tests {
         // abs(a) > ASYMPTOTIC_FACTOR * abs(b) && a > ASYMPTOTIC_FACTOR
         let b = 1.0;
         let a = ASYMPTOTIC_FACTOR * f64::abs(b) + 1.0; // 1_000_001
-        approx_eq(
-            beta(a, b),
-            9.9999900000099999900000099999900000099999900000100e-7,
-            1e-21,
-        ); // Mathematica: N[Beta[1000001, 1], 50]
+        approx_eq(beta(a, b), 9.9999900000099999900000099999900000099999900000100e-7, 1e-21); // Mathematica: N[Beta[1000001, 1], 50]
 
         // abs(a) > ASYMPTOTIC_FACTOR * abs(b) && a > ASYMPTOTIC_FACTOR
         let b = -0.5;
@@ -391,11 +387,7 @@ mod tests {
         // f64::abs(cc) > GAMMA_MAX || f64::abs(aa) > GAMMA_MAX || f64::abs(bb) > GAMMA_MAX
         let a = 172.0; // > GAMMA_MAX
         let b = 1.0;
-        approx_eq(
-            beta(a, b),
-            0.0058139534883720930232558139534883720930232558139535,
-            1e-15,
-        ); // Mathematica: NumberForm[N[Beta[172, 1], 50], 50]
+        approx_eq(beta(a, b), 0.0058139534883720930232558139534883720930232558139535, 1e-15); // Mathematica: NumberForm[N[Beta[172, 1], 50], 50]
 
         // f64::abs(cc) > GAMMA_MAX || f64::abs(aa) > GAMMA_MAX || f64::abs(bb) > GAMMA_MAX
         let a = 1000.0;
@@ -642,11 +634,7 @@ mod tests {
         // abs(a) > ASYMPTOTIC_FACTOR * abs(b) && a > ASYMPTOTIC_FACTOR
         let b = 1.0;
         let a = ASYMPTOTIC_FACTOR * f64::abs(b) + 1.0; // 1_000_001
-        approx_eq(
-            ln_beta(a, b),
-            -13.815511557963774104441281811439718578773275741296,
-            1e-50,
-        ); // Mathematica: N[Log[Beta[1000001, 1]], 50]
+        approx_eq(ln_beta(a, b), -13.815511557963774104441281811439718578773275741296, 1e-50); // Mathematica: N[Log[Beta[1000001, 1]], 50]
 
         // abs(a) > ASYMPTOTIC_FACTOR * abs(b) && a > ASYMPTOTIC_FACTOR
         let b = -0.5;
@@ -656,11 +644,7 @@ mod tests {
         // f64::abs(cc) > GAMMA_MAX || f64::abs(aa) > GAMMA_MAX || f64::abs(bb) > GAMMA_MAX
         let a = 172.0; // > GAMMA_MAX
         let b = 1.0;
-        approx_eq(
-            ln_beta(a, b),
-            -5.1474944768134530423073067562622001717101364536021,
-            1e-12,
-        ); // Mathematica: NumberForm[N[Log[Beta[172, 1]], 50], 50]
+        approx_eq(ln_beta(a, b), -5.1474944768134530423073067562622001717101364536021, 1e-12); // Mathematica: NumberForm[N[Log[Beta[172, 1]], 50], 50]
 
         // f64::abs(cc) > GAMMA_MAX || f64::abs(aa) > GAMMA_MAX || f64::abs(bb) > GAMMA_MAX
         let a = 1000.0;

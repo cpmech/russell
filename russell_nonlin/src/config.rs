@@ -281,11 +281,7 @@ impl Config {
         match self.method {
             Method::Natural => "Natural".to_string(),
             Method::Arclength => {
-                let kind = if self.bordering {
-                    "(bord)".to_string()
-                } else {
-                    "(full)".to_string()
-                };
+                let kind = if self.bordering { "(bord)".to_string() } else { "(full)".to_string() };
                 "Arclength".to_string() + &kind
             }
         }
@@ -1425,10 +1421,7 @@ mod tests {
         assert_eq!(config.validate().err(), Some("requirement: allowed_delta_max > 0.0"));
         config.delta_max_allowed = 1e10;
         config.n_cont_residual_divergence_max = 0;
-        assert_eq!(
-            config.validate().err(),
-            Some("requirement: n_cont_residual_div_max ≥ 1")
-        );
+        assert_eq!(config.validate().err(), Some("requirement: n_cont_residual_div_max ≥ 1"));
         config.n_cont_residual_divergence_max = 2;
         config.n_cont_delta_divergence_max = 0;
         assert_eq!(config.validate().err(), Some("requirement: n_cont_delta_div_max ≥ 1"));

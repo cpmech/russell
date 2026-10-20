@@ -125,16 +125,7 @@ use crate::to_i32;
 unsafe extern "C" {
     // All of these are the shim's own entry points; each is a two-line wrapper
     // around one CBLAS call (see `c_code/interface_blas.c`).
-    fn c_dgemm(
-        alpha: f64,
-        a: *const f64,
-        b: *const f64,
-        beta: f64,
-        c: *mut f64,
-        m: *const i32,
-        n: *const i32,
-        k: *const i32,
-    );
+    fn c_dgemm(alpha: f64, a: *const f64, b: *const f64, beta: f64, c: *mut f64, m: *const i32, n: *const i32, k: *const i32);
     fn c_dgemv(alpha: f64, a: *const f64, x: *const f64, beta: f64, y: *mut f64, m: *const i32, n: *const i32);
     fn c_dgemv_trans(alpha: f64, a: *const f64, x: *const f64, beta: f64, y: *mut f64, m: *const i32, n: *const i32);
     fn c_ddot(x: *const f64, y: *const f64, n: *const i32) -> f64;
@@ -153,36 +144,9 @@ unsafe extern "C" {
         n: *const i32,
         k: *const i32,
     );
-    fn c_dgemm_tn(
-        alpha: f64,
-        a: *const f64,
-        b: *const f64,
-        beta: f64,
-        c: *mut f64,
-        m: *const i32,
-        n: *const i32,
-        k: *const i32,
-    );
-    fn c_dgemm_nt(
-        alpha: f64,
-        a: *const f64,
-        b: *const f64,
-        beta: f64,
-        c: *mut f64,
-        m: *const i32,
-        n: *const i32,
-        k: *const i32,
-    );
-    fn c_dgemm_tt(
-        alpha: f64,
-        a: *const f64,
-        b: *const f64,
-        beta: f64,
-        c: *mut f64,
-        m: *const i32,
-        n: *const i32,
-        k: *const i32,
-    );
+    fn c_dgemm_tn(alpha: f64, a: *const f64, b: *const f64, beta: f64, c: *mut f64, m: *const i32, n: *const i32, k: *const i32);
+    fn c_dgemm_nt(alpha: f64, a: *const f64, b: *const f64, beta: f64, c: *mut f64, m: *const i32, n: *const i32, k: *const i32);
+    fn c_dgemm_tt(alpha: f64, a: *const f64, b: *const f64, beta: f64, c: *mut f64, m: *const i32, n: *const i32, k: *const i32);
     fn c_zgemm_tn(
         alpha: *const Complex64,
         a: *const Complex64,
@@ -214,34 +178,9 @@ unsafe extern "C" {
         k: *const i32,
     );
     fn c_dger(alpha: f64, x: *const f64, y: *const f64, a: *mut f64, m: *const i32, n: *const i32);
-    fn c_zger(
-        alpha: *const Complex64,
-        x: *const Complex64,
-        y: *const Complex64,
-        a: *mut Complex64,
-        m: *const i32,
-        n: *const i32,
-    );
-    fn c_dsyrk(
-        alpha: f64,
-        a: *const f64,
-        beta: f64,
-        c: *mut f64,
-        n: *const i32,
-        k: *const i32,
-        upper: i32,
-        transposed: i32,
-    );
-    fn c_zherk(
-        alpha: f64,
-        a: *const Complex64,
-        beta: f64,
-        c: *mut Complex64,
-        n: *const i32,
-        k: *const i32,
-        upper: i32,
-        conj_transposed: i32,
-    );
+    fn c_zger(alpha: *const Complex64, x: *const Complex64, y: *const Complex64, a: *mut Complex64, m: *const i32, n: *const i32);
+    fn c_dsyrk(alpha: f64, a: *const f64, beta: f64, c: *mut f64, n: *const i32, k: *const i32, upper: i32, transposed: i32);
+    fn c_zherk(alpha: f64, a: *const Complex64, beta: f64, c: *mut Complex64, n: *const i32, k: *const i32, upper: i32, conj_transposed: i32);
     fn c_zaxpy(alpha: *const Complex64, x: *const Complex64, y: *mut Complex64, n: *const i32);
     fn c_zscal(alpha: *const Complex64, x: *mut Complex64, n: *const i32);
     fn c_dznrm2(x: *const Complex64, n: *const i32) -> f64;
@@ -295,16 +234,7 @@ pub fn dgemm(alpha: f64, a: &[f64], b: &[f64], beta: f64, c: &mut [f64], m: usiz
         // Safety: every slice was checked against `m`, `n` and `k` above, and
         // the shim is linked in this configuration.
         unsafe {
-            c_dgemm(
-                alpha,
-                a.as_ptr(),
-                b.as_ptr(),
-                beta,
-                c.as_mut_ptr(),
-                &m_i32,
-                &n_i32,
-                &k_i32,
-            );
+            c_dgemm(alpha, a.as_ptr(), b.as_ptr(), beta, c.as_mut_ptr(), &m_i32, &n_i32, &k_i32);
         }
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
@@ -332,18 +262,7 @@ pub fn dgemm_tn(alpha: f64, a: &[f64], b: &[f64], beta: f64, c: &mut [f64], m: u
         let k_i32 = to_i32(k);
         // Safety: every slice was checked against `m`, `n` and `k` above, and
         // the shim is linked in this configuration.
-        unsafe {
-            c_dgemm_tn(
-                alpha,
-                a.as_ptr(),
-                b.as_ptr(),
-                beta,
-                c.as_mut_ptr(),
-                &m_i32,
-                &n_i32,
-                &k_i32,
-            )
-        };
+        unsafe { c_dgemm_tn(alpha, a.as_ptr(), b.as_ptr(), beta, c.as_mut_ptr(), &m_i32, &n_i32, &k_i32) };
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     algebra_linear::blas::dgemm_tn(alpha, a, b, beta, c, m, n, k);
@@ -376,18 +295,7 @@ pub fn dgemm_nt(alpha: f64, a: &[f64], b: &[f64], beta: f64, c: &mut [f64], m: u
         let k_i32 = to_i32(k);
         // Safety: every slice was checked against `m`, `n` and `k` above, and
         // the shim is linked in this configuration.
-        unsafe {
-            c_dgemm_nt(
-                alpha,
-                a.as_ptr(),
-                b.as_ptr(),
-                beta,
-                c.as_mut_ptr(),
-                &m_i32,
-                &n_i32,
-                &k_i32,
-            )
-        };
+        unsafe { c_dgemm_nt(alpha, a.as_ptr(), b.as_ptr(), beta, c.as_mut_ptr(), &m_i32, &n_i32, &k_i32) };
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     algebra_linear::blas::dgemm_nt(alpha, a, b, beta, c, m, n, k);
@@ -420,18 +328,7 @@ pub fn dgemm_tt(alpha: f64, a: &[f64], b: &[f64], beta: f64, c: &mut [f64], m: u
         let k_i32 = to_i32(k);
         // Safety: every slice was checked against `m`, `n` and `k` above, and
         // the shim is linked in this configuration.
-        unsafe {
-            c_dgemm_tt(
-                alpha,
-                a.as_ptr(),
-                b.as_ptr(),
-                beta,
-                c.as_mut_ptr(),
-                &m_i32,
-                &n_i32,
-                &k_i32,
-            )
-        };
+        unsafe { c_dgemm_tt(alpha, a.as_ptr(), b.as_ptr(), beta, c.as_mut_ptr(), &m_i32, &n_i32, &k_i32) };
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     algebra_linear::blas::dgemm_tt(alpha, a, b, beta, c, m, n, k);
@@ -647,11 +544,7 @@ pub fn dlange(norm: char, a: &[f64], m: usize, n: usize) -> f64 {
         let lda = m_i32;
         // The infinity norm is the only one LAPACK's dlange needs workspace
         // for; `m` entries hold the running row sums.
-        let mut work = if norm == 'I' || norm == 'i' {
-            vec![0.0; m]
-        } else {
-            Vec::new()
-        };
+        let mut work = if norm == 'I' || norm == 'i' { vec![0.0; m] } else { Vec::new() };
         // Safety: `a` was checked against `m` and `n` above, `work` has `m`
         // entries where LAPACK needs them, and the shim is linked in this
         // configuration.
@@ -817,16 +710,7 @@ pub fn dznrm2(x: &[Complex64]) -> f64 {
 /// # Panics
 ///
 /// Panics if the shapes are inconsistent.
-pub fn zgemm(
-    alpha: Complex64,
-    a: &[Complex64],
-    b: &[Complex64],
-    beta: Complex64,
-    c: &mut [Complex64],
-    m: usize,
-    n: usize,
-    k: usize,
-) {
+pub fn zgemm(alpha: Complex64, a: &[Complex64], b: &[Complex64], beta: Complex64, c: &mut [Complex64], m: usize, n: usize, k: usize) {
     assert_eq!(a.len(), m * k, "zgemm: a must be m*k");
     assert_eq!(b.len(), k * n, "zgemm: b must be k*n");
     assert_eq!(c.len(), m * n, "zgemm: c must be m*n");
@@ -844,16 +728,7 @@ pub fn zgemm(
         // Safety: every slice was checked against `m`, `n` and `k` above, and
         // the shim is linked in this configuration.
         unsafe {
-            c_zgemm(
-                &alpha,
-                a.as_ptr(),
-                b.as_ptr(),
-                &beta,
-                c.as_mut_ptr(),
-                &m_i32,
-                &n_i32,
-                &k_i32,
-            );
+            c_zgemm(&alpha, a.as_ptr(), b.as_ptr(), &beta, c.as_mut_ptr(), &m_i32, &n_i32, &k_i32);
         }
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
@@ -866,16 +741,7 @@ pub fn zgemm(
 /// # Panics
 ///
 /// Panics if the shapes are inconsistent.
-pub fn zgemm_tn(
-    alpha: Complex64,
-    a: &[Complex64],
-    b: &[Complex64],
-    beta: Complex64,
-    c: &mut [Complex64],
-    m: usize,
-    n: usize,
-    k: usize,
-) {
+pub fn zgemm_tn(alpha: Complex64, a: &[Complex64], b: &[Complex64], beta: Complex64, c: &mut [Complex64], m: usize, n: usize, k: usize) {
     assert_eq!(a.len(), k * m, "zgemm_tn: a must be k*m");
     assert_eq!(b.len(), k * n, "zgemm_tn: b must be k*n");
     assert_eq!(c.len(), m * n, "zgemm_tn: c must be m*n");
@@ -889,18 +755,7 @@ pub fn zgemm_tn(
         let k_i32 = to_i32(k);
         // Safety: every slice was checked against `m`, `n` and `k` above, and
         // the shim is linked in this configuration.
-        unsafe {
-            c_zgemm_tn(
-                &alpha,
-                a.as_ptr(),
-                b.as_ptr(),
-                &beta,
-                c.as_mut_ptr(),
-                &m_i32,
-                &n_i32,
-                &k_i32,
-            )
-        };
+        unsafe { c_zgemm_tn(&alpha, a.as_ptr(), b.as_ptr(), &beta, c.as_mut_ptr(), &m_i32, &n_i32, &k_i32) };
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     algebra_linear::blas::zgemm_tn(alpha, a, b, beta, c, m, n, k);
@@ -916,16 +771,7 @@ pub fn zgemm_tn(
 ///
 /// Panics if the shapes are inconsistent.
 #[allow(dead_code)]
-pub fn zgemm_nt(
-    alpha: Complex64,
-    a: &[Complex64],
-    b: &[Complex64],
-    beta: Complex64,
-    c: &mut [Complex64],
-    m: usize,
-    n: usize,
-    k: usize,
-) {
+pub fn zgemm_nt(alpha: Complex64, a: &[Complex64], b: &[Complex64], beta: Complex64, c: &mut [Complex64], m: usize, n: usize, k: usize) {
     assert_eq!(a.len(), m * k, "zgemm_nt: a must be m*k");
     assert_eq!(b.len(), n * k, "zgemm_nt: b must be n*k");
     assert_eq!(c.len(), m * n, "zgemm_nt: c must be m*n");
@@ -939,18 +785,7 @@ pub fn zgemm_nt(
         let k_i32 = to_i32(k);
         // Safety: every slice was checked against `m`, `n` and `k` above, and
         // the shim is linked in this configuration.
-        unsafe {
-            c_zgemm_nt(
-                &alpha,
-                a.as_ptr(),
-                b.as_ptr(),
-                &beta,
-                c.as_mut_ptr(),
-                &m_i32,
-                &n_i32,
-                &k_i32,
-            )
-        };
+        unsafe { c_zgemm_nt(&alpha, a.as_ptr(), b.as_ptr(), &beta, c.as_mut_ptr(), &m_i32, &n_i32, &k_i32) };
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     algebra_linear::blas::zgemm_nt(alpha, a, b, beta, c, m, n, k);
@@ -966,16 +801,7 @@ pub fn zgemm_nt(
 ///
 /// Panics if the shapes are inconsistent.
 #[allow(dead_code)]
-pub fn zgemm_tt(
-    alpha: Complex64,
-    a: &[Complex64],
-    b: &[Complex64],
-    beta: Complex64,
-    c: &mut [Complex64],
-    m: usize,
-    n: usize,
-    k: usize,
-) {
+pub fn zgemm_tt(alpha: Complex64, a: &[Complex64], b: &[Complex64], beta: Complex64, c: &mut [Complex64], m: usize, n: usize, k: usize) {
     assert_eq!(a.len(), k * m, "zgemm_tt: a must be k*m");
     assert_eq!(b.len(), n * k, "zgemm_tt: b must be n*k");
     assert_eq!(c.len(), m * n, "zgemm_tt: c must be m*n");
@@ -989,18 +815,7 @@ pub fn zgemm_tt(
         let k_i32 = to_i32(k);
         // Safety: every slice was checked against `m`, `n` and `k` above, and
         // the shim is linked in this configuration.
-        unsafe {
-            c_zgemm_tt(
-                &alpha,
-                a.as_ptr(),
-                b.as_ptr(),
-                &beta,
-                c.as_mut_ptr(),
-                &m_i32,
-                &n_i32,
-                &k_i32,
-            )
-        };
+        unsafe { c_zgemm_tt(&alpha, a.as_ptr(), b.as_ptr(), &beta, c.as_mut_ptr(), &m_i32, &n_i32, &k_i32) };
     }
     #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     algebra_linear::blas::zgemm_tt(alpha, a, b, beta, c, m, n, k);
@@ -1041,15 +856,7 @@ pub fn zger(alpha: Complex64, x: &[Complex64], y: &[Complex64], a: &mut [Complex
 /// # Panics
 ///
 /// Panics if the shapes are inconsistent.
-pub fn zgemv(
-    alpha: Complex64,
-    a: &[Complex64],
-    x: &[Complex64],
-    beta: Complex64,
-    y: &mut [Complex64],
-    m: usize,
-    n: usize,
-) {
+pub fn zgemv(alpha: Complex64, a: &[Complex64], x: &[Complex64], beta: Complex64, y: &mut [Complex64], m: usize, n: usize) {
     assert_eq!(a.len(), m * n, "zgemv: a must be m*n");
     assert_eq!(x.len(), n, "zgemv: x must have n entries");
     assert_eq!(y.len(), m, "zgemv: y must have m entries");
@@ -1076,15 +883,7 @@ pub fn zgemv(
 /// # Panics
 ///
 /// Panics if the shapes are inconsistent.
-pub fn zgemv_trans(
-    alpha: Complex64,
-    a: &[Complex64],
-    x: &[Complex64],
-    beta: Complex64,
-    y: &mut [Complex64],
-    m: usize,
-    n: usize,
-) {
+pub fn zgemv_trans(alpha: Complex64, a: &[Complex64], x: &[Complex64], beta: Complex64, y: &mut [Complex64], m: usize, n: usize) {
     assert_eq!(a.len(), m * n, "zgemv_trans: a must be m*n");
     assert_eq!(x.len(), m, "zgemv_trans: x must have m entries");
     assert_eq!(y.len(), n, "zgemv_trans: y must have n entries");
@@ -1117,16 +916,7 @@ pub fn zgemv_trans(
 /// # Panics
 ///
 /// Panics if the shapes are inconsistent.
-pub fn zherk(
-    alpha: f64,
-    a: &[Complex64],
-    beta: f64,
-    c: &mut [Complex64],
-    n: usize,
-    k: usize,
-    upper: bool,
-    conj_transposed: bool,
-) {
+pub fn zherk(alpha: f64, a: &[Complex64], beta: f64, c: &mut [Complex64], n: usize, k: usize, upper: bool, conj_transposed: bool) {
     assert_eq!(a.len(), n * k, "zherk: a must be n*k");
     assert_eq!(c.len(), n * n, "zherk: c must be n*n");
     if n == 0 {
@@ -1181,16 +971,7 @@ pub fn zherk(
 /// # Panics
 ///
 /// Panics if the shapes are inconsistent.
-pub fn zsyrk(
-    alpha: Complex64,
-    a: &[Complex64],
-    beta: Complex64,
-    c: &mut [Complex64],
-    n: usize,
-    k: usize,
-    upper: bool,
-    transposed: bool,
-) {
+pub fn zsyrk(alpha: Complex64, a: &[Complex64], beta: Complex64, c: &mut [Complex64], n: usize, k: usize, upper: bool, transposed: bool) {
     assert_eq!(a.len(), n * k, "zsyrk: a must be n*k");
     assert_eq!(c.len(), n * n, "zsyrk: c must be n*n");
     if n == 0 {
@@ -1262,11 +1043,7 @@ mod tests {
             let mut got = c0.clone();
             dgemm(alpha, &a, &b, beta, &mut got, m, n, k);
             for i in 0..m * n {
-                assert_close(
-                    got[i],
-                    want[i],
-                    &format!("dgemm m={m} n={n} k={k} alpha={alpha} beta={beta} [{i}]"),
-                );
+                assert_close(got[i], want[i], &format!("dgemm m={m} n={n} k={k} alpha={alpha} beta={beta} [{i}]"));
             }
         }
     }
@@ -1368,9 +1145,7 @@ mod tests {
     /// The complex twins of the level-1 updates, plus the complex norm.
     #[test]
     fn complex_level1_routines_match_the_native_kernel() {
-        let x: Vec<Complex64> = (0..23)
-            .map(|i| cpx!(((i % 5) as f64) - 2.0, ((i % 7) as f64) - 3.0))
-            .collect();
+        let x: Vec<Complex64> = (0..23).map(|i| cpx!(((i % 5) as f64) - 2.0, ((i % 7) as f64) - 3.0)).collect();
         let y0: Vec<Complex64> = (0..23).map(|i| cpx!((i % 3) as f64, ((i % 4) as f64) - 1.5)).collect();
 
         for alpha in [cpx!(1.0, 0.0), cpx!(0.5, -1.5)] {
@@ -1428,9 +1203,7 @@ mod tests {
     #[test]
     fn zgemv_and_zgemv_trans_match_the_native_kernel() {
         let (m, n) = (8usize, 6usize);
-        let a: Vec<Complex64> = (0..m * n)
-            .map(|i| cpx!(((i % 3) as f64) - 1.0, ((i % 5) as f64) - 2.0))
-            .collect();
+        let a: Vec<Complex64> = (0..m * n).map(|i| cpx!(((i % 3) as f64) - 1.0, ((i % 5) as f64) - 2.0)).collect();
 
         let x: Vec<Complex64> = (0..n).map(|i| cpx!(((i % 4) as f64) - 1.5, (i % 2) as f64)).collect();
         let y0: Vec<Complex64> = (0..m).map(|i| cpx!((i % 2) as f64, 0.5)).collect();
@@ -1486,12 +1259,7 @@ mod tests {
             let mut got = c0.clone();
             zgemm(alpha, &a, &b, beta, &mut got, m, n, k);
             for i in 0..m * n {
-                assert!(
-                    (got[i] - want[i]).norm() < 1e-13,
-                    "zgemm [{i}]: got {} but want {}",
-                    got[i],
-                    want[i]
-                );
+                assert!((got[i] - want[i]).norm() < 1e-13, "zgemm [{i}]: got {} but want {}", got[i], want[i]);
             }
         }
     }
@@ -1538,11 +1306,7 @@ mod tests {
     #[test]
     fn transposed_zgemm_matches_the_native_kernels() {
         let (m, n, k) = (5usize, 4usize, 6usize);
-        let x = |len: usize| -> Vec<Complex64> {
-            (0..len)
-                .map(|i| cpx!((i % 3) as f64 - 1.0, (i % 5) as f64 - 2.0))
-                .collect()
-        };
+        let x = |len: usize| -> Vec<Complex64> { (0..len).map(|i| cpx!((i % 3) as f64 - 1.0, (i % 5) as f64 - 2.0)).collect() };
         let a_t = x(k * m);
         let a_n = x(m * k);
         let b_n = x(k * n);
@@ -1592,9 +1356,7 @@ mod tests {
     fn zger_matches_the_native_kernel() {
         let (m, n) = (4usize, 6usize);
         let x: Vec<Complex64> = (0..m).map(|i| cpx!((i % 3) as f64 - 1.0, (i % 2) as f64)).collect();
-        let y: Vec<Complex64> = (0..n)
-            .map(|i| cpx!((i % 4) as f64 - 1.5, (i % 5) as f64 - 2.0))
-            .collect();
+        let y: Vec<Complex64> = (0..n).map(|i| cpx!((i % 4) as f64 - 1.5, (i % 5) as f64 - 2.0)).collect();
         let a0: Vec<Complex64> = (0..m * n).map(|i| cpx!((i % 2) as f64, 0.5)).collect();
         for alpha in [cpx!(1.0, 0.0), cpx!(0.5, -1.5)] {
             let mut want = a0.clone();
@@ -1602,12 +1364,7 @@ mod tests {
             let mut got = a0.clone();
             zger(alpha, &x, &y, &mut got, m, n);
             for i in 0..m * n {
-                assert!(
-                    (got[i] - want[i]).norm() < 1e-13,
-                    "zger [{i}]: got {} but want {}",
-                    got[i],
-                    want[i]
-                );
+                assert!((got[i] - want[i]).norm() < 1e-13, "zger [{i}]: got {} but want {}", got[i], want[i]);
             }
         }
     }
@@ -1634,11 +1391,7 @@ mod tests {
                     for i in 0..n {
                         let idx = i + j * n;
                         let in_triangle = if upper { i <= j } else { i >= j };
-                        assert_close(
-                            got[idx],
-                            want[idx],
-                            &format!("dsyrk transposed={transposed} upper={upper} ({i},{j})"),
-                        );
+                        assert_close(got[idx], want[idx], &format!("dsyrk transposed={transposed} upper={upper} ({i},{j})"));
                         if !in_triangle {
                             assert_eq!(got[idx], c0[idx], "dsyrk must leave ({i},{j}) alone");
                         }
@@ -1653,9 +1406,7 @@ mod tests {
     #[test]
     fn zherk_matches_the_native_kernel() {
         let (n, k) = (4usize, 6usize);
-        let a: Vec<Complex64> = (0..n * k)
-            .map(|i| cpx!((i % 3) as f64 - 1.0, (i % 5) as f64 - 2.0))
-            .collect();
+        let a: Vec<Complex64> = (0..n * k).map(|i| cpx!((i % 3) as f64 - 1.0, (i % 5) as f64 - 2.0)).collect();
         let c0: Vec<Complex64> = (0..n * n).map(|i| cpx!((i % 2) as f64, 0.5)).collect();
         for conj_transposed in [false, true] {
             for upper in [false, true] {
@@ -1704,9 +1455,7 @@ mod tests {
     #[test]
     fn zsyrk_matches_the_native_kernel() {
         let (n, k) = (5usize, 8usize);
-        let a: Vec<Complex64> = (0..n * k)
-            .map(|i| cpx!(((i % 3) as f64) - 1.0, ((i % 5) as f64) - 2.0))
-            .collect();
+        let a: Vec<Complex64> = (0..n * k).map(|i| cpx!(((i % 3) as f64) - 1.0, ((i % 5) as f64) - 2.0)).collect();
         let c0: Vec<Complex64> = (0..n * n).map(|i| cpx!((i % 2) as f64, 0.5)).collect();
         let (alpha, beta) = (cpx!(2.5, -1.0), cpx!(-1.5, 0.25));
         type Zsyrk = fn(Complex64, &[Complex64], Complex64, &mut [Complex64], usize, usize, bool);
@@ -1724,11 +1473,7 @@ mod tests {
                 for j in 0..n {
                     for i in 0..n {
                         let idx = i + j * n;
-                        assert_close_cpx(
-                            got[idx],
-                            want[idx],
-                            &format!("zsyrk transposed={transposed} upper={upper} ({i},{j})"),
-                        );
+                        assert_close_cpx(got[idx], want[idx], &format!("zsyrk transposed={transposed} upper={upper} ({i},{j})"));
                         let in_triangle = if upper { i <= j } else { i >= j };
                         if !in_triangle {
                             assert_eq!(got[idx], c0[idx], "zsyrk must leave ({i},{j}) alone");
@@ -1764,10 +1509,7 @@ mod reference_tests {
 
     fn assert_close(got: f64, want: f64, what: &str) {
         let scale = want.abs().max(1.0);
-        assert!(
-            (got - want).abs() / scale < 1e-13,
-            "{what}: got {got} but the reference says {want}"
-        );
+        assert!((got - want).abs() / scale < 1e-13, "{what}: got {got} but the reference says {want}");
     }
 
     /// `A := 1.5 x y^T + A`, A is `4 x 3`.

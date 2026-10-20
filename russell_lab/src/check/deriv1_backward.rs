@@ -47,10 +47,7 @@ mod tests {
     #[test]
     fn deriv1_backward7_works() {
         let tests = testing::get_functions();
-        println!(
-            "{:>10}{:>15}{:>22}{:>11}",
-            "function", "numerical", "analytical", "|num-ana|"
-        );
+        println!("{:>10}{:>15}{:>22}{:>11}", "function", "numerical", "analytical", "|num-ana|");
         // for test in &[&tests[2]] {
         for test in &tests {
             let args = &mut 0;

@@ -8,10 +8,7 @@ use structopt::StructOpt;
 
 /// Command line options
 #[derive(StructOpt, Debug)]
-#[structopt(
-    name = "solve_matrix_market",
-    about = "Solve a linear system with a Matrix-Market file."
-)]
+#[structopt(name = "solve_matrix_market", about = "Solve a linear system with a Matrix-Market file.")]
 struct Options {
     /// Matrix-market file
     matrix_market_file: String,

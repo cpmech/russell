@@ -188,9 +188,7 @@ pub fn mat_inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, StrError> {
     // ones both backends report, so a singular matrix is described the same way
     // in every configuration.
     let (ipiv, det) = dgetrf(ai.as_mut_data(), m).map_err(|e| match e {
-        LapackError::Singular => {
-            "LAPACK ERROR (dgetrf): The factorization has been completed, but the factor U is exactly singular"
-        }
+        LapackError::Singular => "LAPACK ERROR (dgetrf): The factorization has been completed, but the factor U is exactly singular",
         _ => "LAPACK ERROR (dgetrf): An argument had an illegal value",
     })?;
     dgetri(ai.as_mut_data(), m, &ipiv).map_err(|e| match e {

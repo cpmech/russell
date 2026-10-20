@@ -409,11 +409,7 @@ impl Bspline {
     /// Computes basis functions using Cox-DeBoors recursive formula
     fn recursive_nn(&self, u: f64, i: usize, p: usize) -> f64 {
         // remove noise, e.g., 1.000000000000002
-        let u = if f64::abs(u - self.u_max) < 1e-14 {
-            self.u_max - 1e-14
-        } else {
-            u
-        };
+        let u = if f64::abs(u - self.u_max) < 1e-14 { self.u_max - 1e-14 } else { u };
 
         // exit point
         if p == 0 {
@@ -709,11 +705,7 @@ mod tests {
         //   |  |  |------|------|------|------|  |------|  |  |
         // 0.0 0.0 0.0   1.0    2.0    3.0   4.0  4.0  5.0 5.0 5.0
         if i == 0 {
-            if u >= 0.0 && u < 1.0 {
-                (1.0 - u) * (1.0 - u)
-            } else {
-                0.0
-            }
+            if u >= 0.0 && u < 1.0 { (1.0 - u) * (1.0 - u) } else { 0.0 }
         } else if i == 1 {
             if u >= 0.0 && u < 1.0 {
                 2.0 * u - 1.5 * u * u
@@ -759,11 +751,7 @@ mod tests {
                 0.0
             }
         } else if i == 6 {
-            if u >= 4.0 && u < 5.0 {
-                2.0 * (u - 4.0) * (5.0 - u)
-            } else {
-                0.0
-            }
+            if u >= 4.0 && u < 5.0 { 2.0 * (u - 4.0) * (5.0 - u) } else { 0.0 }
         } else if i == 7 {
             if u >= 4.0 && u <= 5.0 {
                 // must consider u == 5.0
@@ -823,10 +811,7 @@ mod tests {
             1.0
         } else if i == 5 && (3.0 <= u && u < 4.0) {
             2.0
-        } else if (i == 1 && (1.0 <= u && u < 2.0))
-            || (i == 4 && (2.0 <= u && u < 3.0))
-            || (i == 3 && (1.0 <= u && u < 2.0))
-        {
+        } else if (i == 1 && (1.0 <= u && u < 2.0)) || (i == 4 && (2.0 <= u && u < 3.0)) || (i == 3 && (1.0 <= u && u < 2.0)) {
             1.0
         } else if i == 0 && (0.0 <= u && u < 1.0) {
             2.0
@@ -882,10 +867,7 @@ mod tests {
 
         // draw spans
         let mut curve_spans = Curve::new();
-        curve_spans
-            .set_line_style("None")
-            .set_marker_style("o")
-            .set_marker_color("black");
+        curve_spans.set_line_style("None").set_marker_style("o").set_marker_color("black");
         let elements = b.get_elements(1e-14);
         for e in &elements {
             b.calc_point(&mut cc, b.uu[e[0]], false).unwrap();
@@ -895,10 +877,7 @@ mod tests {
         // tangent vectors
         let mut tangent_vectors = Canvas::new();
         if let Some(uu_tg) = tangents_at_uu {
-            tangent_vectors
-                .set_edge_color("gray")
-                .set_face_color("gray")
-                .set_arrow_scale(15.0);
+            tangent_vectors.set_edge_color("gray").set_face_color("gray").set_arrow_scale(15.0);
             for &u in uu_tg {
                 b.calc_point(&mut cc, u, false).unwrap();
                 b.calc_curve_derivs(u, 1, false);
@@ -1225,10 +1204,7 @@ mod tests {
         );
 
         let wrong_pp = &[[], []];
-        assert_eq!(
-            b.set_control_points(wrong_pp).err(),
-            Some("the number of dimensions must be ≥ 1")
-        );
+        assert_eq!(b.set_control_points(wrong_pp).err(), Some("the number of dimensions must be ≥ 1"));
 
         let mut cc = Vector::new(2);
         assert_eq!(
@@ -1255,15 +1231,7 @@ mod tests {
         assert_eq!(b.num_basis(), 7);
 
         // define control points
-        let pp = &[
-            [0.0, 0.0],
-            [1.0, 0.0],
-            [1.0, 1.0],
-            [2.1, 1.0],
-            [2.5, -0.1],
-            [1.7, -0.7],
-            [1.0, -0.4],
-        ];
+        let pp = &[[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [2.1, 1.0], [2.5, -0.1], [1.7, -0.7], [1.0, -0.4]];
 
         // check set_control_points
         b.set_control_points(pp).unwrap();
@@ -1408,13 +1376,8 @@ mod tests {
             let mut plot = draw_curve(&mut b, pp, None, 1.0);
             let mut canvas = Canvas::new();
             let mut text = Text::new();
-            canvas
-                .set_arrow_scale(10.0)
-                .set_face_color("gray")
-                .set_edge_color("gray");
-            text.set_fontsize(12.0)
-                .set_align_horizontal("left")
-                .set_align_vertical("center");
+            canvas.set_arrow_scale(10.0).set_face_color("gray").set_edge_color("gray");
+            text.set_fontsize(12.0).set_align_horizontal("left").set_align_vertical("center");
             let xi = cc0[0];
             let yi = cc0[1];
             let mut xf = cc0[0] + cc1[0] / sf;
@@ -1476,8 +1439,7 @@ mod tests {
         // drawing
         let plot = draw_curve(&mut b, pp, Some(&[0.0, 1.0 / 5.0, 2.0 / 5.0, 3.0 / 5.0, 1.0]), 1.0);
         if SAVE_FIGURE {
-            plot.save("/tmp/russell_lab/test_bspline_curve_derivs_alg1.svg")
-                .unwrap();
+            plot.save("/tmp/russell_lab/test_bspline_curve_derivs_alg1.svg").unwrap();
         }
     }
 
@@ -1517,8 +1479,7 @@ mod tests {
         // drawing
         if SAVE_FIGURE {
             let plot = draw_curve(&mut b, pp, Some(&[0.0, 1.0 / 5.0, 2.0 / 5.0, 3.0 / 5.0, 1.0]), 1.0);
-            plot.save("/tmp/russell_lab/test_bspline_curve_derivs_alg2.svg")
-                .unwrap();
+            plot.save("/tmp/russell_lab/test_bspline_curve_derivs_alg2.svg").unwrap();
         }
     }
 

@@ -69,26 +69,14 @@ mod tests {
         assert_eq!(complex_vec_norm(&u0, Norm::Max), 0.0);
         assert_eq!(complex_vec_norm(&u0, Norm::One), 0.0);
 
-        let u = ComplexVector::from(&[
-            cpx!(-3.0, 0.0),
-            cpx!(2.0, 0.0),
-            cpx!(1.0, 0.0),
-            cpx!(1.0, 0.0),
-            cpx!(1.0, 0.0),
-        ]);
+        let u = ComplexVector::from(&[cpx!(-3.0, 0.0), cpx!(2.0, 0.0), cpx!(1.0, 0.0), cpx!(1.0, 0.0), cpx!(1.0, 0.0)]);
         assert_eq!(complex_vec_norm(&u, Norm::Euc), 4.0);
         assert_eq!(complex_vec_norm(&u, Norm::Fro), 4.0);
         assert_eq!(complex_vec_norm(&u, Norm::Inf), 3.0);
         assert_eq!(complex_vec_norm(&u, Norm::Max), 3.0);
         assert_eq!(complex_vec_norm(&u, Norm::One), 8.0);
 
-        let u = ComplexVector::from(&[
-            cpx!(-3.0, 1.0),
-            cpx!(2.0, -1.0),
-            cpx!(1.0, 1.0),
-            cpx!(1.0, -1.0),
-            cpx!(1.0, 1.0),
-        ]);
+        let u = ComplexVector::from(&[cpx!(-3.0, 1.0), cpx!(2.0, -1.0), cpx!(1.0, 1.0), cpx!(1.0, -1.0), cpx!(1.0, 1.0)]);
         approx_eq(complex_vec_norm(&u, Norm::Euc), 4.58257569495584, 1e-15);
         approx_eq(complex_vec_norm(&u, Norm::Fro), 4.58257569495584, 1e-15);
         approx_eq(complex_vec_norm(&u, Norm::Inf), 3.1622776601683795, 1e-15);

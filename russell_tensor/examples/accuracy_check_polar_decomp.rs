@@ -20,12 +20,7 @@ use russell_lab::{Matrix, mat_max_abs_diff, mat_t_mat_mul};
 use russell_tensor::{PolarAlgo, StrError, Tensor2, polar_decomp_mx};
 
 /// The polar decomposition algorithms under comparison
-const ALGOS: [PolarAlgo; 4] = [
-    PolarAlgo::Eigen,
-    PolarAlgo::SVD,
-    PolarAlgo::Iterative,
-    PolarAlgo::Quaternion,
-];
+const ALGOS: [PolarAlgo; 4] = [PolarAlgo::Eigen, PolarAlgo::SVD, PolarAlgo::Iterative, PolarAlgo::Quaternion];
 
 fn main() -> Result<(), StrError> {
     let yy = [1.0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-8, 1e-10];

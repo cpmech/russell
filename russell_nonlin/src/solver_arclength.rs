@@ -332,12 +332,7 @@ impl<'a, A> SolverArclength<'a, A> {
     ///     │  0   1 │
     ///     └        ┘
     /// ```
-    fn assemble_and_factorize_aa(
-        &mut self,
-        work: &mut Workspace,
-        args: &mut A,
-        for_initial_tangent_vector: bool,
-    ) -> Result<(), StrError> {
+    fn assemble_and_factorize_aa(&mut self, work: &mut Workspace, args: &mut A, for_initial_tangent_vector: bool) -> Result<(), StrError> {
         // check
         assert!(!self.config.bordering);
 
@@ -647,15 +642,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     /// 2. Determines the first tangent vector in pseudo-arclength
     ///
     /// **Note**: Gu₀ must be non-singular
-    fn initialize(
-        &mut self,
-        work: &mut Workspace,
-        ddl_ini: f64,
-        u: &Vector,
-        l: f64,
-        dir: IniDir,
-        args: &mut A,
-    ) -> Result<(), StrError> {
+    fn initialize(&mut self, work: &mut Workspace, ddl_ini: f64, u: &Vector, l: f64, dir: IniDir, args: &mut A) -> Result<(), StrError> {
         // set flags
         self.theta = 1.0; // normal operation
         self.iter_jac_computed = false;

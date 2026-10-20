@@ -780,11 +780,7 @@ impl<const N: usize> WorkspaceDeriv2Lode<N> {
 /// # Panics
 ///
 /// A panic will occur if `a` is not symmetric, i.e., N = 9.
-pub fn deriv2_invariant_lode<const N: usize>(
-    d2: &mut Tensor4<N>,
-    work: &mut WorkspaceDeriv2Lode<N>,
-    a: &Tensor2<N>,
-) -> Option<f64> {
+pub fn deriv2_invariant_lode<const N: usize>(d2: &mut Tensor4<N>, work: &mut WorkspaceDeriv2Lode<N>, a: &Tensor2<N>) -> Option<f64> {
     assert!(N != 9, "the tensor must be symmetric with N = 4 or N = 6");
     let jj2 = a.invariant_jj2();
     if jj2 > TOL_J2 {
@@ -835,8 +831,8 @@ mod tests {
     use super::*;
     use crate::{IJ_TO_M_SYM, MN_TO_IJKL, SQRT_2, SamplesTensor2, StrError, t4_approx_eq};
     use crate::{
-        deriv1_invariant_ii2, deriv1_invariant_ii3, deriv1_invariant_jj2, deriv1_invariant_jj3, deriv1_invariant_lode,
-        deriv1_invariant_q, deriv1_invariant_r,
+        deriv1_invariant_ii2, deriv1_invariant_ii3, deriv1_invariant_jj2, deriv1_invariant_jj3, deriv1_invariant_lode, deriv1_invariant_q,
+        deriv1_invariant_r,
     };
     use russell_lab::{Matrix, approx_eq, deriv1_central5, mat_approx_eq};
 
@@ -1160,11 +1156,7 @@ mod tests {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
-                        approx_eq(
-                            arr[i][j][k][l],
-                            mat.get(i, k) * del.get(j, l) + del.get(i, k) * mat.get(l, j),
-                            1e-15,
-                        )
+                        approx_eq(arr[i][j][k][l], mat.get(i, k) * del.get(j, l) + del.get(i, k) * mat.get(l, j), 1e-15)
                     }
                 }
             }
@@ -1265,10 +1257,7 @@ mod tests {
         n: usize,       // index of [dInvariant²/da⊗da]ₘₙ (matrix representation)
     }
 
-    fn component_of_deriv1_inv_kelvin<const N: usize>(
-        x: f64,
-        args: &mut ArgsNumDeriv2InvariantKelvin<N>,
-    ) -> Result<f64, StrError> {
+    fn component_of_deriv1_inv_kelvin<const N: usize>(x: f64, args: &mut ArgsNumDeriv2InvariantKelvin<N>) -> Result<f64, StrError> {
         let original = args.a.get(args.n);
         args.a.set(args.n, x);
         match args.inv {

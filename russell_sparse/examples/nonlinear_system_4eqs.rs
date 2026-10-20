@@ -5,10 +5,7 @@ use structopt::StructOpt;
 
 /// Command line options
 #[derive(StructOpt, Debug)]
-#[structopt(
-    name = "nonlinear_system_4equations",
-    about = "Solve a nonlinear system four equations."
-)]
+#[structopt(name = "nonlinear_system_4equations", about = "Solve a nonlinear system four equations.")]
 struct Options {
     #[structopt(short = "g", long, default_value = "Umfpack")]
     genie: String,
@@ -37,10 +34,7 @@ fn main() -> Result<(), StrError> {
     let mut mdu = Vector::new(neq);
 
     // message
-    println!(
-        "{:>4}{:>13}{:>13}{:>13}{:>13}{:>15}",
-        "it", "d1", "d2", "d3", "d4", "err"
-    );
+    println!("{:>4}{:>13}{:>13}{:>13}{:>13}{:>15}", "it", "d1", "d2", "d3", "d4", "err");
 
     // loop until the residual is smaller than tolerance
     const TOLERANCE: f64 = 1e-13;
@@ -60,10 +54,7 @@ fn main() -> Result<(), StrError> {
         };
 
         // message
-        println!(
-            "{:>4}{:>13.6}{:>13.6}{:>13.6}{:>13.6}{:>15.6e}",
-            it, uu[0], uu[1], uu[2], uu[3], err
-        );
+        println!("{:>4}{:>13.6}{:>13.6}{:>13.6}{:>13.6}{:>15.6e}", it, uu[0], uu[1], uu[2], uu[3], err);
 
         // exit point
         if err < TOLERANCE {

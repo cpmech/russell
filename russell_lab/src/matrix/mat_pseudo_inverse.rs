@@ -134,14 +134,8 @@ mod tests {
         let mut a_2x3 = Matrix::new(2, 3);
         let mut ai_1x2 = Matrix::new(1, 2);
         let mut ai_2x1 = Matrix::new(2, 1);
-        assert_eq!(
-            mat_pseudo_inverse(&mut ai_1x2, &mut a_2x3),
-            Err("matrices are incompatible")
-        );
-        assert_eq!(
-            mat_pseudo_inverse(&mut ai_2x1, &mut a_2x3),
-            Err("matrices are incompatible")
-        );
+        assert_eq!(mat_pseudo_inverse(&mut ai_1x2, &mut a_2x3), Err("matrices are incompatible"));
+        assert_eq!(mat_pseudo_inverse(&mut ai_2x1, &mut a_2x3), Err("matrices are incompatible"));
     }
 
     #[test]

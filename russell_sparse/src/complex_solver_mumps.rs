@@ -1,8 +1,8 @@
 use super::{ComplexCooMatrix, ComplexLinSolTrait, LinSolParams, StatsLinSol, Sym};
 use super::{
-    MUMPS_ORDERING_AMD, MUMPS_ORDERING_AMF, MUMPS_ORDERING_AUTO, MUMPS_ORDERING_METIS, MUMPS_ORDERING_PORD,
-    MUMPS_ORDERING_QAMD, MUMPS_ORDERING_SCOTCH, MUMPS_SCALING_AUTO, MUMPS_SCALING_COLUMN, MUMPS_SCALING_DIAGONAL,
-    MUMPS_SCALING_NO, MUMPS_SCALING_ROW_COL, MUMPS_SCALING_ROW_COL_ITER, MUMPS_SCALING_ROW_COL_RIG,
+    MUMPS_ORDERING_AMD, MUMPS_ORDERING_AMF, MUMPS_ORDERING_AUTO, MUMPS_ORDERING_METIS, MUMPS_ORDERING_PORD, MUMPS_ORDERING_QAMD,
+    MUMPS_ORDERING_SCOTCH, MUMPS_SCALING_AUTO, MUMPS_SCALING_COLUMN, MUMPS_SCALING_DIAGONAL, MUMPS_SCALING_NO, MUMPS_SCALING_ROW_COL,
+    MUMPS_SCALING_ROW_COL_ITER, MUMPS_SCALING_ROW_COL_RIG,
 };
 use super::{handle_mumps_error_code, mumps_ordering, mumps_scaling};
 use crate::StrError;
@@ -272,12 +272,11 @@ impl ComplexLinSolTrait for ComplexSolverMUMPS {
         let scaling = mumps_scaling(par.scaling);
         let pct_inc_workspace = to_i32(par.mumps_pct_inc_workspace);
         let max_work_memory = to_i32(par.mumps_max_work_memory);
-        self.effective_num_threads =
-            if using_intel_mkl() || par.mumps_num_threads != 0 || par.mumps_override_prevent_nt_issue_with_openblas {
-                to_i32(par.mumps_num_threads)
-            } else {
-                1 // avoid bug with OpenBLAS
-            };
+        self.effective_num_threads = if using_intel_mkl() || par.mumps_num_threads != 0 || par.mumps_override_prevent_nt_issue_with_openblas {
+            to_i32(par.mumps_num_threads)
+        } else {
+            1 // avoid bug with OpenBLAS
+        };
 
         // requests
         let compute_determinant = if par.compute_determinant { 1 } else { 0 };
@@ -477,10 +476,7 @@ mod tests {
         // check COO matrix
         let mut coo = ComplexCooMatrix::new(2, 1, 1, Sym::No).unwrap();
         coo.put(0, 0, cpx!(4.0, 4.0)).unwrap();
-        assert_eq!(
-            solver.factorize(&coo, None).err(),
-            Some("the COO matrix must be square")
-        );
+        assert_eq!(solver.factorize(&coo, None).err(), Some("the COO matrix must be square"));
         let coo = ComplexCooMatrix::new(1, 1, 1, Sym::No).unwrap();
         assert_eq!(
             solver.factorize(&coo, None).err(),
@@ -529,10 +525,7 @@ mod tests {
         let mut coo = ComplexCooMatrix::new(3, 3, 2, Sym::No).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         let mut solver = ComplexSolverMUMPS::new().unwrap();
-        assert_eq!(
-            solver.factorize(&coo, None),
-            Err("Error(-10): numerically singular matrix")
-        );
+        assert_eq!(solver.factorize(&coo, None), Err("Error(-10): numerically singular matrix"));
     }
 
     #[test]

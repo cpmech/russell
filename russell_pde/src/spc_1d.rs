@@ -183,14 +183,7 @@ impl<'a> Spc1d<'a> {
     /// * Boundary conditions are validated when solving, not during construction
     /// * Call [EssentialBcs1d::validate()] before solving to check boundary condition consistency
     /// * Periodic boundary conditions are not supported and will return an error
-    pub fn new(
-        xmin: f64,
-        xmax: f64,
-        nx: usize,
-        ebcs: EssentialBcs1d<'a>,
-        nbcs: NaturalBcs1d<'a>,
-        kx: f64,
-    ) -> Result<Self, StrError> {
+    pub fn new(xmin: f64, xmax: f64, nx: usize, ebcs: EssentialBcs1d<'a>, nbcs: NaturalBcs1d<'a>, kx: f64) -> Result<Self, StrError> {
         // check
         if nx < 2 {
             return Err("nx must be ≥ 2");
@@ -538,12 +531,7 @@ impl<'a> Spc1d<'a> {
     /// * The augmented system size is (neq + nlag) × (neq + nlag)
     /// * Matrix is generally dense due to spectral method
     /// * Includes domain mapping scaling from `[-1,1]` to `[xmin,xmax]`
-    pub fn get_matrices_lmm(
-        &self,
-        alpha: f64,
-        extra_nnz: usize,
-        get_constraints_mat: bool,
-    ) -> (CooMatrix, Option<CooMatrix>) {
+    pub fn get_matrices_lmm(&self, alpha: f64, extra_nnz: usize, get_constraints_mat: bool) -> (CooMatrix, Option<CooMatrix>) {
         // allocate matrices
         let (neq, nlag, ndim) = self.get_dims_lmm();
         let nx = self.grid.nx();
@@ -832,10 +820,7 @@ mod tests {
         let mut ebcs = EssentialBcs1d::new();
         let nbcs = NaturalBcs1d::new();
         ebcs.set_periodic(true);
-        assert_eq!(
-            Spc1d::new(0.0, 1.0, 3, ebcs, nbcs, 1.0).err(),
-            Some("essential BCs cannot be periodic")
-        );
+        assert_eq!(Spc1d::new(0.0, 1.0, 3, ebcs, nbcs, 1.0).err(), Some("essential BCs cannot be periodic"));
     }
 
     #[test]
@@ -846,10 +831,7 @@ mod tests {
         nbcs.set(Side::Xmax, |_| 0.0);
         let spc = Spc1d::new(0.0, 1.0, 2, ebcs, nbcs, 1.0).unwrap();
         let a = Vector::from(&[0.0]); // wrong size
-        assert_eq!(
-            spc.calculate_flow_vectors(&a).err(),
-            Some("a.dim() must equal the number of equations")
-        );
+        assert_eq!(spc.calculate_flow_vectors(&a).err(), Some("a.dim() must equal the number of equations"));
     }
 
     #[test]

@@ -102,13 +102,7 @@ use crate::base::lapack_dispatch;
 ///     Ok(())
 /// }
 /// ```
-pub fn mat_eigen(
-    l_real: &mut Vector,
-    l_imag: &mut Vector,
-    v_real: &mut Matrix,
-    v_imag: &mut Matrix,
-    a: &mut Matrix,
-) -> Result<(), StrError> {
+pub fn mat_eigen(l_real: &mut Vector, l_imag: &mut Vector, v_real: &mut Matrix, v_imag: &mut Matrix, a: &mut Matrix) -> Result<(), StrError> {
     let (m, n) = a.dims();
     if m != n {
         return Err("matrix must be square");
@@ -122,13 +116,7 @@ pub fn mat_eigen(
     // The driver returns the eigenvalues and writes the eigenvectors already
     // expanded out of LAPACK's compact storage, on both backends, so `dgeev_data`
     // is no longer a step this call site has to know about.
-    let (wr, wi) = lapack_dispatch::dgeev(
-        v_real.as_mut_data(),
-        v_imag.as_mut_data(),
-        a.as_mut_data(),
-        m,
-    )
-    .map_err(|e| match e {
+    let (wr, wi) = lapack_dispatch::dgeev(v_real.as_mut_data(), v_imag.as_mut_data(), a.as_mut_data(), m).map_err(|e| match e {
         // dlahqr exhausted its iteration limit. The eigenvalues in `wr`/`wi`
         // are partly converged, so this must not be reported as success.
         algebra_linear::lapack::LapackError::Convergence => {
@@ -361,15 +349,7 @@ mod tests {
         let mut v_real = Matrix::new(m, m);
         let mut v_imag = Matrix::new(m, m);
         assert_eq!(
-            mat_eigen_lr(
-                &mut l_real,
-                &mut l_imag,
-                &mut u_real,
-                &mut u_imag,
-                &mut v_real,
-                &mut v_imag,
-                &mut a,
-            ),
+            mat_eigen_lr(&mut l_real, &mut l_imag, &mut u_real, &mut u_imag, &mut v_real, &mut v_imag, &mut a,),
             Err("matrix must be square"),
         );
     }
@@ -391,75 +371,27 @@ mod tests {
         let mut v_real_wrong = Matrix::new(m + 1, m);
         let mut v_imag_wrong = Matrix::new(m, m + 1);
         assert_eq!(
-            mat_eigen_lr(
-                &mut l_real_wrong,
-                &mut l_imag,
-                &mut u_real,
-                &mut u_imag,
-                &mut v_real,
-                &mut v_imag,
-                &mut a,
-            ),
+            mat_eigen_lr(&mut l_real_wrong, &mut l_imag, &mut u_real, &mut u_imag, &mut v_real, &mut v_imag, &mut a,),
             Err("vectors are incompatible"),
         );
         assert_eq!(
-            mat_eigen_lr(
-                &mut l_real,
-                &mut l_imag_wrong,
-                &mut u_real,
-                &mut u_imag,
-                &mut v_real,
-                &mut v_imag,
-                &mut a,
-            ),
+            mat_eigen_lr(&mut l_real, &mut l_imag_wrong, &mut u_real, &mut u_imag, &mut v_real, &mut v_imag, &mut a,),
             Err("vectors are incompatible"),
         );
         assert_eq!(
-            mat_eigen_lr(
-                &mut l_real,
-                &mut l_imag,
-                &mut u_real_wrong,
-                &mut u_imag,
-                &mut v_real,
-                &mut v_imag,
-                &mut a,
-            ),
+            mat_eigen_lr(&mut l_real, &mut l_imag, &mut u_real_wrong, &mut u_imag, &mut v_real, &mut v_imag, &mut a,),
             Err("matrices are incompatible"),
         );
         assert_eq!(
-            mat_eigen_lr(
-                &mut l_real,
-                &mut l_imag,
-                &mut u_real,
-                &mut u_imag_wrong,
-                &mut v_real,
-                &mut v_imag,
-                &mut a,
-            ),
+            mat_eigen_lr(&mut l_real, &mut l_imag, &mut u_real, &mut u_imag_wrong, &mut v_real, &mut v_imag, &mut a,),
             Err("matrices are incompatible"),
         );
         assert_eq!(
-            mat_eigen_lr(
-                &mut l_real,
-                &mut l_imag,
-                &mut u_real,
-                &mut u_imag,
-                &mut v_real_wrong,
-                &mut v_imag,
-                &mut a,
-            ),
+            mat_eigen_lr(&mut l_real, &mut l_imag, &mut u_real, &mut u_imag, &mut v_real_wrong, &mut v_imag, &mut a,),
             Err("matrices are incompatible"),
         );
         assert_eq!(
-            mat_eigen_lr(
-                &mut l_real,
-                &mut l_imag,
-                &mut u_real,
-                &mut u_imag,
-                &mut v_real,
-                &mut v_imag_wrong,
-                &mut a,
-            ),
+            mat_eigen_lr(&mut l_real, &mut l_imag, &mut u_real, &mut u_imag, &mut v_real, &mut v_imag_wrong, &mut a,),
             Err("matrices are incompatible"),
         );
     }
@@ -538,16 +470,7 @@ mod tests {
         let mut u_imag = Matrix::new(m, m);
         let mut v_real = Matrix::new(m, m);
         let mut v_imag = Matrix::new(m, m);
-        mat_eigen_lr(
-            &mut l_real,
-            &mut l_imag,
-            &mut u_real,
-            &mut u_imag,
-            &mut v_real,
-            &mut v_imag,
-            &mut a,
-        )
-        .unwrap();
+        mat_eigen_lr(&mut l_real, &mut l_imag, &mut u_real, &mut u_imag, &mut v_real, &mut v_imag, &mut a).unwrap();
         let s3 = f64::sqrt(3.0);
         let l_real_correct = &[-0.5, -0.5, 1.0];
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];

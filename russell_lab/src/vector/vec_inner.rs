@@ -42,15 +42,7 @@ pub fn vec_inner(u: &Vector, v: &Vector) -> f64 {
     } else if n == 8 {
         u[0] * v[0] + u[1] * v[1] + u[2] * v[2] + u[3] * v[3] + u[4] * v[4] + u[5] * v[5] + u[6] * v[6] + u[7] * v[7]
     } else if n == 9 {
-        u[0] * v[0]
-            + u[1] * v[1]
-            + u[2] * v[2]
-            + u[3] * v[3]
-            + u[4] * v[4]
-            + u[5] * v[5]
-            + u[6] * v[6]
-            + u[7] * v[7]
-            + u[8] * v[8]
+        u[0] * v[0] + u[1] * v[1] + u[2] * v[2] + u[3] * v[3] + u[4] * v[4] + u[5] * v[5] + u[6] * v[6] + u[7] * v[7] + u[8] * v[8]
     } else {
         crate::base::blas_dispatch::ddot(&u.as_data()[..n], &v.as_data()[..n])
     }

@@ -12,9 +12,7 @@ pub struct EigenProjsT2 {
 impl EigenProjsT2 {
     /// Allocates a new instance
     pub fn new() -> Self {
-        EigenProjsT2 {
-            eig: EigenValuesT2::new(),
-        }
+        EigenProjsT2 { eig: EigenValuesT2::new() }
     }
 
     /// Calculates the eigenprojectors of a symmetric second order tensor
@@ -26,12 +24,7 @@ impl EigenProjsT2 {
     /// `aa` -- the tensor A
     ///
     /// The default method is [EigenValMethod::AnalyticalHZ]
-    pub fn calculate(
-        &mut self,
-        ll: &mut [f64; 3],
-        projs: &mut [Tensor2<6>; 3],
-        aa: &Tensor2<6>,
-    ) -> Result<(), StrError> {
+    pub fn calculate(&mut self, ll: &mut [f64; 3], projs: &mut [Tensor2<6>; 3], aa: &Tensor2<6>) -> Result<(), StrError> {
         self.calculate_mx(ll, projs, aa, EigenValMethod::AnalyticalHZ)
     }
 
@@ -42,13 +35,7 @@ impl EigenProjsT2 {
     /// `ll` -- (output) the eigenvalues
     /// `projs` -- (output) the eigenprojectors
     /// `aa` -- the tensor A
-    pub fn calculate_mx(
-        &mut self,
-        ll: &mut [f64; 3],
-        projs: &mut [Tensor2<6>; 3],
-        aa: &Tensor2<6>,
-        method: EigenValMethod,
-    ) -> Result<(), StrError> {
+    pub fn calculate_mx(&mut self, ll: &mut [f64; 3], projs: &mut [Tensor2<6>; 3], aa: &Tensor2<6>, method: EigenValMethod) -> Result<(), StrError> {
         // calculate eigenvalues and eigenprojectors using Jacobi Iterative method
         if method == EigenValMethod::Iterative {
             // eigenvalues and eigenvectors

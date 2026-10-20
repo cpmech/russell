@@ -46,14 +46,7 @@ impl<'a, A> OdeSolverTrait<A> for EulerForward<'a, A> {
     }
 
     /// Updates x and y and computes the next stepsize
-    fn accept(
-        &mut self,
-        _work: &mut Workspace,
-        x: &mut f64,
-        y: &mut Vector,
-        h: f64,
-        _args: &mut A,
-    ) -> Result<(), StrError> {
+    fn accept(&mut self, _work: &mut Workspace, x: &mut f64, y: &mut Vector, h: f64, _args: &mut A) -> Result<(), StrError> {
         *x += h;
         vec_copy(y, &self.w).unwrap();
         Ok(())

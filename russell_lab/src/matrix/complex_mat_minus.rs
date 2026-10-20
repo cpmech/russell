@@ -55,22 +55,10 @@ mod tests {
         let b_2x3 = ComplexMatrix::new(2, 3);
         let b_3x2 = ComplexMatrix::new(3, 2);
         let mut c_2x2 = ComplexMatrix::new(2, 2);
-        assert_eq!(
-            complex_mat_minus(&mut c_2x2, &a_2x3, &b_2x2),
-            Err("matrices are incompatible")
-        );
-        assert_eq!(
-            complex_mat_minus(&mut c_2x2, &a_3x2, &b_2x2),
-            Err("matrices are incompatible")
-        );
-        assert_eq!(
-            complex_mat_minus(&mut c_2x2, &a_2x2, &b_2x3),
-            Err("matrices are incompatible")
-        );
-        assert_eq!(
-            complex_mat_minus(&mut c_2x2, &a_2x2, &b_3x2),
-            Err("matrices are incompatible")
-        );
+        assert_eq!(complex_mat_minus(&mut c_2x2, &a_2x3, &b_2x2), Err("matrices are incompatible"));
+        assert_eq!(complex_mat_minus(&mut c_2x2, &a_3x2, &b_2x2), Err("matrices are incompatible"));
+        assert_eq!(complex_mat_minus(&mut c_2x2, &a_2x2, &b_2x3), Err("matrices are incompatible"));
+        assert_eq!(complex_mat_minus(&mut c_2x2, &a_2x2, &b_3x2), Err("matrices are incompatible"));
     }
 
     #[test]
@@ -88,11 +76,7 @@ mod tests {
             [0.5, 1.0, 1.5, 2.0],
             [0.5, 1.0, 1.5, 2.0],
         ]);
-        let mut c = ComplexMatrix::from(&[
-            [NOISE, NOISE, NOISE, NOISE],
-            [NOISE, NOISE, NOISE, NOISE],
-            [NOISE, NOISE, NOISE, NOISE],
-        ]);
+        let mut c = ComplexMatrix::from(&[[NOISE, NOISE, NOISE, NOISE], [NOISE, NOISE, NOISE, NOISE], [NOISE, NOISE, NOISE, NOISE]]);
         complex_mat_minus(&mut c, &a, &b).unwrap();
         #[rustfmt::skip]
         let correct = &[

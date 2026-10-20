@@ -9,8 +9,7 @@ fn main() -> Result<(), StrError> {
 
     // h(x) = d²f/dx²(x)
     let h = |x: f64, _: &mut NoArgs| {
-        Ok((-2048.0 * f64::powi(x, 2)) / f64::powi(1.0 + 16.0 * f64::powi(x, 2), 3)
-            + 32.0 / f64::powi(1.0 + 16.0 * f64::powi(x, 2), 2))
+        Ok((-2048.0 * f64::powi(x, 2)) / f64::powi(1.0 + 16.0 * f64::powi(x, 2), 3) + 32.0 / f64::powi(1.0 + 16.0 * f64::powi(x, 2), 2))
     };
 
     let xx = Vector::linspace(-2.0, 2.0, 9)?;

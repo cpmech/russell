@@ -172,22 +172,13 @@ mod tests {
         assert_eq!(VerifyLinSys::from(&coo, &x, &rhs).err(), Some("matrix is empty"));
         let x_wrong = Vector::new(2);
         let rhs_wrong = Vector::new(1);
-        assert_eq!(
-            VerifyLinSys::from(&coo, &x_wrong, &rhs).err(),
-            Some("x.dim() must be equal to ncol")
-        );
-        assert_eq!(
-            VerifyLinSys::from(&coo, &x, &rhs_wrong).err(),
-            Some("rhs.dim() must be equal to nrow")
-        );
+        assert_eq!(VerifyLinSys::from(&coo, &x_wrong, &rhs).err(), Some("x.dim() must be equal to ncol"));
+        assert_eq!(VerifyLinSys::from(&coo, &x, &rhs_wrong).err(), Some("rhs.dim() must be equal to nrow"));
         // complex
         let coo = ComplexCooMatrix::new(2, 1, 1, Sym::No).unwrap();
         let x = ComplexVector::new(1);
         let rhs = ComplexVector::new(2);
-        assert_eq!(
-            VerifyLinSys::from_complex(&coo, &x, &rhs).err(),
-            Some("matrix is empty")
-        );
+        assert_eq!(VerifyLinSys::from_complex(&coo, &x, &rhs).err(), Some("matrix is empty"));
         let x_wrong = ComplexVector::new(2);
         let rhs_wrong = ComplexVector::new(1);
         assert_eq!(

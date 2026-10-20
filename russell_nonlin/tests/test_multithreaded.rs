@@ -69,9 +69,7 @@ struct Simulator<'a> {
 
 impl<'a> Simulator<'a> {
     fn new(config: &'a Config) -> Self {
-        Simulator {
-            data: SimData::new(config),
-        }
+        Simulator { data: SimData::new(config) }
     }
 }
 

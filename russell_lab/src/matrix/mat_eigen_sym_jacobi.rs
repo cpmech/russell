@@ -251,12 +251,7 @@ mod tests {
                 dot += v.get(r, k) * v_ref[r][k];
             }
             let err = (dot.abs() - 1.0).abs();
-            assert!(
-                err < tol,
-                "eigenvector {} not aligned with reference: |v·v_ref|-1 = {:e}",
-                k,
-                err
-            );
+            assert!(err < tol, "eigenvector {} not aligned with reference: |v·v_ref|-1 = {:e}", k, err);
         }
     }
 
@@ -265,15 +260,9 @@ mod tests {
         let mut a = Matrix::new(0, 1);
         let mut v = Matrix::new(1, 1);
         let mut l = Vector::new(0);
-        assert_eq!(
-            mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).err(),
-            Some("matrix must be square")
-        );
+        assert_eq!(mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).err(), Some("matrix must be square"));
         let mut a = Matrix::new(0, 0);
-        assert_eq!(
-            mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).err(),
-            Some("matrix dimension must be ≥ 1")
-        );
+        assert_eq!(mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).err(), Some("matrix dimension must be ≥ 1"));
         let mut a = Matrix::new(2, 2);
         assert_eq!(
             mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).err(),
@@ -299,11 +288,7 @@ mod tests {
         let data = &[[2.0, 1.0], [1.0, 2.0]];
         let (nit, l, v) = calc_eigen(data);
         assert_eq!(nit, 2);
-        mat_approx_eq(
-            &v,
-            &[[1.0 / SQRT_2, 1.0 / SQRT_2], [-1.0 / SQRT_2, 1.0 / SQRT_2]],
-            1e-15,
-        );
+        mat_approx_eq(&v, &[[1.0 / SQRT_2, 1.0 / SQRT_2], [-1.0 / SQRT_2, 1.0 / SQRT_2]], 1e-15);
         vec_approx_eq(&l, &[1.0, 3.0], 1e-15);
     }
 
@@ -394,15 +379,7 @@ mod tests {
             [-6.19179178753124115e-01, 5.95068272145819699e-01,  5.12358171676802088e-01],
         ];
         mat_approx_eq(&v, correct, 1e-15);
-        vec_approx_eq(
-            &l,
-            &[
-                -1.55809924785903786e+00,
-                6.69537390404459476e+00,
-                8.62725343814443657e-01,
-            ],
-            1e-15,
-        );
+        vec_approx_eq(&l, &[-1.55809924785903786e+00, 6.69537390404459476e+00, 8.62725343814443657e-01], 1e-15);
         check_eigen_sym(data, &v, &l, 1e-14);
     }
 

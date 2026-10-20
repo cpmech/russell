@@ -395,10 +395,7 @@ mod tests {
     #[test]
     fn chebyshev_t_and_derivatives_work() {
         let nn = 5;
-        let mut xx: Vec<_> = (0..(nn + 1))
-            .into_iter()
-            .map(|i| -1.5 + (i as f64) * 3.0 / (nn as f64))
-            .collect();
+        let mut xx: Vec<_> = (0..(nn + 1)).into_iter().map(|i| -1.5 + (i as f64) * 3.0 / (nn as f64)).collect();
         xx.push(-1.0);
         xx.push(1.0);
         for x in xx {

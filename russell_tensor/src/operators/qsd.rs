@@ -289,10 +289,7 @@ mod tests {
                 correct.set(
                     m,
                     n,
-                    s * (a.get(i, k) * b.get(j, l)
-                        + a.get(i, l) * b.get(j, k)
-                        + b.get(i, k) * a.get(j, l)
-                        + b.get(i, l) * a.get(j, k)),
+                    s * (a.get(i, k) * b.get(j, l) + a.get(i, l) * b.get(j, k) + b.get(i, k) * a.get(j, l) + b.get(i, l) * a.get(j, k)),
                 );
             }
         }

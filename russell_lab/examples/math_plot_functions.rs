@@ -69,9 +69,7 @@ fn main() -> Result<(), StrError> {
     // logistic_deriv1(x)
     let y_logistic_deriv1 = xc.get_mapped(math::logistic_deriv1);
     let mut curve = Curve::new();
-    curve
-        .set_line_width(2.5)
-        .draw(xc.as_data(), y_logistic_deriv1.as_data());
+    curve.set_line_width(2.5).draw(xc.as_data(), y_logistic_deriv1.as_data());
     let mut plot = Plot::new();
     let path = format!("{}/math_plot_functions_logistic_deriv1.svg", OUT_DIR);
     plot.add(&curve)
@@ -85,9 +83,7 @@ fn main() -> Result<(), StrError> {
     let mut curve = Curve::new();
     curve.set_line_width(2.5).draw(xa.as_data(), y_smooth_ramp.as_data());
     let mut text = Text::new();
-    text.set_bbox(true)
-        .set_bbox_facecolor("pink")
-        .set_bbox_edgecolor("black");
+    text.set_bbox(true).set_bbox_facecolor("pink").set_bbox_edgecolor("black");
     text.draw(-1.0, 0.85, &format!("$\\beta = {}$", beta));
     let mut plot = Plot::new();
     let path = format!("{}/math_plot_functions_smooth_ramp.svg", OUT_DIR);
@@ -101,9 +97,7 @@ fn main() -> Result<(), StrError> {
     let beta = 10.0;
     let y_smooth_ramp_deriv1 = xa.get_mapped(|x| math::smooth_ramp_deriv1(x, beta));
     let mut curve = Curve::new();
-    curve
-        .set_line_width(2.5)
-        .draw(xa.as_data(), y_smooth_ramp_deriv1.as_data());
+    curve.set_line_width(2.5).draw(xa.as_data(), y_smooth_ramp_deriv1.as_data());
     let mut plot = Plot::new();
     let path = format!("{}/math_plot_functions_smooth_ramp_deriv1.svg", OUT_DIR);
     plot.add(&curve)
@@ -116,9 +110,7 @@ fn main() -> Result<(), StrError> {
     let beta = 10.0;
     let y_smooth_ramp_deriv2 = xa.get_mapped(|x| math::smooth_ramp_deriv2(x, beta));
     let mut curve = Curve::new();
-    curve
-        .set_line_width(2.5)
-        .draw(xa.as_data(), y_smooth_ramp_deriv2.as_data());
+    curve.set_line_width(2.5).draw(xa.as_data(), y_smooth_ramp_deriv2.as_data());
     let mut plot = Plot::new();
     let path = format!("{}/math_plot_functions_smooth_ramp_deriv2.svg", OUT_DIR);
     plot.add(&curve)

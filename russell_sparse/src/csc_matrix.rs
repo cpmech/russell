@@ -194,14 +194,7 @@ where
     ///     Ok(())
     /// }
     /// ```
-    pub fn new(
-        nrow: usize,
-        ncol: usize,
-        col_pointers: Vec<i32>,
-        row_indices: Vec<i32>,
-        values: Vec<T>,
-        symmetric: Sym,
-    ) -> Result<Self, StrError> {
+    pub fn new(nrow: usize, ncol: usize, col_pointers: Vec<i32>, row_indices: Vec<i32>, values: Vec<T>, symmetric: Sym) -> Result<Self, StrError> {
         if nrow < 1 {
             return Err("nrow must be ≥ 1");
         }
@@ -783,12 +776,7 @@ where
     /// }
     /// ```
     pub fn get_info(&self) -> (usize, usize, usize, Sym) {
-        (
-            self.nrow,
-            self.ncol,
-            self.col_pointers[self.ncol] as usize,
-            self.symmetric,
-        )
+        (self.nrow, self.ncol, self.col_pointers[self.ncol] as usize, self.symmetric)
     }
 
     /// Get an access to the column pointers
@@ -920,10 +908,7 @@ mod tests {
     #[test]
     fn from_coo_captures_errors() {
         let coo = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
-        assert_eq!(
-            NumCscMatrix::<f64>::from_coo(&coo).err(),
-            Some("COO to CSC requires nnz > 0")
-        );
+        assert_eq!(NumCscMatrix::<f64>::from_coo(&coo).err(), Some("COO to CSC requires nnz > 0"));
     }
 
     #[test]
@@ -1230,12 +1215,7 @@ mod tests {
         let u = ComplexVector::from(&[cpx!(1.0, 1.0), cpx!(3.0, 1.0), cpx!(5.0, -1.0)]);
         let mut v = ComplexVector::new(csc.nrow);
         csc.mat_vec_mul(&mut v, cpx!(2.0, 4.0), &u).unwrap();
-        let correct = &[
-            cpx!(-40.0, 80.0),
-            cpx!(-10.0, 110.0),
-            cpx!(-64.0, 112.0),
-            cpx!(-2.0, 6.0),
-        ];
+        let correct = &[cpx!(-40.0, 80.0), cpx!(-10.0, 110.0), cpx!(-64.0, 112.0), cpx!(-2.0, 6.0)];
         complex_vec_approx_eq(&v, correct, 1e-15);
         // call mat_vec_mul again to make sure the vector is filled with zeros before the sum
         csc.mat_vec_mul(&mut v, cpx!(2.0, 4.0), &u).unwrap();

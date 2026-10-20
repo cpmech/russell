@@ -42,16 +42,8 @@ pub fn generate2d(xmin: f64, xmax: f64, ymin: f64, ymax: f64, nx: usize, ny: usi
     if nx == 0 || ny == 0 {
         return (x, y);
     }
-    let dx = if nx == 1 {
-        xmin
-    } else {
-        (xmax - xmin) / ((nx - 1) as f64)
-    };
-    let dy = if ny == 1 {
-        ymin
-    } else {
-        (ymax - ymin) / ((ny - 1) as f64)
-    };
+    let dx = if nx == 1 { xmin } else { (xmax - xmin) / ((nx - 1) as f64) };
+    let dy = if ny == 1 { ymin } else { (ymax - ymin) / ((ny - 1) as f64) };
     for i in 0..ny {
         let v = ymin + (i as f64) * dy;
         for j in 0..nx {
@@ -108,15 +100,7 @@ pub fn generate2d(xmin: f64, xmax: f64, ymin: f64, ymax: f64, nx: usize, ny: usi
 ///      └                          ┘"
 /// );
 /// ```
-pub fn generate3d<F>(
-    xmin: f64,
-    xmax: f64,
-    ymin: f64,
-    ymax: f64,
-    nx: usize,
-    ny: usize,
-    calc_z: F,
-) -> (Matrix, Matrix, Matrix)
+pub fn generate3d<F>(xmin: f64, xmax: f64, ymin: f64, ymax: f64, nx: usize, ny: usize, calc_z: F) -> (Matrix, Matrix, Matrix)
 where
     F: Fn(f64, f64) -> f64,
 {
@@ -126,16 +110,8 @@ where
     if nx == 0 || ny == 0 {
         return (x, y, z);
     }
-    let dx = if nx == 1 {
-        xmin
-    } else {
-        (xmax - xmin) / ((nx - 1) as f64)
-    };
-    let dy = if ny == 1 {
-        ymin
-    } else {
-        (ymax - ymin) / ((ny - 1) as f64)
-    };
+    let dx = if nx == 1 { xmin } else { (xmax - xmin) / ((nx - 1) as f64) };
+    let dy = if ny == 1 { ymin } else { (ymax - ymin) / ((ny - 1) as f64) };
     for i in 0..ny {
         let v = ymin + (i as f64) * dy;
         for j in 0..nx {

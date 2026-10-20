@@ -334,17 +334,11 @@ fn do_plot(name: &str, uu: &[f64], ll: &[f64], duds: &[f64], dlds: &[f64], steps
     curve_ana.draw(&uu_ana, &ll_ana);
 
     let mut curve_num = Curve::new();
-    curve_num
-        .set_label("numerical")
-        .set_line_style("None")
-        .set_marker_style(".");
+    curve_num.set_label("numerical").set_line_style("None").set_marker_style(".");
     curve_num.draw(&uu, &ll);
 
     let mut arrows = Canvas::new();
-    arrows
-        .set_arrow_scale(10.0)
-        .set_edge_color("None")
-        .set_face_color("black");
+    arrows.set_arrow_scale(10.0).set_edge_color("None").set_face_color("black");
     let na = uu.len() - 1; // there are one less arrow than points.
     for i in 0..na {
         let sigma = stepsizes[1 + i]; // the first stepsize is duplicated because of the initial state

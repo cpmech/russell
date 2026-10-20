@@ -265,14 +265,7 @@ impl<'a> SpcMap2d<'a> {
     /// * Boundary conditions are validated when solving, not during construction
     /// * Call [EssentialBcs2d::validate()] before solving to check boundary condition consistency
     /// * Periodic boundary conditions are not supported and will return an error
-    pub fn new(
-        map: Transfinite2d,
-        nr: usize,
-        ns: usize,
-        ebcs: EssentialBcs2d<'a>,
-        nbcs: NaturalBcs2d<'a>,
-        k: f64,
-    ) -> Result<Self, StrError> {
+    pub fn new(map: Transfinite2d, nr: usize, ns: usize, ebcs: EssentialBcs2d<'a>, nbcs: NaturalBcs2d<'a>, k: f64) -> Result<Self, StrError> {
         // check
         if nr < 2 {
             return Err("nr must be ≥ 2");
@@ -480,8 +473,7 @@ impl<'a> SpcMap2d<'a> {
                 let akl = a[n];
                 for d in 0..2 {
                     w[d] += self.mk
-                        * (self.d1r(i, k) * delta(j, l) * self.metrics.g_ctr[0][d]
-                            + delta(i, k) * self.d1s(j, l) * self.metrics.g_ctr[1][d])
+                        * (self.d1r(i, k) * delta(j, l) * self.metrics.g_ctr[0][d] + delta(i, k) * self.d1s(j, l) * self.metrics.g_ctr[1][d])
                         * akl
                 }
             }
@@ -626,12 +618,10 @@ impl<'a> SpcMap2d<'a> {
             } else {
                 for n in 0..neq {
                     let (k, l) = self.grid.get_ij(n);
-                    let mut val = 0.0
-                        + self.d2r(i, k) * delta(j, l) * g11
-                        + delta(i, k) * self.d2s(j, l) * g22
-                        + self.d1r(i, k) * self.d1s(j, l) * 2.0 * g12
-                        - self.d1r(i, k) * delta(j, l) * ll1
-                        - delta(i, k) * self.d1s(j, l) * ll2;
+                    let mut val =
+                        0.0 + self.d2r(i, k) * delta(j, l) * g11 + delta(i, k) * self.d2s(j, l) * g22 + self.d1r(i, k) * self.d1s(j, l) * 2.0 * g12
+                            - self.d1r(i, k) * delta(j, l) * ll1
+                            - delta(i, k) * self.d1s(j, l) * ll2;
                     val *= self.mk;
                     if m == n {
                         val += alpha; // diagonal entries due to α ϕ
@@ -663,12 +653,7 @@ impl<'a> SpcMap2d<'a> {
     /// * `alpha` -- Helmholtz coefficient (α); set to 0.0 for the Poisson equation
     /// * `extra_nnz` -- extra non-zeros to allocate in the A matrix
     /// * `get_constraints_mat` -- whether to return the constraints matrix or not
-    pub fn get_matrices_lmm(
-        &mut self,
-        alpha: f64,
-        extra_nnz: usize,
-        get_constraints_mat: bool,
-    ) -> (CooMatrix, Option<CooMatrix>) {
+    pub fn get_matrices_lmm(&mut self, alpha: f64, extra_nnz: usize, get_constraints_mat: bool) -> (CooMatrix, Option<CooMatrix>) {
         // allocate matrices
         let (neq, nlag, ndim) = self.get_dims_lmm();
         let nr = self.grid.nx();
@@ -726,12 +711,10 @@ impl<'a> SpcMap2d<'a> {
             } else {
                 for n in 0..neq {
                     let (k, l) = self.grid.get_ij(n);
-                    let mut val = 0.0
-                        + self.d2r(i, k) * delta(j, l) * g11
-                        + delta(i, k) * self.d2s(j, l) * g22
-                        + self.d1r(i, k) * self.d1s(j, l) * 2.0 * g12
-                        - self.d1r(i, k) * delta(j, l) * ll1
-                        - delta(i, k) * self.d1s(j, l) * ll2;
+                    let mut val =
+                        0.0 + self.d2r(i, k) * delta(j, l) * g11 + delta(i, k) * self.d2s(j, l) * g22 + self.d1r(i, k) * self.d1s(j, l) * 2.0 * g12
+                            - self.d1r(i, k) * delta(j, l) * ll1
+                            - delta(i, k) * self.d1s(j, l) * ll2;
                     val *= self.mk;
                     if m == n {
                         val += alpha; // diagonal entries due to α ϕ
@@ -984,13 +967,7 @@ impl<'a> SpcMap2d<'a> {
         );
         // calculate metrics
         self.metrics
-            .calculate_2d(
-                &self.dx_dr,
-                &self.dx_ds,
-                Some(&self.d2x_dr2),
-                Some(&self.d2x_ds2),
-                Some(&self.d2x_drs),
-            )
+            .calculate_2d(&self.dx_dr, &self.dx_ds, Some(&self.d2x_dr2), Some(&self.d2x_ds2), Some(&self.d2x_drs))
             .unwrap();
     }
 
@@ -1068,10 +1045,7 @@ mod tests {
         let mut ebcs = EssentialBcs2d::new();
         let nbcs = NaturalBcs2d::new();
         ebcs.set_periodic(true, true);
-        assert_eq!(
-            SpcMap2d::new(map, 3, 3, ebcs, nbcs, 1.0).err(),
-            Some("essential BCs cannot be periodic")
-        );
+        assert_eq!(SpcMap2d::new(map, 3, 3, ebcs, nbcs, 1.0).err(), Some("essential BCs cannot be periodic"));
     }
 
     #[test]
@@ -1082,10 +1056,7 @@ mod tests {
         let nbcs = NaturalBcs2d::new();
         let mut spc = SpcMap2d::new(map, 2, 2, ebcs, nbcs, 1.0).unwrap();
         let a = Vector::from(&[0.0]); // wrong size
-        assert_eq!(
-            spc.calculate_flow_vectors(&a).err(),
-            Some("a.dim() must equal the number of equations")
-        );
+        assert_eq!(spc.calculate_flow_vectors(&a).err(), Some("a.dim() must equal the number of equations"));
     }
 
     #[test]

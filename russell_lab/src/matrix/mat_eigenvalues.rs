@@ -102,10 +102,7 @@ mod tests {
         let m = a.nrow();
         let mut l_real = Vector::new(m);
         let mut l_imag = Vector::new(m);
-        assert_eq!(
-            mat_eigenvalues(&mut l_real, &mut l_imag, &mut a),
-            Err("matrix must be square")
-        );
+        assert_eq!(mat_eigenvalues(&mut l_real, &mut l_imag, &mut a), Err("matrix must be square"));
     }
 
     #[test]
@@ -116,14 +113,8 @@ mod tests {
         let mut l_imag = Vector::new(m);
         let mut l_real_wrong = Vector::new(m + 1);
         let mut l_imag_wrong = Vector::new(m + 1);
-        assert_eq!(
-            mat_eigenvalues(&mut l_real_wrong, &mut l_imag, &mut a),
-            Err("vectors are incompatible")
-        );
-        assert_eq!(
-            mat_eigenvalues(&mut l_real, &mut l_imag_wrong, &mut a),
-            Err("vectors are incompatible")
-        );
+        assert_eq!(mat_eigenvalues(&mut l_real_wrong, &mut l_imag, &mut a), Err("vectors are incompatible"));
+        assert_eq!(mat_eigenvalues(&mut l_real, &mut l_imag_wrong, &mut a), Err("vectors are incompatible"));
     }
 
     #[test]

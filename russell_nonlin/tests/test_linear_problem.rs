@@ -35,20 +35,9 @@ fn test_linear_constant() {
         .unwrap();
 
     // check
-    assert_eq!(
-        out.get_h_values(),
-        &[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
-    );
-    array_approx_eq(
-        out.get_l_values(),
-        &[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-        1e-15,
-    );
-    array_approx_eq(
-        out.get_u_values(0),
-        &[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-        1e-15,
-    );
+    assert_eq!(out.get_h_values(), &[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]);
+    array_approx_eq(out.get_l_values(), &[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0], 1e-15);
+    array_approx_eq(out.get_u_values(0), &[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0], 1e-15);
 
     // check stats
     let nstep = 10;
@@ -141,20 +130,9 @@ fn test_linear_constant_backward() {
         .unwrap();
 
     // check
-    assert_eq!(
-        out.get_h_values(),
-        &[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
-    );
-    array_approx_eq(
-        out.get_l_values(),
-        &[1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.0],
-        1e-15,
-    );
-    array_approx_eq(
-        out.get_u_values(0),
-        &[1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.0],
-        1e-15,
-    );
+    assert_eq!(out.get_h_values(), &[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]);
+    array_approx_eq(out.get_l_values(), &[1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.0], 1e-15);
+    array_approx_eq(out.get_u_values(0), &[1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.0], 1e-15);
 
     // check stats
     let nstep = 10;

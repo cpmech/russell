@@ -240,9 +240,7 @@ const B: f64 = 1.0;
 ///  x = B u
 /// Here, B = 1
 /// ```
-fn new_hs_model_problem<'a>(
-    use_continuous_modulus: bool,
-) -> Result<(System<'a, HSmodelArgs<'a>>, HSmodelArgs<'a>), StrError> {
+fn new_hs_model_problem<'a>(use_continuous_modulus: bool) -> Result<(System<'a, HSmodelArgs<'a>>, HSmodelArgs<'a>), StrError> {
     // Define G(u, λ)
     let ndim = 1;
     let nnz = Some(1);
@@ -382,10 +380,7 @@ fn do_plot(name: &str, uu: &Vec<f64>, ll: &Vec<f64>, fig_width: f64) -> Result<(
 
     // draw numerical solution: load-displacement curve
     let mut load_displacement_curve = Curve::new();
-    load_displacement_curve
-        .set_marker_style(".")
-        .set_line_color("#d60943")
-        .draw(uu, ll);
+    load_displacement_curve.set_marker_style(".").set_line_color("#d60943").draw(uu, ll);
 
     // generate the plot
     let fig_height = fig_width * 0.618;

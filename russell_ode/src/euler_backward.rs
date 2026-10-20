@@ -147,14 +147,7 @@ impl<'a, A> OdeSolverTrait<A> for EulerBackward<'a, A> {
     }
 
     /// Updates x and y and computes the next stepsize
-    fn accept(
-        &mut self,
-        _work: &mut Workspace,
-        x: &mut f64,
-        y: &mut Vector,
-        h: f64,
-        _args: &mut A,
-    ) -> Result<(), StrError> {
+    fn accept(&mut self, _work: &mut Workspace, x: &mut f64, y: &mut Vector, h: f64, _args: &mut A) -> Result<(), StrError> {
         *x += h;
         vec_copy(y, &self.w).unwrap();
         Ok(())
@@ -396,10 +389,7 @@ mod tests {
         let y = Vector::from(&[0.0]);
         let h = 0.1;
         let mut args = Args { count_f: 0 };
-        assert_eq!(
-            solver.step(&mut work, x, &y, h, &mut args).err(),
-            Some("f: stop (count = 1)")
-        );
+        assert_eq!(solver.step(&mut work, x, &y, h, &mut args).err(), Some("f: stop (count = 1)"));
         assert_eq!(solver.step(&mut work, x, &y, h, &mut args).err(), Some("jj: stop"));
         solver.params.newton.use_numerical_jacobian = true;
         assert_eq!(

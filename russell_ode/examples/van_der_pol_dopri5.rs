@@ -53,10 +53,7 @@ fn main() -> Result<(), StrError> {
     let mut curve3 = Curve::new();
     let mut curve4 = Curve::new();
     curve1.set_line_color("black").draw(out.dense_x(), out.dense_y(0));
-    curve2
-        .set_marker_style(".")
-        .set_marker_color("cyan")
-        .draw(out.step_x(), out.step_y(0));
+    curve2.set_marker_style(".").set_marker_color("cyan").draw(out.step_x(), out.step_y(0));
     curve3.set_line_color("red").set_line_style("--");
     for i in 0..out.stiff_x().len() {
         curve3.draw_ray(out.stiff_x()[i], 0.0, RayEndpoint::Vertical);

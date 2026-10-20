@@ -204,12 +204,7 @@ mod unix {
     /// Library directories of a package-manager or Homebrew SuiteSparse (see
     /// [`SYSTEM_INCLUDE_DIRS`]).
     #[cfg(not(feature = "local_umfpack"))]
-    const SYSTEM_LIB_DIRS: &[&str] = &[
-        "/opt/homebrew/lib",
-        "/usr/lib/x86_64-linux-gnu",
-        "/usr/lib",
-        "/usr/lib64",
-    ];
+    const SYSTEM_LIB_DIRS: &[&str] = &["/opt/homebrew/lib", "/usr/lib/x86_64-linux-gnu", "/usr/lib", "/usr/lib64"];
 
     /// Compiles and links the shims.
     pub fn compile() {
@@ -243,9 +238,7 @@ mod unix {
 
         let include_dirs = existing_dirs(SYSTEM_INCLUDE_DIRS);
         let lib_dirs = existing_dirs(SYSTEM_LIB_DIRS);
-        let header_found = include_dirs
-            .iter()
-            .any(|dir| std::path::Path::new(dir).join("umfpack.h").is_file());
+        let header_found = include_dirs.iter().any(|dir| std::path::Path::new(dir).join("umfpack.h").is_file());
         if !header_found || lib_dirs.is_empty() {
             panic!(
                 "russell_sparse: UMFPACK was not found.\n\
@@ -350,12 +343,7 @@ fn emit_rpath(dir: &std::path::Path) {
     // only the kinds that exist are announced; the plain instruction covers the
     // library's own unit-test binary, which the per-kind ones do not reach.
     println!("cargo:rustc-link-arg={flag}");
-    for (kind, subdir) in [
-        ("bins", "src/bin"),
-        ("tests", "tests"),
-        ("examples", "examples"),
-        ("benches", "benches"),
-    ] {
+    for (kind, subdir) in [("bins", "src/bin"), ("tests", "tests"), ("examples", "examples"), ("benches", "benches")] {
         if manifest.join(subdir).is_dir() {
             println!("cargo:rustc-link-arg-{kind}={flag}");
         }

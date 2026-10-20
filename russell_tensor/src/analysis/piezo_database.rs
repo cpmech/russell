@@ -46,9 +46,7 @@ impl PiezoDatabase {
 
     /// Gets a reference to a material in the database
     pub fn get(&self, material_id: &str) -> Result<&Material, StrError> {
-        self.materials
-            .get(material_id)
-            .ok_or("material not found in the database")
+        self.materials.get(material_id).ok_or("material not found in the database")
     }
 }
 

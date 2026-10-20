@@ -93,13 +93,7 @@ fn solve(genie: Genie) -> Result<(), StrError> {
     println!("x =\n{}", x);
 
     // check
-    let x_correct = &[
-        cpx!(3.3, -1.00),
-        cpx!(1.0, 0.17),
-        cpx!(5.5, 0.00),
-        cpx!(9.0, 0.00),
-        cpx!(10.0, -17.75),
-    ];
+    let x_correct = &[cpx!(3.3, -1.00), cpx!(1.0, 0.17), cpx!(5.5, 0.00), cpx!(9.0, 0.00), cpx!(10.0, -17.75)];
     complex_vec_approx_eq(&x, x_correct, 1e-3);
     Ok(())
 }

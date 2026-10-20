@@ -42,13 +42,7 @@ use crate::{Complex64, StrError};
 ///     Ok(())
 /// }
 /// ```
-pub fn complex_mat_mat_mul(
-    c: &mut ComplexMatrix,
-    alpha: Complex64,
-    a: &ComplexMatrix,
-    b: &ComplexMatrix,
-    beta: Complex64,
-) -> Result<(), StrError> {
+pub fn complex_mat_mat_mul(c: &mut ComplexMatrix, alpha: Complex64, a: &ComplexMatrix, b: &ComplexMatrix, beta: Complex64) -> Result<(), StrError> {
     let (m, n) = c.dims();
     let k = a.ncol();
     if a.nrow() != m || b.nrow() != k || b.ncol() != n {

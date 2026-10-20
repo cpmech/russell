@@ -1,7 +1,6 @@
 use crate::{
-    AsArray2D, Complex64, ComplexMatrix, ComplexVector, Matrix, Norm, Vector, approx_eq, complex_mat_add,
-    complex_mat_approx_eq, complex_mat_mat_mul, complex_mat_norm, complex_mat_zip, complex_vec_zip, cpx, mat_add,
-    mat_mat_mul, mat_norm, small::small_mat_add, small::small_mat_mat_mul,
+    AsArray2D, Complex64, ComplexMatrix, ComplexVector, Matrix, Norm, Vector, approx_eq, complex_mat_add, complex_mat_approx_eq, complex_mat_mat_mul,
+    complex_mat_norm, complex_mat_zip, complex_vec_zip, cpx, mat_add, mat_mat_mul, mat_norm, small::small_mat_add, small::small_mat_mat_mul,
 };
 
 /// Checks Hermitian matrix given by the lower and upper parts
@@ -112,14 +111,8 @@ where
 /// err := a⋅v - v⋅λ
 /// ```
 #[allow(dead_code)]
-pub(crate) fn check_eigen<'a, T>(
-    data: &'a T,
-    v_real: &Matrix,
-    l_real: &Vector,
-    v_imag: &Matrix,
-    l_imag: &Vector,
-    tolerance: f64,
-) where
+pub(crate) fn check_eigen<'a, T>(data: &'a T, v_real: &Matrix, l_real: &Vector, v_imag: &Matrix, l_imag: &Vector, tolerance: f64)
+where
     T: AsArray2D<'a, f64>,
 {
     let a = ComplexMatrix::from(data);

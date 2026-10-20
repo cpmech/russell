@@ -428,24 +428,13 @@ pub fn t2_ddot_t4_ddot_t2<const N: usize>(a: &Tensor2<N>, dd: &Tensor4<N>, b: &T
 /// * `beta` -- the second scalar multiplier
 /// * `a` -- the first second-order tensor
 /// * `b` -- the second second-order tensor
-pub fn t4_ddot_t2_dyad_t2_ddot_t4<const N: usize>(
-    ee: &mut Tensor4<N>,
-    alpha: f64,
-    dd: &Tensor4<N>,
-    beta: f64,
-    a: &Tensor2<N>,
-    b: &Tensor2<N>,
-) {
+pub fn t4_ddot_t2_dyad_t2_ddot_t4<const N: usize>(ee: &mut Tensor4<N>, alpha: f64, dd: &Tensor4<N>, beta: f64, a: &Tensor2<N>, b: &Tensor2<N>) {
     for m in 0..N {
         for n in 0..N {
             ee.set(m, n, alpha * dd.get(m, n));
             for p in 0..N {
                 for q in 0..N {
-                    ee.set(
-                        m,
-                        n,
-                        ee.get(m, n) + beta * dd.get(m, p) * a.vec[p] * b.vec[q] * dd.get(q, n),
-                    );
+                    ee.set(m, n, ee.get(m, n) + beta * dd.get(m, p) * a.vec[p] * b.vec[q] * dd.get(q, n));
                 }
             }
         }
@@ -776,8 +765,7 @@ mod tests {
             [-1.0, -2.0,  0.0],
             [-2.0,  2.0,  0.0],
             [ 0.0,  0.0, -3.0]]).unwrap();
-        let mut b =
-            Tensor2::<4>::from_std_matrix(&[[1000.0, 0.0, 0.0], [0.0, 2000.0, 0.0], [0.0, 0.0, 3000.0]]).unwrap();
+        let mut b = Tensor2::<4>::from_std_matrix(&[[1000.0, 0.0, 0.0], [0.0, 2000.0, 0.0], [0.0, 0.0, 3000.0]]).unwrap();
         t2_ddot_t4(&mut b, ADD, 1.0, &a, &dd);
         let correct = &[[910.0, -144.0, 0.0], [-144.0, 1904.0, 0.0], [0.0, 0.0, 2898.0]];
         mat_approx_eq(&b.as_std_matrix(), correct, 1e-13);

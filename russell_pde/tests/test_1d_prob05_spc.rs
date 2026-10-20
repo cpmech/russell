@@ -11,8 +11,7 @@ fn test_1d_prob05_spc() -> Result<(), StrError> {
     let ll = 1.0;
     let g0 = 1.0;
     let phi_ll = 0.2;
-    let (xmin, xmax, kx, ebcs, nbcs, source, analytical, ana_flow) =
-        ProblemSamples::d1_problem_05(beta, ll, g0, phi_ll);
+    let (xmin, xmax, kx, ebcs, nbcs, source, analytical, ana_flow) = ProblemSamples::d1_problem_05(beta, ll, g0, phi_ll);
 
     // allocate the solver
     let nx = 11;
@@ -43,20 +42,14 @@ fn test_1d_prob05_spc() -> Result<(), StrError> {
         }
     });
     let nn = nx - 1;
-    println!(
-        "N = {:>2}, max(err) = {:>10.5e}, max(flow_err) = {:>10.5e}",
-        nn, err_max, flow_err_max
-    );
+    println!("N = {:>2}, max(err) = {:>10.5e}, max(flow_err) = {:>10.5e}", nn, err_max, flow_err_max);
 
     // plot
     if SAVE_FIGURE {
         let mut curve_ana = Curve::new();
         let mut curve_num = Curve::new();
         curve_ana.set_label("Analytical");
-        curve_num
-            .set_label("Numerical")
-            .set_marker_style("o")
-            .set_line_style("None");
+        curve_num.set_label("Numerical").set_marker_style("o").set_line_style("None");
         let xx_ana = linspace(xmin, xmax, 101);
         let uu_ana = xx_ana.iter().map(|&x| analytical(x)).collect::<Vec<_>>();
         let mut xx_num = vec![0.0; nx];

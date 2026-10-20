@@ -658,10 +658,7 @@ mod tests {
         assert_eq!(Status::from_sup(Ok(true)), Status::SecondaryUpdateTerminate);
 
         // Err -> SecondaryUpdateError
-        assert_eq!(
-            Status::from_sup(Err("some error")),
-            Status::SecondaryUpdateError("some error")
-        );
+        assert_eq!(Status::from_sup(Err("some error")), Status::SecondaryUpdateError("some error"));
     }
 
     #[test]
@@ -669,14 +666,8 @@ mod tests {
         assert_eq!(Method::Natural.name(), "Natural");
         assert_eq!(Method::Arclength.name(), "Arclength");
 
-        assert_eq!(
-            Method::Natural.description(),
-            "Natural parameter continuation; solves G(u, λ) = 0"
-        );
-        assert_eq!(
-            Method::Arclength.description(),
-            "Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0"
-        );
+        assert_eq!(Method::Natural.description(), "Natural parameter continuation; solves G(u, λ) = 0");
+        assert_eq!(Method::Arclength.description(), "Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0");
     }
 
     #[test]

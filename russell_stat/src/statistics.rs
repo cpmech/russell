@@ -88,12 +88,7 @@ impl Statistics {
         let std_dev = variance.sqrt();
 
         // results
-        Statistics {
-            min,
-            max,
-            mean,
-            std_dev,
-        }
+        Statistics { min, max, mean, std_dev }
     }
 }
 

@@ -115,8 +115,7 @@ pub fn mat_cholesky(a: &mut Matrix, upper: bool) -> Result<(), StrError> {
                 lower.set(i, j, lower.get(j, i));
             }
         }
-        lapack_dispatch::dpotrf(lower.as_mut_data(), m)
-            .map_err(|_| "LAPACK ERROR (dpotrf): Positive definite check failed")?;
+        lapack_dispatch::dpotrf(lower.as_mut_data(), m).map_err(|_| "LAPACK ERROR (dpotrf): Positive definite check failed")?;
         for j in 0..m {
             // i <= j, so this touches the upper triangle only.
             for i in 0..=j {
@@ -124,8 +123,7 @@ pub fn mat_cholesky(a: &mut Matrix, upper: bool) -> Result<(), StrError> {
             }
         }
     } else {
-        lapack_dispatch::dpotrf(a.as_mut_data(), m)
-            .map_err(|_| "LAPACK ERROR (dpotrf): Positive definite check failed")?;
+        lapack_dispatch::dpotrf(a.as_mut_data(), m).map_err(|_| "LAPACK ERROR (dpotrf): Positive definite check failed")?;
     }
     Ok(())
 }

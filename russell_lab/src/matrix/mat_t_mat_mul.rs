@@ -71,18 +71,9 @@ mod tests {
         let b_2x1 = Matrix::new(2, 1);
         let b_1x3 = Matrix::new(1, 3);
         let mut c_2x2 = Matrix::new(2, 2);
-        assert_eq!(
-            mat_t_mat_mul(&mut c_2x2, 1.0, &a_2x1, &b_2x1, 0.0),
-            Err("matrices are incompatible")
-        );
-        assert_eq!(
-            mat_t_mat_mul(&mut c_2x2, 1.0, &a_1x2, &b_2x1, 0.0),
-            Err("matrices are incompatible")
-        );
-        assert_eq!(
-            mat_t_mat_mul(&mut c_2x2, 1.0, &a_2x1, &b_1x3, 0.0),
-            Err("matrices are incompatible")
-        );
+        assert_eq!(mat_t_mat_mul(&mut c_2x2, 1.0, &a_2x1, &b_2x1, 0.0), Err("matrices are incompatible"));
+        assert_eq!(mat_t_mat_mul(&mut c_2x2, 1.0, &a_1x2, &b_2x1, 0.0), Err("matrices are incompatible"));
+        assert_eq!(mat_t_mat_mul(&mut c_2x2, 1.0, &a_2x1, &b_1x3, 0.0), Err("matrices are incompatible"));
     }
 
     #[test]
@@ -113,15 +104,7 @@ mod tests {
                     sum += a.get(l, i) * b.get(l, j);
                 }
                 let old = c.get(i, j);
-                c.set(
-                    i,
-                    j,
-                    if beta == 0.0 {
-                        alpha * sum
-                    } else {
-                        alpha * sum + beta * old
-                    },
-                );
+                c.set(i, j, if beta == 0.0 { alpha * sum } else { alpha * sum + beta * old });
             }
         }
     }

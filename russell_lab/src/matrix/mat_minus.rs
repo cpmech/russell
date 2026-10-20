@@ -76,11 +76,7 @@ mod tests {
             [0.5, 1.0, 1.5, 2.0],
             [0.5, 1.0, 1.5, 2.0],
         ]);
-        let mut c = Matrix::from(&[
-            [NOISE, NOISE, NOISE, NOISE],
-            [NOISE, NOISE, NOISE, NOISE],
-            [NOISE, NOISE, NOISE, NOISE],
-        ]);
+        let mut c = Matrix::from(&[[NOISE, NOISE, NOISE, NOISE], [NOISE, NOISE, NOISE, NOISE], [NOISE, NOISE, NOISE, NOISE]]);
         mat_minus(&mut c, &a, &b).unwrap();
         #[rustfmt::skip]
         let correct = &[

@@ -8,8 +8,8 @@
 
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use russell_lab::{
-    Matrix, Vector, mat_add, mat_mat_mul, mat_update, small_mat_add, small_mat_mat_mul, small_mat_update,
-    small_solve_lin_sys, small_vec_add, small_vec_update, solve_lin_sys, vec_add, vec_update,
+    Matrix, Vector, mat_add, mat_mat_mul, mat_update, small_mat_add, small_mat_mat_mul, small_mat_update, small_solve_lin_sys, small_vec_add,
+    small_vec_update, solve_lin_sys, vec_add, vec_update,
 };
 
 /// Matrix sizes for the matrix operations

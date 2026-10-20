@@ -88,11 +88,7 @@ const N_MAX_ITERATIONS: usize = 20;
 ///     Ok(())
 /// }
 /// ```
-pub fn small_mat_eigen_sym_jacobi<const N: usize>(
-    l: &mut [f64; N],
-    v: &mut [[f64; N]; N],
-    a: &mut [[f64; N]; N],
-) -> Result<usize, StrError> {
+pub fn small_mat_eigen_sym_jacobi<const N: usize>(l: &mut [f64; N], v: &mut [[f64; N]; N], a: &mut [[f64; N]; N]) -> Result<usize, StrError> {
     // compile-time check that the matrix dimension is at least 1
     const { assert!(N > 0, "matrix dimension must be ≥ 1") };
 
@@ -242,12 +238,7 @@ mod tests {
                 dot += v[r][k] * v_ref[r][k];
             }
             let err = (dot.abs() - 1.0).abs();
-            assert!(
-                err < tol,
-                "eigenvector {} not aligned with reference: |v·v_ref|-1 = {:e}",
-                k,
-                err
-            );
+            assert!(err < tol, "eigenvector {} not aligned with reference: |v·v_ref|-1 = {:e}", k, err);
         }
     }
 
@@ -264,11 +255,7 @@ mod tests {
         let data = &[[2.0, 1.0], [1.0, 2.0]];
         let (nit, l, v) = calc_eigen(data);
         assert_eq!(nit, 2);
-        small_mat_approx_eq(
-            &v,
-            &[[1.0 / SQRT_2, 1.0 / SQRT_2], [-1.0 / SQRT_2, 1.0 / SQRT_2]],
-            1e-15,
-        );
+        small_mat_approx_eq(&v, &[[1.0 / SQRT_2, 1.0 / SQRT_2], [-1.0 / SQRT_2, 1.0 / SQRT_2]], 1e-15);
         array_approx_eq(&l, &[1.0, 3.0], 1e-15);
     }
 
@@ -359,15 +346,7 @@ mod tests {
             [-6.19179178753124115e-01, 5.95068272145819699e-01,  5.12358171676802088e-01],
         ];
         small_mat_approx_eq(&v, correct, 1e-15);
-        array_approx_eq(
-            &l,
-            &[
-                -1.55809924785903786e+00,
-                6.69537390404459476e+00,
-                8.62725343814443657e-01,
-            ],
-            1e-15,
-        );
+        array_approx_eq(&l, &[-1.55809924785903786e+00, 6.69537390404459476e+00, 8.62725343814443657e-01], 1e-15);
         small_check_eigen_sym(data, &v, &l, 1e-14);
     }
 

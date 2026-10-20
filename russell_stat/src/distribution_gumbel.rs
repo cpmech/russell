@@ -190,14 +190,8 @@ mod tests {
 
     #[test]
     fn gumbel_handles_errors() {
-        assert_eq!(
-            DistributionGumbel::new(2.0, f64::INFINITY).err(),
-            Some("invalid parameters")
-        );
-        assert_eq!(
-            DistributionGumbel::new_from_mu_sig(2.0, f64::INFINITY).err(),
-            Some("invalid parameters")
-        );
+        assert_eq!(DistributionGumbel::new(2.0, f64::INFINITY).err(), Some("invalid parameters"));
+        assert_eq!(DistributionGumbel::new_from_mu_sig(2.0, f64::INFINITY).err(), Some("invalid parameters"));
     }
 
     #[test]

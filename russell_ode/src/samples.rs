@@ -41,13 +41,7 @@ impl Samples {
     /// * `y0` -- initial y
     /// * `args` -- is a placeholder variable with the arguments to F and J
     /// * `y_fn_x` -- is a function to compute the analytical solution
-    pub fn simple_equation_constant<'a>() -> (
-        System<'a, NoArgs>,
-        f64,
-        Vector,
-        NoArgs,
-        impl Fn(&mut Vector, f64, &mut NoArgs),
-    ) {
+    pub fn simple_equation_constant<'a>() -> (System<'a, NoArgs>, f64, Vector, NoArgs, impl Fn(&mut Vector, f64, &mut NoArgs)) {
         // system
         let ndim = 1;
         let mut system = System::new(ndim, |f: &mut Vector, _x: f64, _y: &Vector, _args: &mut NoArgs| {
@@ -152,13 +146,7 @@ impl Samples {
     pub fn simple_system_with_mass_matrix<'a>(
         symmetric: bool,
         genie: Genie,
-    ) -> (
-        System<'a, NoArgs>,
-        f64,
-        Vector,
-        NoArgs,
-        impl Fn(&mut Vector, f64, &mut NoArgs),
-    ) {
+    ) -> (System<'a, NoArgs>, f64, Vector, NoArgs, impl Fn(&mut Vector, f64, &mut NoArgs)) {
         // selected symmetric type (for both Mass and Jacobian matrices)
         let sym = genie.get_sym(symmetric);
         let triangular = sym.triangular();
@@ -705,19 +693,11 @@ impl Samples {
                     jj.reset();
                     jj.put(0, 2, 1.0 * alpha).unwrap();
                     jj.put(1, 3, 1.0 * alpha).unwrap();
-                    jj.put(2, 0, (1.0 + a * dj00 * MD / dd0 + b * dj10 * MU / dd1 + c) * alpha)
-                        .unwrap();
-                    jj.put(2, 1, (a * dj01 * MD / dd0 + b * dj11 * MU / dd1) * alpha)
-                        .unwrap();
+                    jj.put(2, 0, (1.0 + a * dj00 * MD / dd0 + b * dj10 * MU / dd1 + c) * alpha).unwrap();
+                    jj.put(2, 1, (a * dj01 * MD / dd0 + b * dj11 * MU / dd1) * alpha).unwrap();
                     jj.put(2, 3, 2.0 * alpha).unwrap();
-                    jj.put(3, 0, (dj00 * y[1] * MD / dd0 + dj10 * y[1] * MU / dd1) * alpha)
-                        .unwrap();
-                    jj.put(
-                        3,
-                        1,
-                        (1.0 + dj01 * y[1] * MD / dd0 + dj11 * y[1] * MU / dd1 + c) * alpha,
-                    )
-                    .unwrap();
+                    jj.put(3, 0, (dj00 * y[1] * MD / dd0 + dj10 * y[1] * MU / dd1) * alpha).unwrap();
+                    jj.put(3, 1, (1.0 + dj01 * y[1] * MD / dd0 + dj11 * y[1] * MU / dd1 + c) * alpha).unwrap();
                     jj.put(3, 2, -2.0 * alpha).unwrap();
                     Ok(())
                 },
@@ -778,13 +758,7 @@ impl Samples {
     /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
     ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
     ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-    pub fn hairer_wanner_eq1<'a>() -> (
-        System<'a, NoArgs>,
-        f64,
-        Vector,
-        NoArgs,
-        impl Fn(&mut Vector, f64, &mut NoArgs),
-    ) {
+    pub fn hairer_wanner_eq1<'a>() -> (System<'a, NoArgs>, f64, Vector, NoArgs, impl Fn(&mut Vector, f64, &mut NoArgs)) {
         // constants
         const L: f64 = -50.0; // lambda
 
@@ -1148,13 +1122,7 @@ impl Samples {
     ///
     /// * Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
     ///   Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
-    pub fn kreyszig_eq6_page902<'a>() -> (
-        System<'a, NoArgs>,
-        f64,
-        Vector,
-        NoArgs,
-        impl Fn(&mut Vector, f64, &mut NoArgs),
-    ) {
+    pub fn kreyszig_eq6_page902<'a>() -> (System<'a, NoArgs>, f64, Vector, NoArgs, impl Fn(&mut Vector, f64, &mut NoArgs)) {
         // system
         let ndim = 1;
         let mut system = System::new(ndim, |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
@@ -1224,13 +1192,7 @@ impl Samples {
     ///
     /// * Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
     ///   Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
-    pub fn kreyszig_ex4_page920<'a>() -> (
-        System<'a, NoArgs>,
-        f64,
-        Vector,
-        NoArgs,
-        impl Fn(&mut Vector, f64, &mut NoArgs),
-    ) {
+    pub fn kreyszig_ex4_page920<'a>() -> (System<'a, NoArgs>, f64, Vector, NoArgs, impl Fn(&mut Vector, f64, &mut NoArgs)) {
         // system
         let ndim = 2;
         let mut system = System::new(ndim, |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {

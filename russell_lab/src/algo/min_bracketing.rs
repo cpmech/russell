@@ -232,11 +232,7 @@ mod tests {
             target: usize,
         }
         let f = |x, args: &mut Args| {
-            let res = if args.count == args.target {
-                Err("stop")
-            } else {
-                Ok(x * x - 1.0)
-            };
+            let res = if args.count == args.target { Err("stop") } else { Ok(x * x - 1.0) };
             args.count += 1;
             res
         };
@@ -272,11 +268,7 @@ mod tests {
             }
             println!("\n===================================================================");
             println!("\n{}", test.name);
-            let x_guess = if i == 4 {
-                0.15
-            } else {
-                if i % 2 == 0 { -0.1 } else { 0.1 }
-            };
+            let x_guess = if i == 4 { 0.15 } else { if i % 2 == 0 { -0.1 } else { 0.1 } };
             let bracket = solver.basic(x_guess, args, test.f).unwrap();
             println!("\n{}", bracket);
             println!("\n{}", solver.get_stats().unwrap());
@@ -304,9 +296,6 @@ mod tests {
         assert!(f(1.0, args).unwrap() > 0.0);
         let mut solver = MinBracketing::new();
         solver.n_iteration_max = 2;
-        assert_eq!(
-            solver.basic(0.0, args, f).err(),
-            Some("try_bracket_min failed to converge")
-        );
+        assert_eq!(solver.basic(0.0, args, f).err(), Some("try_bracket_min failed to converge"));
     }
 }

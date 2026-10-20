@@ -82,8 +82,7 @@ pub struct System<'a, A> {
     /// Calculates the Gu = dG/du and Gλ = dG/dλ derivatives
     ///
     /// The function is `calc_jac(ggu, ggl, l, u, args)`
-    pub(crate) calc_jac:
-        Arc<dyn Fn(&mut CooMatrix, &mut Vector, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a>,
+    pub(crate) calc_jac: Arc<dyn Fn(&mut CooMatrix, &mut Vector, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a>,
 
     /// Creates a copy of external state variables at the beginning of a step
     ///
@@ -104,8 +103,7 @@ pub struct System<'a, A> {
     ///
     /// The function is `fn (do_backup, u0, u1, l0, l1, args) -> stop_gracefully` with `(u0, l0)` being the
     /// value at the beginning of the step and `(u1, l1)` the value at the updated step.
-    pub(crate) update_secondary_state:
-        Option<Arc<dyn Fn(bool, &Vector, &Vector, f64, f64, &mut A) -> Result<bool, StrError> + Send + Sync + 'a>>,
+    pub(crate) update_secondary_state: Option<Arc<dyn Fn(bool, &Vector, &Vector, f64, f64, &mut A) -> Result<bool, StrError> + Send + Sync + 'a>>,
 }
 
 impl<'a, A> System<'a, A> {
@@ -285,13 +283,7 @@ mod tests {
         Ok(())
     }
 
-    fn dummy_calc_jac(
-        _ggu: &mut CooMatrix,
-        _ggl: &mut Vector,
-        _l: f64,
-        _u: &Vector,
-        _args: &mut u8,
-    ) -> Result<(), &'static str> {
+    fn dummy_calc_jac(_ggu: &mut CooMatrix, _ggl: &mut Vector, _l: f64, _u: &Vector, _args: &mut u8) -> Result<(), &'static str> {
         Ok(())
     }
 
@@ -372,13 +364,7 @@ mod tests {
         assert!(system.prepare_to_iterate.is_some());
 
         system.set_update_secondary_state(
-            |_do_backup: bool,
-             _u0: &Vector,
-             _u1: &Vector,
-             _l0: f64,
-             _l1: f64,
-             _args: &mut u8|
-             -> Result<bool, &'static str> { Ok(false) },
+            |_do_backup: bool, _u0: &Vector, _u1: &Vector, _l0: f64, _l1: f64, _args: &mut u8| -> Result<bool, &'static str> { Ok(false) },
         );
         assert!(system.update_secondary_state.is_some());
 

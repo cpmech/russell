@@ -194,12 +194,9 @@ mod accelerator {
         /// `/usr/include`, where no `-I` is needed.
         fn headers_available(include_paths: &[PathBuf]) -> bool {
             let implicit = [PathBuf::from("/usr/include"), PathBuf::from("/usr/local/include")];
-            ["cblas.h", "lapack.h"].iter().all(|header| {
-                include_paths
-                    .iter()
-                    .chain(&implicit)
-                    .any(|dir| dir.join(header).is_file())
-            })
+            ["cblas.h", "lapack.h"]
+                .iter()
+                .all(|header| include_paths.iter().chain(&implicit).any(|dir| dir.join(header).is_file()))
         }
 
         /// Keeps only the directories that exist, so the fallback never emits

@@ -55,14 +55,8 @@ mod tests {
         let v = ComplexVector::new(2);
         let mut wrong = Vector::new(1);
         let mut ok = Vector::new(2);
-        assert_eq!(
-            complex_vec_unzip(&mut wrong, &mut ok, &v).err(),
-            Some("vectors are incompatible")
-        );
-        assert_eq!(
-            complex_vec_unzip(&mut ok, &mut wrong, &v).err(),
-            Some("vectors are incompatible")
-        );
+        assert_eq!(complex_vec_unzip(&mut wrong, &mut ok, &v).err(), Some("vectors are incompatible"));
+        assert_eq!(complex_vec_unzip(&mut ok, &mut wrong, &v).err(), Some("vectors are incompatible"));
     }
 
     #[test]

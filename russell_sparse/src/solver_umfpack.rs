@@ -748,22 +748,10 @@ mod tests {
             assert!(!res.is_empty());
             assert_ne!(res, default);
         }
-        assert_eq!(
-            handle_umfpack_error_code(ERROR_NULL_POINTER),
-            "UMFPACK failed due to NULL POINTER error"
-        );
-        assert_eq!(
-            handle_umfpack_error_code(ERROR_MALLOC),
-            "UMFPACK failed due to MALLOC error"
-        );
-        assert_eq!(
-            handle_umfpack_error_code(ERROR_VERSION),
-            "UMFPACK failed due to VERSION error"
-        );
-        assert_eq!(
-            handle_umfpack_error_code(ERROR_NOT_AVAILABLE),
-            "UMFPACK is not AVAILABLE"
-        );
+        assert_eq!(handle_umfpack_error_code(ERROR_NULL_POINTER), "UMFPACK failed due to NULL POINTER error");
+        assert_eq!(handle_umfpack_error_code(ERROR_MALLOC), "UMFPACK failed due to MALLOC error");
+        assert_eq!(handle_umfpack_error_code(ERROR_VERSION), "UMFPACK failed due to VERSION error");
+        assert_eq!(handle_umfpack_error_code(ERROR_NOT_AVAILABLE), "UMFPACK is not AVAILABLE");
         assert_eq!(
             handle_umfpack_error_code(ERROR_NEED_INITIALIZATION),
             "UMFPACK failed because INITIALIZATION is needed"

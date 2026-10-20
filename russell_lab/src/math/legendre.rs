@@ -751,13 +751,7 @@ mod tests {
         for n in 1..=15 {
             let xx = legendre_gauss_points(n);
             for k in 0..=n {
-                assert!(
-                    xx[k] > -1.0 && xx[k] < 1.0,
-                    "Point x[{}]={} out of (-1,1) for n={}",
-                    k,
-                    xx[k],
-                    n
-                );
+                assert!(xx[k] > -1.0 && xx[k] < 1.0, "Point x[{}]={} out of (-1,1) for n={}", k, xx[k], n);
             }
         }
     }

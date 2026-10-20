@@ -243,14 +243,7 @@ where
     ///     Ok(())
     /// }
     /// ```
-    pub fn from(
-        nrow: usize,
-        ncol: usize,
-        row_indices: Vec<i32>,
-        col_indices: Vec<i32>,
-        values: Vec<T>,
-        symmetric: Sym,
-    ) -> Result<Self, StrError> {
+    pub fn from(nrow: usize, ncol: usize, row_indices: Vec<i32>, col_indices: Vec<i32>, values: Vec<T>, symmetric: Sym) -> Result<Self, StrError> {
         if nrow < 1 {
             return Err("nrow must be ≥ 1");
         }
@@ -973,18 +966,9 @@ mod tests {
 
     #[test]
     fn new_captures_errors() {
-        assert_eq!(
-            NumCooMatrix::<f32>::new(0, 1, 3, Sym::No).err(),
-            Some("nrow must be ≥ 1")
-        );
-        assert_eq!(
-            NumCooMatrix::<f32>::new(1, 0, 3, Sym::No).err(),
-            Some("ncol must be ≥ 1")
-        );
-        assert_eq!(
-            NumCooMatrix::<f32>::new(1, 1, 0, Sym::No).err(),
-            Some("max_nnz must be ≥ 1")
-        );
+        assert_eq!(NumCooMatrix::<f32>::new(0, 1, 3, Sym::No).err(), Some("nrow must be ≥ 1"));
+        assert_eq!(NumCooMatrix::<f32>::new(1, 0, 3, Sym::No).err(), Some("ncol must be ≥ 1"));
+        assert_eq!(NumCooMatrix::<f32>::new(1, 1, 0, Sym::No).err(), Some("max_nnz must be ≥ 1"));
         assert_eq!(
             NumCooMatrix::<f32>::new(2, 1, 1, Sym::YesFull).err(),
             Some("symmetric storage requires a square matrix")
@@ -1054,19 +1038,10 @@ mod tests {
     #[test]
     fn put_fails_on_wrong_values() {
         let mut coo = NumCooMatrix::<i32>::new(1, 1, 1, Sym::No).unwrap();
-        assert_eq!(
-            coo.put(1, 0, 0).err(),
-            Some("COO matrix: index of row is outside range")
-        );
-        assert_eq!(
-            coo.put(0, 1, 0).err(),
-            Some("COO matrix: index of column is outside range")
-        );
+        assert_eq!(coo.put(1, 0, 0).err(), Some("COO matrix: index of row is outside range"));
+        assert_eq!(coo.put(0, 1, 0).err(), Some("COO matrix: index of column is outside range"));
         assert_eq!(coo.put(0, 0, 0).err(), None); // << will take all spots
-        assert_eq!(
-            coo.put(0, 0, 0).err(),
-            Some("COO matrix: max number of items has been reached")
-        );
+        assert_eq!(coo.put(0, 0, 0).err(), Some("COO matrix: max number of items has been reached"));
         let mut coo = NumCooMatrix::<u8>::new(2, 2, 4, Sym::YesLower).unwrap();
         assert_eq!(
             coo.put(0, 1, 0).err(),
@@ -1325,16 +1300,10 @@ mod tests {
         b_1x2.put(0, 1, 654).unwrap();
         assert_eq!(a_1x2.assign(2, &b_2x1).err(), Some("matrices must have the same nrow"));
         assert_eq!(a_1x2.assign(2, &b_1x3).err(), Some("matrices must have the same ncol"));
-        assert_eq!(
-            a_1x2.assign(2, &b_1x2).err(),
-            Some("COO matrix: max number of items has been reached")
-        );
+        assert_eq!(a_1x2.assign(2, &b_1x2).err(), Some("COO matrix: max number of items has been reached"));
         let mut a_2x2 = NumCooMatrix::<u32>::new(2, 2, nnz_a, Sym::YesLower).unwrap();
         let b_2x2 = NumCooMatrix::<u32>::new(2, 2, nnz_b, Sym::YesFull).unwrap();
-        assert_eq!(
-            a_2x2.assign(2, &b_2x2).err(),
-            Some("matrices must have the same symmetric type")
-        );
+        assert_eq!(a_2x2.assign(2, &b_2x2).err(), Some("matrices must have the same symmetric type"));
     }
 
     #[test]
@@ -1376,16 +1345,10 @@ mod tests {
         b_1x2.put(0, 0, 456).unwrap();
         assert_eq!(a_1x2.add(2, &b_2x1).err(), Some("other.nrow must be ≤ this.nrow"));
         assert_eq!(a_1x2.add(2, &b_1x3).err(), Some("other.ncol must be ≤ this.ncol"));
-        assert_eq!(
-            a_1x2.add(2, &b_1x2).err(),
-            Some("COO matrix: max number of items has been reached")
-        );
+        assert_eq!(a_1x2.add(2, &b_1x2).err(), Some("COO matrix: max number of items has been reached"));
         let mut a_2x2 = NumCooMatrix::<u32>::new(2, 2, 1, Sym::YesLower).unwrap();
         let b_2x2 = NumCooMatrix::<u32>::new(2, 2, 1, Sym::YesFull).unwrap();
-        assert_eq!(
-            a_2x2.add(2, &b_2x2).err(),
-            Some("matrices must have the same symmetric type")
-        );
+        assert_eq!(a_2x2.add(2, &b_2x2).err(), Some("matrices must have the same symmetric type"));
     }
 
     #[test]
@@ -1420,33 +1383,21 @@ mod tests {
     fn put_lagrange_block_capture_errors() {
         let bb = NumCooMatrix::<f64>::new(1, 1, 6, Sym::YesFull).unwrap();
         let mut aa = NumCooMatrix::<f64>::new(2, 3, 1, Sym::No).unwrap();
-        assert_eq!(
-            aa.put_lagrange_block(&bb).err(),
-            Some("the Lagrange block must not be symmetric")
-        );
+        assert_eq!(aa.put_lagrange_block(&bb).err(), Some("the Lagrange block must not be symmetric"));
 
         let bb = NumCooMatrix::<f64>::new(2, 1, 6, Sym::No).unwrap();
 
         let mut aa = NumCooMatrix::<f64>::new(2, 3, 1, Sym::No).unwrap();
-        assert_eq!(
-            aa.put_lagrange_block(&bb).err(),
-            Some("ncol(B) + nrow(B) must be ≤ nrow(A)")
-        );
+        assert_eq!(aa.put_lagrange_block(&bb).err(), Some("ncol(B) + nrow(B) must be ≤ nrow(A)"));
 
         let mut aa = NumCooMatrix::<f64>::new(3, 2, 1, Sym::No).unwrap();
-        assert_eq!(
-            aa.put_lagrange_block(&bb).err(),
-            Some("ncol(B) + nrow(B) must be ≤ ncol(A)")
-        );
+        assert_eq!(aa.put_lagrange_block(&bb).err(), Some("ncol(B) + nrow(B) must be ≤ ncol(A)"));
 
         let mut aa = NumCooMatrix::<f64>::new(2, 2, 1, Sym::No).unwrap();
         let mut bb = NumCooMatrix::<f64>::new(1, 1, 6, Sym::No).unwrap();
         aa.put(0, 0, 1000.0).unwrap();
         bb.put(0, 0, 10.0).unwrap();
-        assert_eq!(
-            aa.put_lagrange_block(&bb).err(),
-            Some("COO matrix: max number of items has been reached")
-        );
+        assert_eq!(aa.put_lagrange_block(&bb).err(), Some("COO matrix: max number of items has been reached"));
     }
 
     #[test]
@@ -1911,12 +1862,7 @@ mod tests {
         let u = ComplexVector::from(&[cpx!(1.0, 1.0), cpx!(3.0, 1.0), cpx!(5.0, -1.0)]);
         let mut v = ComplexVector::new(coo.nrow);
         coo.mat_vec_mul(&mut v, cpx!(2.0, 4.0), &u).unwrap();
-        let correct = &[
-            cpx!(-40.0, 80.0),
-            cpx!(-10.0, 110.0),
-            cpx!(-64.0, 112.0),
-            cpx!(-2.0, 6.0),
-        ];
+        let correct = &[cpx!(-40.0, 80.0), cpx!(-10.0, 110.0), cpx!(-64.0, 112.0), cpx!(-2.0, 6.0)];
         complex_vec_approx_eq(&v, correct, 1e-15);
         // call mat_vec_mul again to make sure the vector is filled with zeros before the sum
         coo.mat_vec_mul(&mut v, cpx!(2.0, 4.0), &u).unwrap();
@@ -2107,21 +2053,11 @@ mod tests {
         let u = ComplexVector::from(&[cpx!(1.0, 1.0), cpx!(3.0, 1.0), cpx!(5.0, -1.0)]);
         let mut v = ComplexVector::new(coo.nrow);
         coo.mat_vec_mul_update(&mut v, cpx!(2.0, 4.0), &u).unwrap();
-        let correct = &[
-            cpx!(-40.0, 80.0),
-            cpx!(-10.0, 110.0),
-            cpx!(-64.0, 112.0),
-            cpx!(-2.0, 6.0),
-        ];
+        let correct = &[cpx!(-40.0, 80.0), cpx!(-10.0, 110.0), cpx!(-64.0, 112.0), cpx!(-2.0, 6.0)];
         complex_vec_approx_eq(&v, correct, 1e-15);
         // call mat_vec_mul_update again
         coo.mat_vec_mul_update(&mut v, cpx!(2.0, 4.0), &u).unwrap();
-        let correct = &[
-            cpx!(-80.0, 160.0),
-            cpx!(-20.0, 220.0),
-            cpx!(-128.0, 224.0),
-            cpx!(-4.0, 12.0),
-        ];
+        let correct = &[cpx!(-80.0, 160.0), cpx!(-20.0, 220.0), cpx!(-128.0, 224.0), cpx!(-4.0, 12.0)];
         complex_vec_approx_eq(&v, correct, 1e-15);
     }
 

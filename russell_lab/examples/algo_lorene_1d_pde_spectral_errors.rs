@@ -102,12 +102,8 @@ fn run(nn: usize, grid_type: InterpGrid, do_plot: bool, calc_error: bool) -> Res
         let xx_plt = Vector::linspace(-1.0, 1.0, 201)?;
         let yy_num = xx_plt.get_mapped(|x| interp.eval(x, uu).unwrap());
         let yy_ana = xx_plt.get_mapped(|x| analytical(x, aa).unwrap());
-        curve_ana
-            .set_label("analytical")
-            .draw(xx_plt.as_data(), yy_ana.as_data());
-        curve_num1
-            .set_label("numerical")
-            .draw(xx_plt.as_data(), yy_num.as_data());
+        curve_ana.set_label("analytical").draw(xx_plt.as_data(), yy_ana.as_data());
+        curve_num1.set_label("numerical").draw(xx_plt.as_data(), yy_num.as_data());
         curve_num2
             .set_line_style("None")
             .set_marker_style("o")
@@ -125,11 +121,7 @@ fn run(nn: usize, grid_type: InterpGrid, do_plot: bool, calc_error: bool) -> Res
     }
 
     // done
-    let error = if calc_error {
-        interp.estimate_max_error(aa, analytical)?
-    } else {
-        0.0
-    };
+    let error = if calc_error { interp.estimate_max_error(aa, analytical)? } else { 0.0 };
     Ok(error)
 }
 
@@ -138,11 +130,7 @@ fn main() -> Result<(), StrError> {
     run(4, InterpGrid::ChebyshevGaussLobatto, true, false)?;
 
     // grid types
-    let grid_types = [
-        InterpGrid::Uniform,
-        InterpGrid::ChebyshevGauss,
-        InterpGrid::ChebyshevGaussLobatto,
-    ];
+    let grid_types = [InterpGrid::Uniform, InterpGrid::ChebyshevGauss, InterpGrid::ChebyshevGaussLobatto];
 
     // error analysis
     println!("\n... error analysis ...");

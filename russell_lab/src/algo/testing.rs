@@ -158,10 +158,7 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             name: "2: f(x) = 1/2 - 1/(1 + 16 x²)", // (shifted) Runge equation
             f: |x, _| Ok(1.0 / 2.0 - 1.0 / (1.0 + 16.0 * x * x)),
             g: |x, _| Ok((32.0 * x) / f64::powi(1.0 + 16.0 * f64::powi(x, 2), 2)),
-            h: |x, _| {
-                Ok((-2048.0 * f64::powi(x, 2)) / f64::powi(1.0 + 16.0 * f64::powi(x, 2), 3)
-                    + 32.0 / f64::powi(1.0 + 16.0 * f64::powi(x, 2), 2))
-            },
+            h: |x, _| Ok((-2048.0 * f64::powi(x, 2)) / f64::powi(1.0 + 16.0 * f64::powi(x, 2), 3) + 32.0 / f64::powi(1.0 + 16.0 * f64::powi(x, 2), 2)),
             range: (-2.0, 2.0),
             nroot: 2,
             min1: Some(Bracket {
@@ -308,10 +305,8 @@ pub fn get_test_functions() -> Vec<TestFunction> {
                 let e2x = f64::exp(2.0 * x);
                 let pi2 = f64::powi(PI, 2);
                 Ok(
-                    (2.0 * f64::powi((-10.0 * PI * c5px * s5px) / e2x + (2.0 * s5px2) / e2x, 2))
-                        / f64::powi(1.0 - s5px2 / e2x, 3)
-                        - ((-50.0 * pi2 * f64::powi(c5px, 2)) / e2x + (40.0 * PI * c5px * s5px) / e2x
-                            - (4.0 * s5px2) / e2x
+                    (2.0 * f64::powi((-10.0 * PI * c5px * s5px) / e2x + (2.0 * s5px2) / e2x, 2)) / f64::powi(1.0 - s5px2 / e2x, 3)
+                        - ((-50.0 * pi2 * f64::powi(c5px, 2)) / e2x + (40.0 * PI * c5px * s5px) / e2x - (4.0 * s5px2) / e2x
                             + (50.0 * pi2 * s5px2) / e2x)
                             / f64::powi(1.0 - s5px2 / e2x, 2),
                 )
@@ -505,13 +500,12 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             id: 11,
             name: "11: f(x) = (2 x⁵ - x + 3)/x²",
             f: |x, _| Ok((2.0 * f64::powi(x, 5) - x + 3.0) / (x * x)),
-            g: |x, _| {
-                Ok((-1.0 + 10.0 * f64::powi(x, 4)) / f64::powi(x, 2)
-                    - (2.0 * (3.0 - x + 2.0 * f64::powi(x, 5))) / f64::powi(x, 3))
-            },
+            g: |x, _| Ok((-1.0 + 10.0 * f64::powi(x, 4)) / f64::powi(x, 2) - (2.0 * (3.0 - x + 2.0 * f64::powi(x, 5))) / f64::powi(x, 3)),
             h: |x, _| {
-                Ok(40.0 * x - (4.0 * (-1.0 + 10.0 * f64::powi(x, 4))) / f64::powi(x, 3)
-                    + (6.0 * (3.0 - x + 2.0 * f64::powi(x, 5))) / f64::powi(x, 4))
+                Ok(
+                    40.0 * x - (4.0 * (-1.0 + 10.0 * f64::powi(x, 4))) / f64::powi(x, 3)
+                        + (6.0 * (3.0 - x + 2.0 * f64::powi(x, 5))) / f64::powi(x, 4),
+                )
             },
             range: (1.0, 2.0),
             nroot: 0,

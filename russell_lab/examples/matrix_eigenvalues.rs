@@ -23,15 +23,7 @@ fn main() -> Result<(), StrError> {
     let mut v_imag = Matrix::new(m, m);
 
     // perform the eigen-decomposition
-    mat_eigen_lr(
-        &mut l_real,
-        &mut l_imag,
-        &mut u_real,
-        &mut u_imag,
-        &mut v_real,
-        &mut v_imag,
-        &mut a,
-    )?;
+    mat_eigen_lr(&mut l_real, &mut l_imag, &mut u_real, &mut u_imag, &mut v_real, &mut v_imag, &mut a)?;
 
     // check eigenvalues
     #[rustfmt::skip]

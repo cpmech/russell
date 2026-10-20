@@ -39,10 +39,7 @@ fn main() -> Result<(), StrError> {
         .set_line_style(":")
         .set_marker_style(".")
         .set_marker_every(5);
-    curve_dat
-        .set_label("noisy data")
-        .set_line_style("None")
-        .set_marker_style("+");
+    curve_dat.set_label("noisy data").set_line_style("None").set_marker_style("+");
     curve_ana.draw(xx.as_data(), yy_ana.as_data());
     curve_int.draw(xx.as_data(), yy_int.as_data());
     curve_dat.draw(xx_dat.as_data(), uu.as_data());

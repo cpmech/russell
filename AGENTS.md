@@ -480,7 +480,26 @@ These are the rules the code depends on. Each one has been violated at least onc
 
 ## Dispatch between the native and external backends
 
-Every call site that needs BLAS follows the same shape:
+BLAS and the main LAPACK drivers go through one module, not a `#[cfg]` pair per
+call site:
+
+- `base::blas_dispatch` -- dgemm (+tn/nt/tt), dgemv (+trans), ddot, dnrm2, dasum,
+  idamax, dlange, zgemm (+tn/nt/tt), dger, zger, dsyrk, zherk, daxpy, zaxpy,
+  zscal, dznrm2, zgemv (+trans), zsyrk.
+- `base::lapack_dispatch` -- dgesv, dpotrf, dsyev, dgesvd, dgeev.
+
+Both mirror the `native::*` signatures (`usize` lengths, no workspace argument,
+`Result<(), LapackError>`), so a call site reads the same in every configuration.
+Add an entry there, not a branch in the caller. `intel_mkl` wins when both
+features are on; there is no `compile_error!` for the pair, so `--all-features`
+is a valid build and exercises the MKL path.
+
+**A routine stays on the old per-file path when it has no twin to mirror or no
+measured gain.** That is a decision per routine, documented where it is made, not
+a TODO: `dgetrf`/`dgetri`, the complex routines, `dggev`/`zggev`, `dlange` and
+`small_mat_svd` (a stack array, which a LAPACK workspace defeats); and on the
+BLAS side `dcopy`/`zcopy` (one `memmove`), `dscal` and `zlange` (measured slower
+through the library at the sizes that matter). Those keep this shape:
 
 ```rust
 #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
@@ -491,40 +510,31 @@ Every call site that needs BLAS follows the same shape:
 // the native call, which uses usize lengths and no workspace argument
 ```
 
-Two things worth knowing before adding one:
+Before adding to either path:
 
-1. **The `extern "C"` declaration must be gated with the same condition.** If it
-   is not, a native-only build fails to link. If it *is* but the call site is not
-   dispatched, the build fails to compile — so migrate the dispatch **first** and
-   gate the declaration second, one file at a time. Gating first turns every
-   unmigrated call site into an error and leaves the tree unable to run tests.
-2. **Routines without a native implementation return
+1. **A new shim entry goes in both `c_code/interface.h` and the `.c`.** The
+   header is what `build.rs` tracks now, so a wrapper added to the source file
+   alone can be silently not rebuilt.
+2. **The `extern "C"` declaration must be gated with the same condition** -- in
+   the files that still hold one. If it is not, a native-only build fails to
+   link. If it *is* but the call site is not dispatched, the build fails to
+   compile, so migrate the dispatch **first** and gate the declaration second,
+   one file at a time.
+3. **Routines without a native implementation return
    `LapackError::NotImplemented`** rather than being left to fail at link time. A
    runtime error can name the feature to enable; a link error about a mangled
    symbol cannot.
-
-3. **A native driver returns `Result<(), LapackError>`, never LAPACK's `INFO`.**
+4. **A native driver returns `Result<(), LapackError>`, never LAPACK's `INFO`.**
    `INFO < 0` and `INFO > 0` both become an error at the driver boundary, so a
    caller never has to remember which integer means what. Internal helpers
    (`dlahqr`, `dhgeqz`, `dsteqr`, `dbdsqr`, `dtrevc3`, ...) keep returning `INFO`
    because that is what the reference source says and what a diff against it
    should show.
-
-4. **A native build does not need the shim's names, and must not warn about
-   them.** The shim's `lda`/`ldu`/`lwork`/`work`/`rwork`/`info` declarations sit
-   at function scope because the `open_blas`/`intel_mkl` branch uses them; in a native
-   build they are unused, so the enclosing function carries
-
-   ```rust
-   #[cfg_attr(not(any(feature = "open_blas", feature = "intel_mkl")), allow(unused_variables, unused_mut, unreachable_code, unused_assignments))]
-   ```
-
-   and the shim-only imports are `#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]`
-   (plus `feature = "dev_lapack"` for `CcBool`, which the reference shim also uses).
-   Keep both when editing those files: an unconditional `#[allow]` would hide the
-   same warning in the accelerated build, where it would be a real mistake. This
-   is deliberately preferred over moving the declarations into the `cfg` block --
-   that would edit the one branch that cannot be compiled on this machine.
+5. **The function-scope `lda`/`ldu`/`lwork`/`work`/`info` declarations and their
+   `#[cfg_attr(... allow(unused_variables, ...))]` belong only to the files still
+   on the per-file path.** The five dispatched drivers keep their scratch arrays
+   inside `lapack_dispatch`, which sizes the workspace from LAPACK's
+   `lwork = -1` query instead of the hard-coded minimum two call sites used.
 
 
 ## Code intelligence (CodeGraph)

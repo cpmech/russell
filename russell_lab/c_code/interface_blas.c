@@ -187,6 +187,11 @@ int32_t c_idamax(const double *x, const int32_t *n) {
     return (int32_t)cblas_idamax((int)(*n), x, 1);
 }
 
+// y := alpha x + y
+void c_daxpy(double alpha, const double *x, double *y, const int32_t *n) {
+    cblas_daxpy((int)(*n), alpha, x, 1, y, 1);
+}
+
 // c := alpha a b + beta c for complex data (both no-trans), using the same
 // pointer-to-scalar convention as cblas_zgemm itself
 void c_zgemm(const COMPLEX64 *alpha,
@@ -363,6 +368,50 @@ void c_zgemm_tt(const COMPLEX64 *alpha,
                 (int)(*m));
 }
 
+// y := alpha a x + beta y for complex data
+void c_zgemv(const COMPLEX64 *alpha,
+             const COMPLEX64 *a,
+             const COMPLEX64 *x,
+             const COMPLEX64 *beta,
+             COMPLEX64 *y,
+             const int32_t *m,
+             const int32_t *n) {
+    cblas_zgemv(CblasColMajor,
+                CblasNoTrans,
+                (int)(*m),
+                (int)(*n),
+                (const void *)alpha,
+                (const void *)a,
+                (int)(*m),
+                (const void *)x,
+                1,
+                (const void *)beta,
+                (void *)y,
+                1);
+}
+
+// y := alpha aᵀ x + beta y for complex data (not conjugated)
+void c_zgemv_trans(const COMPLEX64 *alpha,
+                   const COMPLEX64 *a,
+                   const COMPLEX64 *x,
+                   const COMPLEX64 *beta,
+                   COMPLEX64 *y,
+                   const int32_t *m,
+                   const int32_t *n) {
+    cblas_zgemv(CblasColMajor,
+                CblasTrans,
+                (int)(*m),
+                (int)(*n),
+                (const void *)alpha,
+                (const void *)a,
+                (int)(*m),
+                (const void *)x,
+                1,
+                (const void *)beta,
+                (void *)y,
+                1);
+}
+
 // a := alpha x yᵀ + a (dger, the unconjugated rank-1 update)
 void c_dger(double alpha, const double *x, const double *y, double *a, const int32_t *m, const int32_t *n) {
     cblas_dger(CblasColMajor, (int)(*m), (int)(*n), alpha, x, 1, y, 1, a, (int)(*m));
@@ -411,6 +460,48 @@ void c_dsyrk(double alpha,
                 transposed == C_TRUE ? (int)(*k) : (int)(*n),
                 beta,
                 c,
+                (int)(*n));
+}
+
+// y := alpha x + y for complex data
+void c_zaxpy(const COMPLEX64 *alpha, const COMPLEX64 *x, COMPLEX64 *y, const int32_t *n) {
+    cblas_zaxpy((int)(*n), (const void *)alpha, (const void *)x, 1, (void *)y, 1);
+}
+
+// x := alpha x for complex data
+void c_zscal(const COMPLEX64 *alpha, COMPLEX64 *x, const int32_t *n) {
+    cblas_zscal((int)(*n), (const void *)alpha, (void *)x, 1);
+}
+
+// ‖x‖₂ for complex data
+double c_dznrm2(const COMPLEX64 *x, const int32_t *n) {
+    return cblas_dznrm2((int)(*n), (const void *)x, 1);
+}
+
+// c := alpha a aᵀ + beta c, or c := alpha aᵀ a + beta c when `transposed`.
+//
+// The *symmetric* rank-k update for complex data: the transpose is plain, not
+// conjugated, which is what makes it `zsyrk` and not `zherk`. Alpha and beta are
+// complex pointers, as CBLAS takes them for the complex routines. Same
+// leading-dimension rule as `c_dsyrk`.
+void c_zsyrk(const COMPLEX64 *alpha,
+             const COMPLEX64 *a,
+             const COMPLEX64 *beta,
+             COMPLEX64 *c,
+             const int32_t *n,
+             const int32_t *k,
+             C_BOOL upper,
+             C_BOOL transposed) {
+    cblas_zsyrk(CblasColMajor,
+                upper == C_TRUE ? CblasUpper : CblasLower,
+                transposed == C_TRUE ? CblasTrans : CblasNoTrans,
+                (int)(*n),
+                (int)(*k),
+                (const void *)alpha,
+                (const void *)a,
+                transposed == C_TRUE ? (int)(*k) : (int)(*n),
+                (const void *)beta,
+                (void *)c,
                 (int)(*n));
 }
 
@@ -482,6 +573,11 @@ double c_dlange(int32_t norm_code,
 
 // Computes the matrix norm
 // <https://www.netlib.org/lapack/explore-html/d5/d8f/zlange_8f.html>
+//
+// No Rust caller: `blas_dispatch::zlange` measured LAPACK's zlange as no faster
+// than the native kernel on every norm and slower on the one-norm, so it stays
+// native. Kept as the twin of `c_dlange`, which is routed, so a future call site
+// finds the wrapper rather than writing it.
 double c_zlange(int32_t norm_code,
                 const int32_t *m,
                 const int32_t *n,

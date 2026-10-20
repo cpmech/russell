@@ -52,11 +52,9 @@ pub fn mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix, beta: f64
         return Ok(());
     }
     // The blocked, AVX2-accelerated `dgemm` in the default build, or the linked
-    // library's through the shim; `portable` remains for wasm32, which has no
-    // libc for the shim and no BLAS to link.
-    #[cfg(target_arch = "wasm32")]
-    crate::portable::mat_mat_mul_data(c.as_mut_data(), alpha, a.as_data(), b.as_data(), beta, m, n, k);
-    #[cfg(not(target_arch = "wasm32"))]
+    // library's through the shim. Every target, wasm32 included, goes through the
+    // dispatch: the native kernel is plain Rust and needs neither libc nor a BLAS
+    // to link, which is what used to require a separate portable copy here.
     crate::base::blas_dispatch::dgemm(alpha, a.as_data(), b.as_data(), beta, c.as_mut_data(), m, n, k);
     Ok(())
 }

@@ -30,17 +30,13 @@ pub(crate) const SVD_CODE_A: i32 = 0;
 //pub(crate) const SVD_CODE_O: i32 = 2;
 //pub(crate) const SVD_CODE_N: i32 = 3;
 
-// From: /usr/include/x86_64-linux-gnu/cblas.h
-// From: /opt/intel/oneapi/mkl/latest/include/mkl_cblas.h
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-pub(crate) const CBLAS_COL_MAJOR: i32 = 102;
-pub(crate) const CBLAS_NO_TRANS: i32 = 111;
-pub(crate) const CBLAS_TRANS: i32 = 112;
-// `CBLAS_CONJ_TRANS` is not needed since `complex_mat_herm_rank_op` routes through
-// `blas_dispatch::zherk`, which carries the conjugation as a `bool`; kept quoted
-// so the mirror of the CBLAS enum stays complete.
-//pub(crate) const CBLAS_CONJ_TRANS: i32 = 113;
-pub(crate) const CBLAS_UPPER: i32 = 121;
-pub(crate) const CBLAS_LOWER: i32 = 122;
+// The CBLAS enum values that the per-call-site `extern "C"` declarations used to
+// carry (`CblasColMajor`, `CblasNoTrans`, `CblasTrans`, `CblasUpper`,
+// `CblasLower`) are no longer named on the Rust side: `blas_dispatch` passes the
+// orientation and the triangle as `bool`s and `c_code/interface_blas.c` is the one
+// place that translates them into the library's spelling. Their values, from
+// `/usr/include/x86_64-linux-gnu/cblas.h` and `mkl_cblas.h`, are ColMajor 102,
+// NoTrans 111, Trans 112, ConjTrans 113, Upper 121 and Lower 122, should a future
+// shim entry need them.
 
 // -------------------------------------------------------------------------------------------

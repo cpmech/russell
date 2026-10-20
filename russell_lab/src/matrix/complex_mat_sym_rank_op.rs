@@ -1,31 +1,6 @@
 use super::ComplexMatrix;
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-use crate::CBLAS_COL_MAJOR;
-use crate::{CBLAS_LOWER, CBLAS_NO_TRANS, CBLAS_TRANS, CBLAS_UPPER, Complex64, StrError, to_i32};
+use crate::{Complex64, StrError};
 
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-unsafe extern "C" {
-    // Performs one of the symmetric rank k operations
-    // <https://www.netlib.org/lapack/explore-html/de/d54/zsyrk_8f.html>
-    fn cblas_zsyrk(
-        layout: i32,
-        uplo: i32,
-        trans: i32,
-        n: i32,
-        k: i32,
-        alpha: *const Complex64,
-        a: *const Complex64,
-        lda: i32,
-        beta: *const Complex64,
-        c: *mut Complex64,
-        ldc: i32,
-    );
-}
-
-#[cfg_attr(
-    not(any(feature = "open_blas", feature = "intel_mkl")),
-    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
-)]
 /// (zsyrk) Performs a symmetric rank k operation
 ///
 /// Performs one of the symmetric rank k operations:
@@ -111,52 +86,25 @@ pub fn complex_mat_sym_rank_op(
         return Err("[c] matrix must be square");
     }
     let (row, col) = a.dims();
-    let (lda, k, trans) = if !second_case {
+    let k = if !second_case {
         //   c   := α ⋅ a   ⋅  aᵀ + β ⋅ c
         // (n,n)      (n,k)  (k,n)    (n,n)
         if row != n {
             return Err("[a] matrix is incompatible");
         }
-        (row, col, CBLAS_NO_TRANS)
+        col
     } else {
         //   c   := α ⋅  aᵀ  ⋅  a + β ⋅ c
         // (n,n)       (n,k)  (k,n)   (n,n)
         if col != n {
             return Err("[a] matrix is incompatible");
         }
-        (row, row, CBLAS_TRANS)
+        row
     };
-    let uplo = if upper { CBLAS_UPPER } else { CBLAS_LOWER };
-    let n_i32 = to_i32(n);
-    let k_i32 = to_i32(k);
-    let ldc = n_i32;
-    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-    {
-        unsafe {
-            cblas_zsyrk(
-                CBLAS_COL_MAJOR,
-                uplo,
-                trans,
-                n_i32,
-                k_i32,
-                &alpha,
-                a.as_data().as_ptr(),
-                to_i32(lda),
-                &beta,
-                c.as_mut_data().as_mut_ptr(),
-                ldc,
-            );
-        }
-    }
-    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    {
-        if trans == CBLAS_TRANS {
-            // C := alpha A^T A, contraction over A's k rows.
-            crate::native::blas::zsyrk_rank(alpha, a.as_data(), beta, c.as_mut_data(), n, k, upper);
-        } else {
-            crate::native::blas::zsyrk(alpha, a.as_data(), beta, c.as_mut_data(), n, k, upper);
-        }
-    }
+    // `k` is a's column count in the first case and its row count in the second,
+    // and a's length is n*k either way, so the flag cannot be inferred from the
+    // shape: `second_case` is what says which contraction this is.
+    crate::base::blas_dispatch::zsyrk(alpha, a.as_data(), beta, c.as_mut_data(), n, k, upper, second_case);
     Ok(())
 }
 

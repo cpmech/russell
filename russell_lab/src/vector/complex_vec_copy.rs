@@ -1,14 +1,5 @@
 use super::ComplexVector;
 use crate::StrError;
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-use crate::{Complex64, to_i32};
-
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-unsafe extern "C" {
-    // Copies a vector into another
-    // <https://www.netlib.org/lapack/explore-html/d6/d53/zcopy_8f.html>
-    fn cblas_zcopy(n: i32, x: *const Complex64, incx: i32, y: *mut Complex64, incy: i32);
-}
 
 /// (zcopy) Copies a vector into another
 ///
@@ -41,16 +32,7 @@ pub fn complex_vec_copy(v: &mut ComplexVector, u: &ComplexVector) -> Result<(), 
     if u.dim() != n {
         return Err("vectors are incompatible");
     }
-    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-    {
-        let n_i32 = to_i32(n);
-        // Safety: the shim is linked in this configuration.
-        unsafe {
-            cblas_zcopy(n_i32, u.as_data().as_ptr(), 1, v.as_mut_data().as_mut_ptr(), 1);
-        }
-    }
-    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::zcopy(u.as_data(), v.as_mut_data());
+    crate::base::blas_dispatch::zcopy(u.as_data(), v.as_mut_data());
     Ok(())
 }
 

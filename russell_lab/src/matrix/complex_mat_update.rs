@@ -1,14 +1,5 @@
 use super::ComplexMatrix;
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-use crate::to_i32;
 use crate::{Complex64, StrError};
-
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-unsafe extern "C" {
-    // Computes constant times a vector plus a vector
-    // <https://www.netlib.org/lapack/explore-html/d7/db2/zaxpy_8f.html>
-    fn cblas_zaxpy(n: i32, alpha: *const Complex64, x: *const Complex64, incx: i32, y: *mut Complex64, incy: i32);
-}
 
 /// (zaxpy) Updates matrix based on another matrix
 ///
@@ -46,16 +37,7 @@ pub fn complex_mat_update(b: &mut ComplexMatrix, alpha: Complex64, a: &ComplexMa
     if a.nrow() != m || a.ncol() != n {
         return Err("matrices are incompatible");
     }
-    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-    {
-        let mn_i32 = to_i32(m * n);
-        // Safety: the shim is linked in this configuration.
-        unsafe {
-            cblas_zaxpy(mn_i32, &alpha, a.as_data().as_ptr(), 1, b.as_mut_data().as_mut_ptr(), 1);
-        }
-    }
-    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::zaxpy(alpha, a.as_data(), b.as_mut_data());
+    crate::base::blas_dispatch::zaxpy(alpha, a.as_data(), b.as_mut_data());
     Ok(())
 }
 

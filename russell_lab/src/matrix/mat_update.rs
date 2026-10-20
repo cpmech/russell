@@ -1,14 +1,5 @@
 use super::Matrix;
 use crate::StrError;
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-use crate::to_i32;
-
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-unsafe extern "C" {
-    // Computes constant times a vector plus a vector.
-    // <https://www.netlib.org/lapack/explore-html/d9/dcd/daxpy_8f.html>
-    fn cblas_daxpy(n: i32, alpha: f64, x: *const f64, incx: i32, y: *mut f64, incy: i32);
-}
 
 /// (daxpy) Updates matrix based on another matrix
 ///
@@ -48,16 +39,7 @@ pub fn mat_update(b: &mut Matrix, alpha: f64, a: &Matrix) -> Result<(), StrError
     if a.nrow() != m || a.ncol() != n {
         return Err("matrices are incompatible");
     }
-    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-    {
-        let mn_i32 = to_i32(m * n);
-        // Safety: the shim is linked in this configuration.
-        unsafe {
-            cblas_daxpy(mn_i32, alpha, a.as_data().as_ptr(), 1, b.as_mut_data().as_mut_ptr(), 1);
-        }
-    }
-    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::daxpy(alpha, a.as_data(), b.as_mut_data());
+    crate::base::blas_dispatch::daxpy(alpha, a.as_data(), b.as_mut_data());
     Ok(())
 }
 

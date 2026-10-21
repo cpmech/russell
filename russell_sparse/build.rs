@@ -220,7 +220,7 @@ mod windows {
         #[cfg(feature = "mumps")]
         {
             assert!(
-                target_env() != "msvc",
+                super::target_env() != "msvc",
                 "russell_sparse: MUMPS on Windows needs the GNU toolchain (MSYS2); build with \
                  `x86_64-pc-windows-gnu`, or disable the `mumps` feature"
             );
@@ -279,7 +279,7 @@ mod windows {
                 label: format!("vcpkg ({triplet})"),
             };
         }
-        if target_env() == "msvc" {
+        if super::target_env() == "msvc" {
             panic!(
                 "russell_sparse: UMFPACK was not found for MSVC.\n\
                  Install it with vcpkg (`vcpkg install suitesparse-umfpack[core]:x64-windows`) and set \

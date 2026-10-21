@@ -59,7 +59,7 @@ This library also provides functions to read and write Matrix Market files conta
 
 ## Installation
 
-This crate depends on some non-rust high-performance libraries. [See the main README file for the steps to install these dependencies.](https://github.com/cpmech/russell)
+The default build needs no external library: the sparse solver is pure Rust (the Native backend). The optional `umfpack` and `mumps` features link external solvers, and `open_blas`/`intel_mkl` accelerate the dense kernels; [the main README file](https://github.com/cpmech/russell) has the installation steps for each platform.
 
 ### Setting Cargo.toml
 

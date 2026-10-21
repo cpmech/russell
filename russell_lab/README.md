@@ -89,7 +89,7 @@ A few other third-party crates related to numerical mathematics and associated d
 
 ## Installation
 
-This crate depends on some non-rust high-performance libraries. [See the main README file for the steps to install these dependencies.](https://github.com/cpmech/russell)
+The default build needs no external library: the BLAS/LAPACK kernels are pure Rust (`algebra_linear`). The optional `open_blas` and `intel_mkl` features link an accelerator instead; [the main README file](https://github.com/cpmech/russell) has the installation steps for each platform.
 
 
 

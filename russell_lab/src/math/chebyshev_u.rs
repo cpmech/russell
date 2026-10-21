@@ -25,7 +25,7 @@ use super::chebyshev_tn_deriv1;
 ///
 /// # Examples
 ///
-/// ![Un](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_chebyshev_functions_un.svg)
+/// ![Un](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_chebyshev_functions_u.svg)
 ///
 /// ```
 /// use russell_lab::{approx_eq, math};
@@ -85,7 +85,7 @@ pub fn chebyshev_un(n: usize, x: f64) -> f64 {
 ///
 /// # Examples
 ///
-/// ![dUn/dx](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_chebyshev_functions_dun.svg)
+/// ![dUn/dx](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_chebyshev_functions_du.svg)
 ///
 /// ```
 /// use russell_lab::{approx_eq, math};
@@ -144,7 +144,7 @@ pub fn chebyshev_un_deriv1(n: usize, x: f64) -> f64 {
 ///
 /// # Examples
 ///
-/// ![dUn/dx](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_chebyshev_functions_d2un.svg)
+/// ![dUn/dx](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_chebyshev_functions_d2u.svg)
 ///
 /// ```
 /// use russell_lab::{approx_eq, math};
@@ -225,7 +225,7 @@ mod tests {
 
     #[test]
     fn special_values_works() {
-        // Tests U_n(x) at specific boundary points and zeroes (e.g., x = 1, -1 and 0)
+        // Tests U_n(x) at specific boundary points and zeros (e.g., x = 1, -1 and 0)
         for n in 0..10 {
             let expected = (n + 1) as f64;
             approx_eq(chebyshev_un(n, 1.0), expected, 1e-15);

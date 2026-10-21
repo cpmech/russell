@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 //! Numerical Continuation methods to solve nonlinear systems of equations
 //!
 //! This crate implements Predictor-Corrector solvers based on the Euler-Newton method for

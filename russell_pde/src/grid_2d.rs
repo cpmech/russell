@@ -26,7 +26,7 @@ use russell_lab::math::chebyshev_lobatto_points;
 ///                                     nx=5
 /// ```
 ///
-/// ## Index Conversion Formulae
+/// ## Index Conversion Formulas
 ///
 /// ```text
 /// m = i + j × nx    (convert (i,j) to linear index m)

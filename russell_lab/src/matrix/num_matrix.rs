@@ -989,7 +989,7 @@ where
     }
 }
 
-/// Allows to access NumMatrix components using indices (tuples)
+/// Provides access to NumMatrix components through indices (tuples)
 ///
 /// # Panics
 ///
@@ -1006,7 +1006,7 @@ where
     }
 }
 
-/// Allows to change NumMatrix components using indices (tuples)
+/// Provides mutable access to NumMatrix components through indices (tuples)
 ///
 /// # Panics
 ///

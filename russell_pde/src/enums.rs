@@ -1,9 +1,13 @@
 /// Specifies the (boundary) side of a rectangle
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Side {
+    /// Left side of the rectangle (minimum x)
     Xmin = 0,
+    /// Right side of the rectangle (maximum x)
     Xmax = 1,
+    /// Bottom side of the rectangle (minimum y)
     Ymin = 2,
+    /// Top side of the rectangle (maximum y)
     Ymax = 3,
 }
 

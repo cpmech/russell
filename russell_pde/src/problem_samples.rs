@@ -1,6 +1,7 @@
 use crate::{EssentialBcs1d, EssentialBcs2d, NaturalBcs1d, NaturalBcs2d, Side, Transfinite2d, TransfiniteSamples};
 use russell_lab::math::PI;
 
+/// Provides sample problems for testing and documentation
 pub struct ProblemSamples;
 
 impl ProblemSamples {

@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 //! Russell - Rust Scientific Library
 //!
 //! `russell_pde`: Solvers for partial differential equations using elliptic operators

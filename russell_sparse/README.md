@@ -22,7 +22,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 ## Introduction
 
-This library implements tools for handling sparse matrices and functions to solve large sparse systems using high-performant **direct** solvers:
+This library implements tools for handling sparse matrices and functions to solve large sparse systems using high-performance **direct** solvers:
 * [MUMPS](https://mumps-solver.org) - For very large systems, supporting parallel execution
 * [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) - Highly recommended for general sequential use
 
@@ -104,7 +104,7 @@ With the default features (Native solver, no external libraries) the crate build
 
 This section illustrates how to use `russell_sparse`. See also:
 
-* [More examples on the documentation](https://docs.rs/russell_sparse/)
+* [More examples in the documentation](https://docs.rs/russell_sparse/)
 * [Examples directory](https://github.com/cpmech/russell/tree/main/russell_sparse/examples)
 
 
@@ -319,7 +319,7 @@ The output looks like this:
 
 We found that MUMPS + OpenBLAS becomes very, very slow when the number of OpenMP threads is left automatic, i.e., using the available number of threads. Thus, with OpenBLAS, it is recommended to set LinSolParams.mumps_num_threads = 1 (this is automatically set when using OpenBLAS).
 
-This issue has been discussed in Reference #1 and also in Reference #2, who states (page 72) _"We have observed that multi-threading of OpenBLAS library in MUMPS leads to multiple thread conflicts which sometimes result in significant slow-down of the solver."_
+This issue has been discussed in Reference #1 and also in Reference #2, which states (page 72) _"We have observed that multi-threading of OpenBLAS library in MUMPS leads to multiple thread conflicts which sometimes result in significant slow-down of the solver."_
 
 Therefore, we have to take one of the two approaches:
 
@@ -336,7 +336,7 @@ OMP_NUM_THREADS=20 ~/rust_modules/release/solve_matrix_market -g mumps ~/Downloa
 
 Also, to reproduce the issue, we need:
 
-* Remove Debian OpenBLAS, MUMPS, and etc.
+* Remove Debian OpenBLAS, MUMPS, etc.
 * Install the compiled MUMPS solver with `zscripts/debian-compile-mumps.bash` and `zscripts/debian-compile-suitesparse.bash`
 
 ### References
@@ -350,7 +350,7 @@ Also, to reproduce the issue, we need:
 
 * The `c_code` directory contains a thin wrapper to the sparse solvers (MUMPS, UMFPACK)
 * The `build.rs` file uses the crate `cc` to build the C-wrappers
-* The `zscripts` directory also contains following:
+* The `zscripts` directory also contains the following:
     * `memcheck.bash`: Checks for memory leaks on the C-code using Valgrind
     * `run-examples`: Runs all examples in the `examples` directory
     * `run-solve-matrix-market.bash`: Runs the solve-matrix-market tool from the `bin` directory

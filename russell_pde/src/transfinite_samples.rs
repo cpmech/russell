@@ -3,6 +3,7 @@ use russell_lab::Vector;
 use std::f64::consts::PI;
 use std::sync::{Arc, Mutex};
 
+/// Provides sample transfinite mappings for testing and documentation
 pub struct TransfiniteSamples {}
 
 impl TransfiniteSamples {

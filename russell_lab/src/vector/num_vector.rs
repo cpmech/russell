@@ -755,7 +755,7 @@ where
     }
 }
 
-/// Allows to access NumVector components using indices
+/// Provides access to NumVector components through indices
 ///
 /// # Panics
 ///
@@ -782,7 +782,7 @@ where
     }
 }
 
-/// Allows to change NumVector components using indices
+/// Provides mutable access to NumVector components through indices
 ///
 /// # Panics
 ///
@@ -810,7 +810,7 @@ where
     }
 }
 
-/// Allows to iterate over NumVector components (move version)
+/// Allows iterating over NumVector components (move version)
 ///
 /// # Examples
 ///
@@ -832,7 +832,7 @@ where
     }
 }
 
-/// Allows to iterate over NumVector components (borrow version)
+/// Allows iterating over NumVector components (borrow version)
 ///
 /// # Examples
 ///
@@ -856,7 +856,7 @@ where
     }
 }
 
-/// Allows to iterate over NumVector components (mutable version)
+/// Allows iterating over NumVector components (mutable version)
 ///
 /// # Examples
 ///

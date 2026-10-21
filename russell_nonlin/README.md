@@ -82,7 +82,7 @@ Note that the [main README file](https://github.com/cpmech/russell) presents the
 
 This section illustrates how to use `russell_nonlin`. See also:
 
-* [More examples on the documentation](https://docs.rs/russell_nonlin/)
+* [More examples in the documentation](https://docs.rs/russell_nonlin/)
 * [Integration tests directory](https://github.com/cpmech/russell/tree/main/russell_nonlin/tests)
 
 
@@ -159,7 +159,7 @@ Last accepted/suggested stepsize = 0.0017592577896469867
 
 And the plot looks like this:
 
-![B-spline curve](data/figures/doc_arclength_bspline.svg)
+![B-spline curve](https://raw.githubusercontent.com/cpmech/russell/main/russell_nonlin/data/figures/doc_arclength_bspline.svg)
 
 ## For developers
 

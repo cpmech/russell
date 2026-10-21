@@ -6,7 +6,7 @@ use russell_tensor::{StrError, Tensor4};
 //
 // 1. M. Maździarz, S. Nosewicz, Atomistic investigation of deformation and fracture
 //    of individual structural components of metal matrix composites, Engineering Fracture
-//    Mechanics 298 (2024) 109953. <https://doi:10.1016/j.engfracmech.2024.109953>.
+//    Mechanics 298 (2024) 109953. <https://doi.org/10.1016/j.engfracmech.2024.109953>.
 //
 // The output should be:
 //

@@ -17,7 +17,7 @@ impl CscMatrix {
     ///
     /// # Notes
     ///
-    /// 1. The vismatrix format is is similar to the MatrixMarket format
+    /// 1. The vismatrix format is similar to the MatrixMarket format
     ///    without the header, and the indices start at zero.
     /// 2. If the matrix is symmetric, then:
     ///     * Only the lower triangle + diagonal will be written (standard MatrixMarket format)
@@ -159,7 +159,7 @@ impl ComplexCscMatrix {
     ///
     /// # Notes
     ///
-    /// 1. The vismatrix format is is similar to the MatrixMarket format
+    /// 1. The vismatrix format is similar to the MatrixMarket format
     ///    without the header, and the indices start at zero.
     /// 2. `vismatrix` cannot handle complex numbers, thus, we save `|z| = sqrt(Re(z)² + Im(z)²)`
     ///    instead of `z` in the vismatrix file

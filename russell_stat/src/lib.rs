@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 //! Russell - Rust Scientific Library
 //!
 //! `russell_stat`: Statistics calculations and (engineering) probability distributions
@@ -8,7 +10,7 @@
 //!
 //! It also provides tools for descriptive statistics, including quantiles, inter-quartile range (IQR), and outlier detection, as well as a text-based histogram generator.
 //!
-//! Some essential distributions considered in this library are those classified as [Extreme Value Distribution](https://en.wikipedia.org/wiki/Generalized_extreme_value_distribution).
+//! Some essential distributions considered in this library are those classified as [Extreme Value Distributions](https://en.wikipedia.org/wiki/Generalized_extreme_value_distribution).
 
 /// Defines the error output as a static string
 pub type StrError = &'static str;

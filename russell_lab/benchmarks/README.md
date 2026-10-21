@@ -60,7 +60,7 @@ between runs, the machine did.
 
 | group                    | function                                                                            | pivoting      | implementation                                            |
 | ------------------------ | ----------------------------------------------------------------------------------- | ------------- | --------------------------------------------------------- |
-| `mat_inverse`            | [`mat_inverse`](https://docs.rs/russell_lab/latest/russell_lab/fn.mat_inverse.html) | LU            | LAPACK `dgetrf`/`dgetri` (closed-form for n ≤ 3)          |
+| `mat_inverse`            | [`mat_inverse`](https://docs.rs/russell_lab/latest/russell_lab/matrix/fn.mat_inverse.html) | LU            | LAPACK `dgetrf`/`dgetri` (closed-form for n ≤ 3)          |
 | `small_mat_inv`          | `small_mat_inv(..., n)`                                                             | partial (row) | closed-form for n ≤ 3; Gauss-Jordan (pure Rust) for n ≥ 4 |
 | `num_recipes_gaussj_inv` | `num_recipes_gaussj_inv(...)`                                                       | full          | Numerical Recipes `gaussj` (pure Rust)                    |
 

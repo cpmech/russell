@@ -256,6 +256,10 @@ mod windows {
             println!("cargo:rustc-link-lib=static=mpiseq_cpmech");
             println!("cargo:rustc-link-lib=static=pord_cpmech");
             println!("cargo:rustc-link-lib=static=metis");
+            // The Windows MUMPS libraries are static, so their BLAS calls (and
+            // the Fortran runtime) have to be linked here; the Linux shared
+            // objects carry them in DT_NEEDED instead.
+            println!("cargo:rustc-link-lib=dylib=openblas");
             println!("cargo:rustc-link-lib=dylib=gfortran");
             println!("cargo:rustc-link-lib=dylib=gomp");
         }

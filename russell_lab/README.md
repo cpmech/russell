@@ -266,7 +266,7 @@ fn main() -> Result<(), StrError> {
 
 Check the implementation of the first and second derivatives of f(x) (illustrated below).
 
-![Inverted and shifted Runge's equation](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_002.svg)
+![Inverted and shifted Runge's equation](data/figures/test_function_002.svg)
 
 [See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/check_1st_and_2nd_derivatives.rs)
 
@@ -359,7 +359,7 @@ fn main() -> Result<(), StrError> {
 
 Output:
 
-![Bessel functions](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_bessel_functions_1.svg)
+![Bessel functions](data/figures/math_bessel_functions_1.svg)
 
 
 
@@ -385,7 +385,7 @@ fn main() -> Result<(), StrError> {
 
 Results:
 
-![Linear fitting](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/algo_linear_fitting_1.svg)
+![Linear fitting](data/figures/algo_linear_fitting_1.svg)
 
 
 
@@ -397,7 +397,7 @@ This example illustrates the use of `InterpChebyshev` to interpolate data given 
 
 Results:
 
-![Chebyshev interpolation (given function)](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/algo_interp_chebyshev_adapt.svg)
+![Chebyshev interpolation (given function)](data/figures/algo_interp_chebyshev_adapt.svg)
 
 
 
@@ -409,7 +409,7 @@ This example illustrates the use of `InterpChebyshev` to interpolate discrete da
 
 Results:
 
-![Chebyshev interpolation (given data)](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/algo_interp_chebyshev_data.svg)
+![Chebyshev interpolation (given data)](data/figures/algo_interp_chebyshev_data.svg)
 
 
 
@@ -421,7 +421,7 @@ This example illustrates the use of `InterpChebyshev` to interpolate noisy data.
 
 Results:
 
-![Chebyshev interpolation (given noisy data)](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/algo_interp_chebyshev_noisy_data.svg)
+![Chebyshev interpolation (given noisy data)](data/figures/algo_interp_chebyshev_noisy_data.svg)
 
 
 
@@ -433,7 +433,7 @@ This example illustrates the use of `InterpLagrange` with a Chebyshev-Gauss-Loba
 
 Results:
 
-![algo_interp_lagrange](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/algo_interp_lagrange.svg)
+![algo_interp_lagrange](data/figures/algo_interp_lagrange.svg)
 
 
 
@@ -471,7 +471,7 @@ u(x) = e  - ——————— e   + —
 
 Results:
 
-![algo_lorene_1d_pde_spectral_collocation](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/algo_lorene_1d_pde_spectral_collocation.svg)
+![algo_lorene_1d_pde_spectral_collocation](data/figures/algo_lorene_1d_pde_spectral_collocation.svg)
 
 
 
@@ -516,7 +516,7 @@ fn main() -> Result<(), StrError> {
 
 This example finds the local minimum between 0.1 and 0.3 and the root between 0.3 and 0.4 for the function illustrated below
 
-![finding a local minimum](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_005.svg)
+![finding a local minimum](data/figures/test_function_005.svg)
 
 [See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/algo_min_and_root_solver_brent.rs)
 
@@ -591,7 +591,7 @@ f @ refined roots =
 
 The function and the roots are illustrated in the figure below.
 
-![All roots in an interval](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/algo_root_finding_chebyshev.svg)
+![All roots in an interval](data/figures/algo_root_finding_chebyshev.svg)
 
 **References**
 
@@ -678,7 +678,7 @@ vismatrix /tmp/russell_lab/matrix_visualization.smat
 
 Output:
 
-![Matrix visualization](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/matrix_vizualization.png)
+![Matrix visualization](data/figures/matrix_vizualization.png)
 
 
 
@@ -882,9 +882,9 @@ bash ./zscripts/bench.bash
 
 Comparison of the performances of `InterpChebyshev::eval` implementing the Clenshaw algorithm and `InterpChebyshev::eval_using_trig` using the trigonometric functions.
 
-![Chebyshev evaluation (small)](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/bench_chebyshev_eval_small.svg)
+![Chebyshev evaluation (small)](data/figures/bench_chebyshev_eval_small.svg)
 
-![Chebyshev evaluation (large)](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/bench_chebyshev_eval_large.svg)
+![Chebyshev evaluation (large)](data/figures/bench_chebyshev_eval_large.svg)
 
 
 ### Jacobi rotation versus DSYEV
@@ -893,9 +893,9 @@ Comparison of the performances of `mat_eigen_sym_jacobi` (Jacobi rotation) versu
 `mat_eigen_sym`, which runs the tridiagonal `dsyev` pipeline: the native Rust
 implementation by default, or LAPACK through the C shim with `open_blas`/`intel_mkl`.
 
-![Jacobi Rotation versus LAPACK DSYEV (1-5)](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/bench_mat_eigen_sym_1-5.svg)
+![Jacobi Rotation versus LAPACK DSYEV (1-5)](data/figures/bench_mat_eigen_sym_1-5.svg)
 
-![Jacobi Rotation versus LAPACK DSYEV (1-32)](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/bench_mat_eigen_sym_1-32.svg)
+![Jacobi Rotation versus LAPACK DSYEV (1-32)](data/figures/bench_mat_eigen_sym_1-32.svg)
 
 
 

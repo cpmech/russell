@@ -255,7 +255,7 @@ N = 20 max(err) = 3.90799e-14
 
 And the plot looks like this:
 
-![Solution](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/doc_example_spc_map.svg)
+![Solution](data/figures/doc_example_spc_map.svg)
 
 ## Test Problems
 
@@ -267,13 +267,13 @@ On `[0,1]²`, two cases: (a) homogeneous Dirichlet all sides, (b) mixed Neumann/
 
 | FDM                                                    | SPC contour (case a)                                           | SPC contour (case b)                                           |
 | ------------------------------------------------------ | -------------------------------------------------------------- | -------------------------------------------------------------- |
-| ![prob01 FDM](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_2d_prob01_fdm_sps.svg) | ![prob01 SPC a](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_2d_prob01_spc_a_contour.svg) | ![prob01 SPC b](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_2d_prob01_spc_b_contour.svg) |
+| ![prob01 FDM](data/figures/test_2d_prob01_fdm_sps.svg) | ![prob01 SPC a](data/figures/test_2d_prob01_spc_a_contour.svg) | ![prob01 SPC b](data/figures/test_2d_prob01_spc_b_contour.svg) |
 
 ### Problem 02 — 2D Poisson `ϕ = y·sin(πx)`
 
 On `[0,1]²` with Dirichlet BCs. Source: `s = −π²y·sin(πx)`. [test code](https://github.com/cpmech/russell/tree/main/russell_pde/tests/test_2d_prob02_fdm.rs)
 
-![prob02 FDM](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_2d_prob02_fdm_sps.svg)
+![prob02 FDM](data/figures/test_2d_prob02_fdm_sps.svg)
 
 ### Problem 03 — 2D Helmholtz/Poisson with mixed BCs
 
@@ -281,15 +281,15 @@ On `[0,1]²` with five combinations of Dirichlet/Neumann BCs (DDDD, NNDD, NDND, 
 
 | FDM (case a)                                           | FDM (case b)                                           |
 | ------------------------------------------------------ | ------------------------------------------------------ |
-| ![prob03 FDM a](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_2d_prob03_fdm_a.svg) | ![prob03 FDM b](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_2d_prob03_fdm_b.svg) |
+| ![prob03 FDM a](data/figures/test_2d_prob03_fdm_a.svg) | ![prob03 FDM b](data/figures/test_2d_prob03_fdm_b.svg) |
 
 | SPC DDDD contour                                                           | SPC DDDD surface                                                                   |
 | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| ![prob03 SPC DDDD hz](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_2d_prob03_spc_DDDD_hz_contour.svg) | ![prob03 SPC DDDD hz surface](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_2d_prob03_spc_DDDD_hz_surface.svg) |
+| ![prob03 SPC DDDD hz](data/figures/test_2d_prob03_spc_DDDD_hz_contour.svg) | ![prob03 SPC DDDD hz surface](data/figures/test_2d_prob03_spc_DDDD_hz_surface.svg) |
 
 | SPC Map DDDD contour                                                               | SPC Map DDDD surface                                                                       |
 | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| ![prob03 SPC Map DDDD hz](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_2d_prob03_spc_map_DDDD_hz_contour.svg) | ![prob03 SPC Map DDDD hz surface](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_2d_prob03_spc_map_DDDD_hz_surface.svg) |
+| ![prob03 SPC Map DDDD hz](data/figures/test_2d_prob03_spc_map_DDDD_hz_contour.svg) | ![prob03 SPC Map DDDD hz surface](data/figures/test_2d_prob03_spc_map_DDDD_hz_surface.svg) |
 
 ### Problem 04 — 2D Poisson on `[-1,1]²` (benchmark)
 
@@ -297,7 +297,7 @@ Laplace with source `s = 1` and homogeneous Dirichlet BCs. [test code (FDM)](htt
 
 | FDM                                                    | SPC                                                    |
 | ------------------------------------------------------ | ------------------------------------------------------ |
-| ![prob04 FDM](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_2d_prob04_fdm_sps.svg) | ![prob04 SPC](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_2d_prob04_spc_8_a.svg) |
+| ![prob04 FDM](data/figures/test_2d_prob04_fdm_sps.svg) | ![prob04 SPC](data/figures/test_2d_prob04_spc_8_a.svg) |
 
 ### Problem 05 — 2D Poisson polynomial
 
@@ -305,7 +305,7 @@ On `[-1,1]²`, source `s = −6x`, analytical `ϕ = 1 + x³`. Dirichlet on x-edg
 
 | FDM grid (a)                                           | FDM solution (b)                                       | SPC grid (a)                                           | SPC solution (b)                                       |
 | ------------------------------------------------------ | ------------------------------------------------------ | ------------------------------------------------------ | ------------------------------------------------------ |
-| ![prob05 FDM a](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_2d_prob05_fdm_a.svg) | ![prob05 FDM b](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_2d_prob05_fdm_b.svg) | ![prob05 SPC a](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_2d_prob05_spc_a.svg) | ![prob05 SPC b](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_2d_prob05_spc_b.svg) |
+| ![prob05 FDM a](data/figures/test_2d_prob05_fdm_a.svg) | ![prob05 FDM b](data/figures/test_2d_prob05_fdm_b.svg) | ![prob05 SPC a](data/figures/test_2d_prob05_spc_a.svg) | ![prob05 SPC b](data/figures/test_2d_prob05_spc_b.svg) |
 
 ### Problem 06 — 2D Poisson `ϕ = tanh(1−x+y)`
 
@@ -313,7 +313,7 @@ On `[-1,1]²` with mixed Dirichlet/Neumann BCs. Source is the Laplacian of the a
 
 | FDM grid (a)                                           | FDM solution (b)                                       | SPC grid (a)                                           | SPC solution (b)                                       |
 | ------------------------------------------------------ | ------------------------------------------------------ | ------------------------------------------------------ | ------------------------------------------------------ |
-| ![prob06 FDM a](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_2d_prob06_fdm_a.svg) | ![prob06 FDM b](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_2d_prob06_fdm_b.svg) | ![prob06 SPC a](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_2d_prob06_spc_a.svg) | ![prob06 SPC b](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_2d_prob06_spc_b.svg) |
+| ![prob06 FDM a](data/figures/test_2d_prob06_fdm_a.svg) | ![prob06 FDM b](data/figures/test_2d_prob06_fdm_b.svg) | ![prob06 SPC a](data/figures/test_2d_prob06_spc_a.svg) | ![prob06 SPC b](data/figures/test_2d_prob06_spc_b.svg) |
 
 ### Problem 08 — 2D Poisson on curvilinear domains
 
@@ -321,13 +321,13 @@ Kopriva benchmark 7.1.4: `∇²ϕ = −16·ln(r)/r²·sin(4θ)` on quarter-annul
 
 | Ring domain                                                  | Lozenge domain                                                     |
 | ------------------------------------------------------------ | ------------------------------------------------------------------ |
-| ![prob08 ring](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_2d_prob08_spc_map_ring.svg) | ![prob08 lozenge](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_2d_prob08_spc_map_lozenge.svg) |
+| ![prob08 ring](data/figures/test_2d_prob08_spc_map_ring.svg) | ![prob08 lozenge](data/figures/test_2d_prob08_spc_map_lozenge.svg) |
 
 ### Problem 09 — 2D Laplace (potential flow)
 
 Kopriva benchmark 7.1.5: Potential flow around a cylinder on a half-ring domain. [test code](https://github.com/cpmech/russell/tree/main/russell_pde/tests/test_2d_prob09_spc.rs)
 
-![prob09 SPC Map](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_2d_prob09_spc_map.svg)
+![prob09 SPC Map](data/figures/test_2d_prob09_spc_map.svg)
 
 ### 1D Problem 02 — Helmholtz heat conduction-convection
 
@@ -335,7 +335,7 @@ Kopriva benchmark 7.1.5: Potential flow around a cylinder on a half-ring domain.
 
 | FDM                                                       | SPC                                                       |
 | --------------------------------------------------------- | --------------------------------------------------------- |
-| ![1d prob02 FDM](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_1d_prob02_fdm_sps.svg) | ![1d prob02 SPC](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_1d_prob02_spc_sps.svg) |
+| ![1d prob02 FDM](data/figures/test_1d_prob02_fdm_sps.svg) | ![1d prob02 SPC](data/figures/test_1d_prob02_spc_sps.svg) |
 
 ### 1D Problem 03 — Helmholtz with flux BC
 
@@ -343,7 +343,7 @@ Kopriva benchmark 7.1.5: Potential flow around a cylinder on a half-ring domain.
 
 | FDM                                                       | SPC                                                       |
 | --------------------------------------------------------- | --------------------------------------------------------- |
-| ![1d prob03 FDM](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_1d_prob03_fdm_sps.svg) | ![1d prob03 SPC](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_1d_prob03_spc_sps.svg) |
+| ![1d prob03 FDM](data/figures/test_1d_prob03_fdm_sps.svg) | ![1d prob03 SPC](data/figures/test_1d_prob03_spc_sps.svg) |
 
 ### 1D Problem 04 — Trefethen programs 13 and 33
 
@@ -351,7 +351,7 @@ Program 13: homogeneous Dirichlet; Program 33: Neumann left + Dirichlet right. P
 
 | Program 13 (Dirichlet)                                  | Program 33 (Neumann+Dirichlet)                          |
 | ------------------------------------------------------- | ------------------------------------------------------- |
-| ![1d prob04a SPC](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_1d_prob04a_spc.svg) | ![1d prob04b SPC](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_1d_prob04b_spc.svg) |
+| ![1d prob04a SPC](data/figures/test_1d_prob04a_spc.svg) | ![1d prob04b SPC](data/figures/test_1d_prob04b_spc.svg) |
 
 ### 1D Problem 05 — Pozrikidis Helmholtz
 
@@ -359,13 +359,13 @@ Program 13: homogeneous Dirichlet; Program 33: Neumann left + Dirichlet right. P
 
 | FDM                                                   | SPC                                                   |
 | ----------------------------------------------------- | ----------------------------------------------------- |
-| ![1d prob05 FDM](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_1d_prob05_fdm.svg) | ![1d prob05 SPC](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_1d_prob05_spc.svg) |
+| ![1d prob05 FDM](data/figures/test_1d_prob05_fdm.svg) | ![1d prob05 SPC](data/figures/test_1d_prob05_spc.svg) |
 
 ### Metrics — Curvilinear coordinates
 
 Covariant and contravariant basis vectors on a curved quadrilateral domain. [test code](https://github.com/cpmech/russell/tree/main/russell_pde/tests/test_metrics2d.rs)
 
-![Metrics](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/test_metrics_2d.svg)
+![Metrics](data/figures/test_metrics_2d.svg)
 
 ## For developers
 

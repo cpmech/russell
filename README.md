@@ -1,17 +1,12 @@
 # Russell - Rust Scientific Library <!-- omit from toc --> 
 
 <p align="center">
-<a href="https://github.com/cpmech/russell"><img src="assets/bertrand-russell.jpeg" alt="Bertrand Russell"></a>*
-<a href="https://github.com/cpmech/russell"><img src="assets/bertrand-russell-stamp-200.jpg" alt="Bertrand Russell (Stamp)"></a>*
+  Sparse and dense linear algebra, differential equations, statistics, and continuum mechanics in Rust.
 </p>
 
 <p align="center">
 <a href="https://github.com/cpmech/russell"><img src="assets/logo.svg" alt="Russell"></a>
 </p>
-
----
-
-`*` This project honors the British philosopher and mathematician [Bertrand Russell](https://en.wikipedia.org/wiki/Bertrand_Russell).
 
 ---
 
@@ -80,6 +75,7 @@
   - [Naming conventions](#naming-conventions)
   - [russell\_lab — BLAS/LAPACK](#russell_lab--blaslapack)
   - [russell\_sparse — sparse solvers](#russell_sparse--sparse-solvers)
+- [About the name](#about-the-name)
 
 
 
@@ -766,6 +762,15 @@ Build-dependencies: `cc`, `pkg-config`.
 - The selected UMFPACK is recorded with `cargo:rustc-env`, so `get_library_versions()` reports whether it is the `system` or the `local` one, or that it was not compiled in.
 
 Build-dependencies: `cc`, `pkg-config`.
+
+## About the name
+
+<p align="left">
+  <img src="assets/bertrand-russell.jpeg" width="110" alt="Bertrand Russell">
+  <img src="assets/bertrand-russell-stamp-200.jpg" width="110" alt="Bertrand Russell on a stamp">
+</p>
+
+The library is named after [Bertrand Russell](https://en.wikipedia.org/wiki/Bertrand_Russell) (1872–1970), the British philosopher, logician, and mathematician, best known in this context for *Principia Mathematica* (1910–1913), his attempt with Alfred North Whitehead to derive mathematics from logic.
 
 ---
 

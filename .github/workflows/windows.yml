@@ -103,6 +103,15 @@ jobs:
           & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install "suitesparse-umfpack[core]:x64-windows" --clean-after-build
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      # Saved even when a later step fails, so a broken test does not cost the
+      # ten-minute OpenBLAS build on the next run.
+      - name: Save the vcpkg install tree
+        if: always() && steps.vcpkg.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: C:\vcpkg\installed
+          key: vcpkg-${{ runner.os }}-x64-windows-umfpack-v1
+
       - name: Put the vcpkg DLLs on PATH
         shell: pwsh
         run: |

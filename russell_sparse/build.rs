@@ -149,7 +149,6 @@ fn try_local_dirs(solver: &str, header: &str) -> Option<(PathBuf, PathBuf)> {
 /// and would also require the BLAS and its runtime to be linked by hand.
 #[cfg(all(target_os = "windows", feature = "umfpack"))]
 fn try_vcpkg_dirs(header: &str) -> Option<(PathBuf, PathBuf, String)> {
-    let root = std::env::var("VCPKG_ROOT").or_else(|_| std::env::var("VCPKG_INSTALLATION_ROOT")).ok()?;
     let triplet = std::env::var("RUSSELL_VCPKG_TRIPLET")
         .or_else(|_| std::env::var("VCPKG_DEFAULT_TRIPLET"))
         .unwrap_or_else(|_| match std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() {
@@ -157,14 +156,22 @@ fn try_vcpkg_dirs(header: &str) -> Option<(PathBuf, PathBuf, String)> {
             Ok("x86") | Ok("i686") => "x86-windows".to_string(),
             _ => "x64-windows".to_string(),
         });
-    let installed = PathBuf::from(root).join("installed").join(&triplet);
-    let include = installed.join("include").join("suitesparse");
-    let lib = installed.join("lib");
-    if include.join(header).is_file() && lib.join("umfpack.lib").is_file() {
-        Some((include, lib, triplet))
-    } else {
-        None
+    // Every candidate is tried, not just the first that is set: a machine can
+    // have VCPKG_ROOT pointing at the vcpkg bundled with Visual Studio while the
+    // install lives in another clone, which is exactly what the GitHub Windows
+    // runners do.
+    for var in ["VCPKG_ROOT", "VCPKG_INSTALLATION_ROOT"] {
+        let Ok(root) = std::env::var(var) else {
+            continue;
+        };
+        let installed = PathBuf::from(root).join("installed").join(&triplet);
+        let include = installed.join("include").join("suitesparse");
+        let lib = installed.join("lib");
+        if include.join(header).is_file() && lib.join("umfpack.lib").is_file() {
+            return Some((include, lib, triplet));
+        }
     }
+    None
 }
 
 /// Tells the crate which UMFPACK was linked, for `get_library_versions`.
@@ -228,14 +235,6 @@ mod windows {
             build.include(&include);
             super::emit_link_search(&lib);
             super::emit_rpath(&lib);
-            println!("cargo:rustc-link-lib=static=dmumps_cpmech");
-            println!("cargo:rustc-link-lib=static=zmumps_cpmech");
-            println!("cargo:rustc-link-lib=static=mumps_common_cpmech");
-            println!("cargo:rustc-link-lib=static=mpiseq_cpmech");
-            println!("cargo:rustc-link-lib=static=pord_cpmech");
-            println!("cargo:rustc-link-lib=dylib=gfortran");
-            println!("cargo:rustc-link-lib=dylib=gomp");
-            println!("cargo:rustc-link-lib=static=metis");
         }
 
         build.compile("c_code");
@@ -246,6 +245,20 @@ mod windows {
         // resolves nothing and every `umfpack_*` reference is reported missing.
         #[cfg(feature = "umfpack")]
         println!("cargo:rustc-link-lib=dylib=umfpack");
+
+        // The same ordering applies to MUMPS, whose Windows libraries are static
+        // archives: they have to follow the shims that call them.
+        #[cfg(feature = "mumps")]
+        {
+            println!("cargo:rustc-link-lib=static=dmumps_cpmech");
+            println!("cargo:rustc-link-lib=static=zmumps_cpmech");
+            println!("cargo:rustc-link-lib=static=mumps_common_cpmech");
+            println!("cargo:rustc-link-lib=static=mpiseq_cpmech");
+            println!("cargo:rustc-link-lib=static=pord_cpmech");
+            println!("cargo:rustc-link-lib=static=metis");
+            println!("cargo:rustc-link-lib=dylib=gfortran");
+            println!("cargo:rustc-link-lib=dylib=gomp");
+        }
     }
 
     /// Where the UMFPACK headers and import library were found.

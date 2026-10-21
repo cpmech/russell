@@ -15,6 +15,11 @@
 
 ---
 
+<p align="left">
+  <img src="assets/web-assembly-logo.png" width="96" alt="WebAssembly logo"><br>
+  <sub>Compiles for <code>wasm32-unknown-unknown</code> and <code>wasm32-wasip1</code></sub>
+</p>
+
 [![Arch](https://github.com/cpmech/russell/actions/workflows/arch.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/arch.yml)
 [![Ubuntu](https://github.com/cpmech/russell/actions/workflows/ubuntu.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/ubuntu.yml)
 [![Rocky](https://github.com/cpmech/russell/actions/workflows/rocky.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/rocky.yml)

@@ -1,5 +1,13 @@
 name: Windows
-on: [pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
     runs-on: windows-latest
@@ -11,7 +19,7 @@ jobs:
         with:
           msystem: UCRT64
           update: true
-          path-type: inherit 
+          path-type: inherit
           install: >-
             mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-pkg-config
@@ -25,11 +33,21 @@ jobs:
           toolchain: stable-x86_64-pc-windows-gnu
           targets: x86_64-pc-windows-gnu
 
+      - name: Cache the Rust build
+        uses: Swatinem/rust-cache@v2
+
       # 3. Run Tests
-      - name: Run tests
+      - name: Run tests (Native)
         shell: msys2 {0}
         env:
           MSYS2_PREFIX: '/ucrt64'
           RUST_BACKTRACE: 1
         run: |
           cargo test
+      - name: Run tests (UMFPACK)
+        shell: msys2 {0}
+        env:
+          MSYS2_PREFIX: '/ucrt64'
+          RUST_BACKTRACE: 1
+        run: |
+          cargo test --features umfpack

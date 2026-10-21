@@ -103,7 +103,11 @@ struct ReferenceData {
 
 impl ReferenceData {
     pub fn read(rel_path: &str) -> Self {
-        let full_path = format!("{}/{}", env::var("CARGO_MANIFEST_DIR").unwrap(), rel_path);
+        let full_path = match env::var("CARGO_MANIFEST_DIR") {
+            Ok(root) => format!("{root}/{rel_path}"),
+            // WASI has no environment; cargo runs the test from the package root.
+            Err(_) => rel_path.to_string(),
+        };
         let path = Path::new(&full_path).to_path_buf();
         let input = File::open(path).map_err(|_| "cannot open file").unwrap();
         let buffered = BufReader::new(input);

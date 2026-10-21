@@ -22,4 +22,4 @@ WORKDIR /tmp/russell
 
 # run tests
 ENV RUST_BACKTRACE=1
-RUN cargo test
+RUN cargo test && cargo test --features umfpack

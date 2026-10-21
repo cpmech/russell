@@ -204,10 +204,18 @@ mod tests {
     use std::env;
     use std::path::PathBuf;
 
+    /// The database path; cargo runs tests from the package root, so the
+    /// relative path also works on WASI, where the environment is empty.
+    fn data_path() -> PathBuf {
+        match env::var("CARGO_MANIFEST_DIR") {
+            Ok(root) => PathBuf::from(root).join("data/piezo_data.json"),
+            Err(_) => PathBuf::from("data/piezo_data.json"),
+        }
+    }
+
     #[test]
     fn material_info_reports_formula_id_system_and_space_group() {
-        let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-        let db = PiezoDatabase::from_file(root.join("data/piezo_data.json")).expect("database");
+        let db = PiezoDatabase::from_file(data_path()).expect("database");
         let mat = db.materials.get("mp-3731").expect("LiNbO3 entry");
         let info = mat.info();
         assert!(info.contains(&mat.formula), "info: {info}");
@@ -225,11 +233,7 @@ mod tests {
 
     #[test]
     fn test_parse_piezo_data_json() {
-        // get the asset's full path (the JSON file is in the crate's data/ directory)
-        let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-        let path = root.join("data/piezo_data.json");
-
-        let db = PiezoDatabase::from_file(path).expect("Failed to parse JSON database");
+        let db = PiezoDatabase::from_file(data_path()).expect("Failed to parse JSON database");
 
         // Test metadata
         assert_eq!(db.metadata.voigt_mapping, "11, 22, 33, 23, 13, 12");
@@ -259,9 +263,7 @@ mod tests {
 
     #[test]
     fn material_moduli_works() {
-        let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-        let path = root.join("data/piezo_data.json");
-        let db = PiezoDatabase::from_file(path).expect("Failed to parse JSON database");
+        let db = PiezoDatabase::from_file(data_path()).expect("Failed to parse JSON database");
 
         let mat = db.get("mp-3731").unwrap();
         let (p, e, cc) = mat.moduli().unwrap();

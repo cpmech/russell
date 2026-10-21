@@ -21,4 +21,4 @@ USER user
 
 # Test the code
 ENV RUST_BACKTRACE=1
-RUN cargo test
+RUN cargo test && cargo test --features umfpack

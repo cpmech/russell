@@ -1,3 +1,5 @@
+#![cfg(not(target_arch = "wasm32"))]
+
 //! Every path in the workspace must be checkable out on Windows.
 //!
 //! Git refuses to materialize a path Windows cannot represent, and it does so at

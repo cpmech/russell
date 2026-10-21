@@ -2,6 +2,7 @@
 name = "russell_lab"
 version = "4.0.0"
 edition = "2024"
+rust-version = "1.85"
 license = "MIT"
 description = "Scientific laboratory for linear algebra and numerical mathematics"
 homepage = "https://github.com/cpmech/russell"

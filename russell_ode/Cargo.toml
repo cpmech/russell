@@ -2,6 +2,7 @@
 name = "russell_ode"
 version = "4.0.0"
 edition = "2024"
+rust-version = "1.85"
 license = "MIT"
 description = "Solvers for ordinary differential equations and differential algebraic equations"
 homepage = "https://github.com/cpmech/russell"

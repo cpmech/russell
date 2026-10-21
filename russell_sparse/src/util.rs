@@ -276,6 +276,22 @@ mod tests {
         assert!(info.contains(SUITESPARSE_VERSION), "Should contain SuiteSparse version");
     }
 
+    /// Guards the local-first selection: when the prefix contains UMFPACK the line
+    /// must say `local`, otherwise the system library must have been used.
+    #[cfg(feature = "umfpack")]
+    #[test]
+    fn umfpack_source_follows_the_prefix() {
+        let source = option_env!("RUSSELL_SPARSE_UMFPACK").unwrap_or("[not compiled in]");
+        let prefix = std::env::var("RUSSELL_LOCAL_PREFIX").unwrap_or_default();
+        let trimmed = prefix.trim().trim_end_matches(['/', '\\']);
+        let local = !trimmed.is_empty() && std::path::Path::new(trimmed).join("include/umfpack/umfpack.h").is_file();
+        if local {
+            assert!(source.starts_with("local"), "expected a local UMFPACK, got: {source}");
+        } else {
+            assert!(source.starts_with("system"), "expected a system UMFPACK, got: {source}");
+        }
+    }
+
     /// Guards the build-script wiring: the UMFPACK line must name the source the
     /// features selected, because two SuiteSparse installations can be present and
     /// the wrong one is otherwise invisible.

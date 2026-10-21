@@ -334,7 +334,24 @@ stale lock file.
 ## CI
 
 Workflows live in `.github/workflows/` (`ubuntu.yml`, `macos.yml`, `rocky.yml`,
-`arch.yml`, `windows.yml`). The Ubuntu job compiles MUMPS/SuiteSparse via
-`zscripts/debian-compile-*.bash` (into `/usr/local`, with `RUSSELL_LOCAL_PREFIX`
-set accordingly), runs `cargo test --features umfpack,mumps`, and on nightly
-enforces the coverage threshold shown above.
+`arch.yml`, `windows.yml`, `wasm.yml`). They run on pull requests, pushes to
+`main`, and a weekly schedule; a concurrency group cancels superseded runs, and
+the Rust builds are cached with `Swatinem/rust-cache`.
+
+- **Ubuntu** compiles MUMPS and SuiteSparse via `zscripts/debian-compile-*.bash`
+  (into `/usr/local`, with `RUSSELL_LOCAL_PREFIX` set), then runs the suite four
+  ways: default (Native), `umfpack`, `mumps`, and both. Nightly enforces the
+  coverage threshold shown above. A second job installs the packaged
+  `libsuitesparse-dev` and runs `umfpack` with `RUSSELL_LOCAL_PREFIX=/nonexistent`,
+  exercising the system fallback; `src/util.rs` asserts which source was linked.
+- **macOS and Windows** run the default suite and `--features umfpack` against
+  the platform library (Homebrew and MSYS2 respectively).
+- **Rocky and Arch** build their Docker images with the default and external
+  solver configurations.
+- **Lint/MSRV** (Ubuntu): `cargo fmt --check`, `cargo clippy --workspace
+  --all-targets -- -D warnings`, `cargo doc` with `RUSTDOCFLAGS=-D warnings`,
+  and `cargo +1.85.0 check --workspace`.
+- **Wasm**: the Ubuntu job compile-checks both `wasm32-unknown-unknown` and
+  `wasm32-wasip1`; `wasm.yml` runs the whole workspace test suite on
+  `wasm32-wasip1` through `zscripts/wasmtime-runner.sh`, which preopens the
+  current directory for the file-based tests.

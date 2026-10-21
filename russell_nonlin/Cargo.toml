@@ -2,6 +2,7 @@
 name = "russell_nonlin"
 version = "4.0.0"
 edition = "2024"
+rust-version = "1.85"
 license = "MIT"
 description = "Numerical continuation methods to solve nonlinear systems of equations"
 homepage = "https://github.com/cpmech/russell"

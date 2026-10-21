@@ -2,6 +2,7 @@
 name = "russell_pde"
 version = "4.0.0"
 edition = "2024"
+rust-version = "1.85"
 license = "MIT"
 description = "Essential tools to solve partial differential equations; not a full-fledged PDE solver"
 homepage = "https://github.com/cpmech/russell"

@@ -2,6 +2,7 @@
 name = "russell_stat"
 version = "4.0.0"
 edition = "2024"
+rust-version = "1.85"
 license = "MIT"
 description = "Statistics calculations and (engineering) probability distributions"
 homepage = "https://github.com/cpmech/russell"

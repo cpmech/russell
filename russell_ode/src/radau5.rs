@@ -334,7 +334,7 @@ impl<'a, A> OdeSolverTrait<A> for Radau5<'a, A> {
         }
 
         // constants
-        let concurrent = self.params.radau5.concurrent && self.params.newton.genie != Genie::Mumps;
+        let concurrent = cfg!(not(target_arch = "wasm32")) && self.params.radau5.concurrent && self.params.newton.genie != Genie::Mumps;
         let ndim = self.system.ndim;
 
         // Jacobian, K_real, K_comp, and factorizations (for all iterations: simple Newton's method)

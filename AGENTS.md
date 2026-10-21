@@ -359,7 +359,8 @@ the Rust builds are cached with `Swatinem/rust-cache`.
   takes UMFPACK from vcpkg and runs Native and `umfpack`, because the Windows
   MUMPS build is MinGW objects plus gfortran. vcpkg's install tree is cached.
 - **macOS** runs the default suite and `--features umfpack` against Homebrew's
-  SuiteSparse.
+  SuiteSparse, and a second job compiles MUMPS with Homebrew's gfortran (see
+  `zscripts/macos-compile-mumps.bash`) and runs `--features mumps`.
 - **Rocky and Arch** build their Docker images with the default and external
   solver configurations.
 - **Lint/MSRV** (Ubuntu): `cargo fmt --check`, `cargo doc` with

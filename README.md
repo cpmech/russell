@@ -52,6 +52,7 @@
     - [Option 1: OpenBLAS and SuiteSparse from the package manager](#option-1-openblas-and-suitesparse-from-the-package-manager-2)
   - [macOS](#macos)
     - [Option 1: OpenBLAS and SuiteSparse from the package manager](#option-1-openblas-and-suitesparse-from-the-package-manager-3)
+    - [Option 2: Locally compiled MUMPS](#option-2-locally-compiled-mumps)
   - [Windows](#windows)
   - [Number of threads](#number-of-threads)
 - [🌟 Examples](#-examples)
@@ -210,7 +211,7 @@ $RUSSELL_LOCAL_PREFIX/include/umfpack     $RUSSELL_LOCAL_PREFIX/lib/umfpack
 $RUSSELL_LOCAL_PREFIX/include/mumps       $RUSSELL_LOCAL_PREFIX/lib/mumps
 ```
 
-The compilation scripts below install into exactly that layout, with `RUSSELL_LOCAL_PREFIX=/usr/local`; on Windows the MUMPS script installs into the MSYS2 root instead (see [windows.md](https://github.com/cpmech/russell/blob/main/windows.md)). Two SuiteSparse builds share the `libumfpack.so.6` soname, so the directory of the selected one must also be reachable by the dynamic loader at run time (`ldconfig` on a system prefix, or `LD_LIBRARY_PATH`); the binaries built inside this workspace carry a run path instead. A prefix that is set but does not contain UMFPACK produces a warning and the system fallback; a missing MUMPS installation stops the build with the expected paths.
+The compilation scripts below install into exactly that layout: the Linux scripts use `/usr/local`, the macOS script takes the prefix as its argument, and the Windows MUMPS script installs into the MSYS2 root (see [windows.md](https://github.com/cpmech/russell/blob/main/windows.md)). Two SuiteSparse builds share the `libumfpack.so.6` soname, so the directory of the selected one must also be reachable by the dynamic loader at run time (`ldconfig` on a system prefix, or `LD_LIBRARY_PATH`); the binaries built inside this workspace carry a run path instead. A prefix that is set but does not contain UMFPACK produces a warning and the system fallback; a missing MUMPS installation stops the build with the expected paths.
 
 Using Intel MKL with `russell_lab` and OpenBLAS with `russell_sparse` is possible but not advantageous, since MKL is slightly faster than OpenBLAS [(see this article)](https://onlinelibrary.wiley.com/doi/full/10.1002/nme.7545). If MKL is already installed, Option 3 below compiles both SuiteSparse and MUMPS against it; there is no fourth option mixing the two.
 
@@ -371,7 +372,25 @@ russell_lab = { version = "*", features = ["open_blas"] }
 russell_sparse = { version = "*", features = ["open_blas", "umfpack"] }
 ```
 
-Intel MKL is not available for macOS (Intel discontinued it for that platform), so `open_blas` is the accelerator to use there. A locally compiled SuiteSparse and MUMPS are also supported through `RUSSELL_LOCAL_PREFIX` with the layout above; unlike Linux and Windows, no compile script ships for them yet.
+Intel MKL is not available for macOS (Intel discontinued it for that platform), so `open_blas` is the accelerator to use there.
+
+#### Option 2: Locally compiled MUMPS
+
+MUMPS is not packaged for macOS in the sequential form this project uses, so it is compiled from source with Homebrew's `gfortran` against Apple's Accelerate framework (*use the script at your own risk; carefully check it before running it*):
+
+```bash
+brew install gcc                        # provides gfortran
+export RUSSELL_LOCAL_PREFIX="$HOME/local"
+bash zscripts/macos-compile-mumps.bash "$RUSSELL_LOCAL_PREFIX"
+```
+
+Set `Cargo.toml` as follows; UMFPACK still comes from Homebrew, as in Option 1:
+
+```toml
+russell_sparse = { version = "*", features = ["open_blas", "umfpack", "mumps"] }
+```
+
+The script installs into `$RUSSELL_LOCAL_PREFIX/include/mumps` and `lib/mumps`, and rewrites the dylibs' install names to `@rpath`, which the run path emitted by `russell_sparse` resolves. Test binaries of crates that only depend on `russell_sparse` do not get that run path, so export `DYLD_LIBRARY_PATH="$RUSSELL_LOCAL_PREFIX/lib/mumps"` when testing the whole workspace.
 
 
 

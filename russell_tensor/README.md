@@ -17,13 +17,12 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Computing the Invariants](#computing-the-invariants)
   - [Allocating Second Order Tensors](#allocating-second-order-tensors)
 - [For developers](#for-developers)
-- [Principal invariants (symmetric)](#principal-invariants-symmetric)
 
 
 
 ## Introduction
 
-This library implements structures and functions for tensor analysis and calculus, with focus on applications in engineering and [Continuum Mechanics](https://en.wikipedia.org/wiki/Continuum_mechanics). The essential functionality for the targeted applications includes first-order, second-order, third-order, and fourth-order tensors, scalar "invariants," and derivatives.
+This library implements structures and functions for tensor analysis and calculus, with a focus on applications in engineering and [Continuum Mechanics](https://en.wikipedia.org/wiki/Continuum_mechanics). The essential functionality for the targeted applications includes first-order, second-order, third-order, and fourth-order tensors, scalar "invariants," and derivatives.
 
 ### Capabilities
 
@@ -109,7 +108,7 @@ Note that the [main README file](https://github.com/cpmech/russell) presents the
 
 This section illustrates how to use `russell_tensor`. See also:
 
-* [More examples on the documentation](https://docs.rs/russell_tensor/)
+* [More examples in the documentation](https://docs.rs/russell_tensor/)
 * [Examples directory](https://github.com/cpmech/russell/tree/main/russell_tensor/examples)
 
 ### Computing the Invariants

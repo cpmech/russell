@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 //! Russell - Rust Scientific Library
 //!
 //! `russell_lab`: Scientific laboratory for linear algebra and numerical mathematics
@@ -27,15 +29,14 @@
 //!
 //! ## Linear algebra
 //!
-//! For linear algebra, the main structures are [NumVector] and [NumMatrix], that are generic Vector and Matrix structures. The Matrix data is stored as **column-major**. The [Vector] and [Matrix] are `f64` and `Complex64` aliases of `NumVector` and `NumMatrix`, respectively.
+//! For linear algebra, the main structures are [NumVector] and [NumMatrix], which are generic Vector and Matrix structures. The Matrix data is stored as **column-major**. The [Vector] and [Matrix] are `f64` and `Complex64` aliases of `NumVector` and `NumMatrix`, respectively.
 //!
 //! Alternatively, for small data stored on the stack, the [SmallVector] and [SmallMatrix] type aliases are available.
 //!
-//! The figure below illustrates the base structures (struct) for linear algebra computations. The vector and matrix structures are generic but require the type parameter to implement a set of traits. The essential trait is the `Num` trait provided by the `num-traits` crate. This trait allows vectors and matrices in Russell to hold any numerical type. The `Copy` trait enables the possibility of cloning vectors and matrices directly; however, for efficiency, the BLAS functions can be called instead. `DeserializedOwned` and `Serialize` allow vectors and matrices to be serialized/deserialized, a feature that propagates for all other structures depending on `NumVector` and `NumMatrix`. This feature allows, for instance, writing and reading JSON files with simulation results. `NumCast` is required by `NumVector` because the `linspace` member function needs to cast the number of grid points to the final type (e.g., `f64`). `NumMatrix` requires the `AddAssign` and `MulAssign` traits to implement the convenience member functions named `add` and `mul`.
+//! The figure below illustrates the base structures (struct) for linear algebra computations. The vector and matrix structures are generic but require the type parameter to implement a set of traits. The essential trait is the `Num` trait provided by the `num-traits` crate. This trait allows vectors and matrices in Russell to hold any numerical type. The `Copy` trait enables the possibility of cloning vectors and matrices directly; however, for efficiency, the BLAS functions can be called instead. `DeserializeOwned` and `Serialize` allow vectors and matrices to be serialized/deserialized, a feature that propagates for all other structures depending on `NumVector` and `NumMatrix`. This feature allows, for instance, writing and reading JSON files with simulation results. `NumCast` is required by `NumVector` because the `linspace` member function needs to cast the number of grid points to the final type (e.g., `f64`). `NumMatrix` requires the `AddAssign` and `MulAssign` traits to implement the convenience member functions named `add` and `mul`.
 //!
-//! ![Vector-Matrix](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/vector-matrix.svg)
 //!
-//! `NumVector` has a single data member named `data` (a `Vec<T>`) holding all elements. Thus, `NumVector` wraps the native Rust vector struct. `NumVector` implements various methods, including functions for constructing and transforming vectors. One helpful method is `linspace` to generate a sequence of equally spaced numbers. `NumVector` implements the `Index` trait, allowing the access of elements using the `[i]` notation where `i` is the index.
+//! `NumVector` has a single data member named `data` (a `Vec<T>`) holding all elements. Thus, `NumVector` wraps the native Rust vector struct. `NumVector` implements various methods, including functions for constructing and transforming vectors. One helpful method is `linspace` to generate a sequence of equally spaced numbers. `NumVector` implements the `Index` trait, allowing access to elements using the `[i]` notation where `i` is the index.
 //!
 //! `NumMatrix` stores all entries in the *column-major* representation. The main reason for using the column-major representation is to make the code work directly with Fortran routines, such as the BLAS/LAPACK functions. It is worth noting that BLAS/LAPACK have functions that accept row-major matrices. Nonetheless, these functions add an overhead due to temporary memory allocation and copies, including transposing matrices.
 //!
@@ -81,7 +82,7 @@
 //!
 //! The `russell_lab` functions are higher-level than the BLAS/LAPACK counterparts, thus losing some of the generality of BLAS/LAPACK. Each BLAS/LAPACK function wrapped by `russell_lab` is carefully documented and thoroughly tested.
 //!
-//! `russell_lab` implements functions organized in the `vector`, `matvec`, and `matrix` directories. These directories correspond to the BLAS terminology as Level 1, Level 2, and Level 3.
+//! `russell_lab` implements functions organized in the `vector`, `matvec`, and `matrix` directories. These directories correspond to Level 1, Level 2, and Level 3 in the BLAS terminology.
 //!
 //! All vector functions are prefixed with `vec_` and `complex_vec_`, whereas all matrix functions are prefixed with `mat_` and `complex_mat_`. The `matvec` functions have varied names, albeit descriptive.
 //!
@@ -94,7 +95,7 @@
 //! For convenience, this library re-exports:
 //!
 //! * `num_complex::Complex64` -- Needed for ComplexMatrix, ComplexVector and complex functions
-//! * `num_complex::ComplexFloat` -- Needed for the intrinsic Complex64 operators such as `abs()` an others
+//! * `num_complex::ComplexFloat` -- Needed for the intrinsic Complex64 operators such as `abs()` and others
 //!
 //! When using the [crate::cpx!] macro, the `Complex64` type must be imported as well. For example:
 //!

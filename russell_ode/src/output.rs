@@ -16,8 +16,11 @@ const EPS_X1_H_OUT: f64 = 1e-13;
 /// Holds the data generated at an accepted step or during the dense output
 #[derive(Clone, Debug, Deserialize)]
 pub struct OutData {
+    /// Step size
     pub h: f64,
+    /// Independent variable (time) at the output point
     pub x: f64,
+    /// Solution vector at the output point
     pub y: Vector,
 }
 
@@ -36,6 +39,7 @@ struct OutDataRef<'a> {
 /// This data structure is useful to read back all generated files
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct OutCount {
+    /// Number of output files written so far
     pub n: usize,
 }
 

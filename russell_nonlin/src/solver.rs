@@ -360,7 +360,7 @@ impl<'a, A> Solver<'a, A> {
         assert!(rdiff >= 0.0, "rdiff must be non-negative");
         let rdiff = if rdiff < self.config.tg_control_rdiff_min { 0.0 } else { rdiff };
 
-        // calculates the the relative changes on the tangent vector
+        // calculates the relative changes on the tangent vector
         let rho = if self.config.tg_control_enabled {
             if rdiff == 0.0 {
                 self.config.tg_control_rho_for_tiny_rdiff

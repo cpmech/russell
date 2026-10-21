@@ -14,52 +14,77 @@ use std::path::Path;
 /// Holds the main information such as platform
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct StatsLinSolMain {
+    /// Name of the platform that produced the statistics
     pub platform: String,
+    /// BLAS library selected at build time (e.g., OpenBLAS or Intel MKL)
     pub blas_lib: String,
+    /// Name of the solver that produced the statistics (e.g., `Native`, `Umfpack`, or `MUMPS`)
     pub solver: String,
+    /// Indicates whether MUMPS support was compiled in
     pub mumps: bool,
+    /// Indicates whether the solver ran out of memory
     pub out_of_memory: bool,
 }
 
 /// Holds information about the sparse matrix
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct StatsLinSolMatrix {
+    /// Name of the matrix
     pub name: String,
+    /// Number of rows
     pub nrow: usize,
+    /// Number of columns
     pub ncol: usize,
+    /// Number of stored non-zero values, counting duplicates
     pub nnz: usize,
-    pub nnz_actual: usize, // corresponds to Pattern Entries reported by [SuiteSparse Matrix Collection](https://sparse.tamu.edu)
+    /// Number of non-zero values after summing duplicates (the pattern entries reported by the SuiteSparse Matrix Collection)
+    pub nnz_actual: usize,
+    /// Indicates whether the matrix holds complex values
     pub complex: bool,
+    /// Symmetric storage mode
     pub symmetric: String,
 }
 
 /// Holds some requested parameters
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct StatsLinSolRequests {
+    /// Requested ordering algorithm
     pub ordering: String,
+    /// Requested scaling strategy
     pub scaling: String,
+    /// Requested number of MUMPS threads
     pub mumps_num_threads: usize,
+    /// Indicates whether the matrix was declared positive definite
     pub positive_definite: bool,
 }
 
 /// Holds some output parameters
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct StatsLinSolOutput {
+    /// Ordering algorithm actually used by the solver
     pub effective_ordering: String,
+    /// Scaling strategy actually used by the solver
     pub effective_scaling: String,
+    /// Number of MUMPS threads actually used
     pub effective_mumps_num_threads: usize,
+    /// Number of OpenMP threads used by the solver
     pub openmp_num_threads: usize,
+    /// UMFPACK strategy applied during the factorization
     pub umfpack_strategy: String,
-    pub umfpack_rcond_estimate: f64, // reciprocal condition number estimate
+    /// UMFPACK reciprocal condition number estimate
+    pub umfpack_rcond_estimate: f64,
 }
 
 /// Holds the determinant of the coefficient matrix (if requested)
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct StatsLinSolDeterminant {
-    // det = mantissa * pow(base, exponent)
-    pub mantissa_real: f64, // the real part of the mantissa
-    pub mantissa_imag: f64, // the imaginary part of the mantissa (if complex)
+    /// Real part of the mantissa
+    pub mantissa_real: f64,
+    /// Imaginary part of the mantissa (complex systems only)
+    pub mantissa_imag: f64,
+    /// Base of the exponent
     pub base: f64,
+    /// Exponent, such that `det = mantissa * base^exponent`
     pub exponent: f64,
 }
 
@@ -68,44 +93,73 @@ pub struct StatsLinSolDeterminant {
 /// **Note:** These are automatically converted from TimeNanoseconds when calling [StatsLinSol::get_json]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct StatsLinSolTimeHuman {
+    /// Time to read the matrix
     pub read_matrix: String,
-    pub initialize_array: Vec<String>, // raw data; not averaged
-    pub initialize: String,            // average
-    pub factorize_array: Vec<String>,  // raw data; not averaged
-    pub factorize: String,             // average
-    pub solve_array: Vec<String>,      // raw data; not averaged
-    pub solve: String,                 // average
-    pub total_ifs_array: Vec<String>,  // raw data; not averaged: initialize + factorize + solve
-    pub total_ifs: String,             // average: initialize + factorize + solve
+    /// Raw initialization times, one per run (not averaged)
+    pub initialize_array: Vec<String>,
+    /// Average initialization time
+    pub initialize: String,
+    /// Raw factorization times, one per run (not averaged)
+    pub factorize_array: Vec<String>,
+    /// Average factorization time
+    pub factorize: String,
+    /// Raw solve times, one per run (not averaged)
+    pub solve_array: Vec<String>,
+    /// Average solve time
+    pub solve: String,
+    /// Raw totals of initialize + factorize + solve, one per run (not averaged)
+    pub total_ifs_array: Vec<String>,
+    /// Average of initialize + factorize + solve
+    pub total_ifs: String,
+    /// Time to verify the solution
     pub verify: String,
 }
 
 /// Holds the average computer times in nanoseconds
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct StatsLinSolTimeNanoseconds {
+    /// Time to read the matrix, in nanoseconds
     pub read_matrix: u128,
-    pub initialize_array: Vec<u128>, // raw data; not averaged
-    pub initialize: u128,            // average
-    pub factorize_array: Vec<u128>,  // raw data; not averaged
-    pub factorize: u128,             // average
-    pub solve_array: Vec<u128>,      // raw data; not averaged
-    pub solve: u128,                 // average
-    pub total_ifs_array: Vec<u128>,  // raw data; not averaged
-    pub total_ifs: u128,             // average
+    /// Raw initialization times, one per run (not averaged), in nanoseconds
+    pub initialize_array: Vec<u128>,
+    /// Average initialization time, in nanoseconds
+    pub initialize: u128,
+    /// Raw factorization times, one per run (not averaged), in nanoseconds
+    pub factorize_array: Vec<u128>,
+    /// Average factorization time, in nanoseconds
+    pub factorize: u128,
+    /// Raw solve times, one per run (not averaged), in nanoseconds
+    pub solve_array: Vec<u128>,
+    /// Average solve time, in nanoseconds
+    pub solve: u128,
+    /// Raw totals of initialize + factorize + solve, one per run (not averaged), in nanoseconds
+    pub total_ifs_array: Vec<u128>,
+    /// Average of initialize + factorize + solve, in nanoseconds
+    pub total_ifs: u128,
+    /// Time to verify the solution, in nanoseconds
     pub verify: u128,
 }
 
 /// Holds information about the solution of a linear system
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct StatsLinSol {
+    /// Main information, such as platform and solver
     pub main: StatsLinSolMain,
+    /// Information about the matrix
     pub matrix: StatsLinSolMatrix,
+    /// Parameters requested by the caller
     pub requests: StatsLinSolRequests,
+    /// Parameters actually used by the solver
     pub output: StatsLinSolOutput,
+    /// Determinant of the coefficient matrix, when requested
     pub determinant: StatsLinSolDeterminant,
+    /// Verification data for the solution
     pub verify: VerifyLinSys,
+    /// Times in human readable form (filled by [StatsLinSol::get_json])
     pub time_human: StatsLinSolTimeHuman,
+    /// Times in nanoseconds
     pub time_nanoseconds: StatsLinSolTimeNanoseconds,
+    /// MUMPS-specific statistics
     pub mumps_stats: StatsLinSolMUMPS,
 }
 

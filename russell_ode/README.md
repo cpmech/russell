@@ -35,7 +35,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 ## Introduction
 
-This library implements (in native Rust) solvers for ordinary differential equations (ODEs) and differential algebraic equations (DAEs). Specifically, it implements several explicit Runge-Kutta methods (e.g., Dormand-Prince formulae) and two implicit Runge-Kutta methods, namely the Backward Euler and the Radau IIA of fifth-order (aka Radau5). The Radau5 solver can solve DAEs of Index-1 by accepting the so-called mass matrix.
+This library implements (in native Rust) solvers for ordinary differential equations (ODEs) and differential algebraic equations (DAEs). Specifically, it implements several explicit Runge-Kutta methods (e.g., Dormand-Prince formulas) and two implicit Runge-Kutta methods, namely the Backward Euler and the Radau IIA of fifth-order (aka Radau5). The Radau5 solver can solve DAEs of Index-1 by accepting the so-called mass matrix.
 
 The code in this library is based on Hairer-Nørsett-Wanner books and respective Fortran codes (see references [1] and [2]). However, the implementations of Dormand-Prince 5(4) and Dormand-Prince 8(5,3) are different from the Fortran counterparts. The code for Radau5 follows closely reference [2]; however, some minor differences are considered. Despite the coding differences, the numeric results match the Fortran results quite well.
 
@@ -45,7 +45,7 @@ The recommended methods are:
 * `DoPri8` for ODE systems and non-stiff problems using strict tolerances
 * `Radau5` for ODE and DAE systems, possibly stiff, with moderate to strict tolerances
 
-The ODE/DAE system can be easily defined using the System data structure; [see the examples below](#examples).
+The ODE/DAE system can be easily defined using the System data structure; [see the examples below](#-examples).
 
 ### Documentation
 
@@ -100,7 +100,7 @@ Note that the [main README file](https://github.com/cpmech/russell) presents the
 
 This section illustrates how to use `russell_ode`. See also:
 
-* [More examples on the documentation](https://docs.rs/russell_ode/)
+* [More examples in the documentation](https://docs.rs/russell_ode/)
 * [Examples on how to define the ODE/DAE system](https://github.com/cpmech/russell/tree/main/russell_ode/src/samples.rs)
 * [Examples directory](https://github.com/cpmech/russell/tree/main/russell_ode/examples)
 
@@ -367,7 +367,7 @@ Total time                       = 898.347µs
 
 A plot of the (dense) solution is shown below:
 
-![Brusselator results: DoPri8](data/figures/brusselator_dopri8.svg)
+![Brusselator results: DoPri8](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/brusselator_dopri8.svg)
 
 #### Variable step sizes
 
@@ -399,7 +399,7 @@ The results are:
 
 And the convergence plot is:
 
-![Brusselator results: var step](data/figures/brusselator_ode_var_step.svg)
+![Brusselator results: var step](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/brusselator_ode_var_step.svg)
 
 #### Fixed step sizes
 
@@ -432,7 +432,7 @@ The results are:
 
 And the convergence plot is:
 
-![Brusselator results: fix step](data/figures/brusselator_ode_fix_step.svg)
+![Brusselator results: fix step](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/brusselator_ode_fix_step.svg)
 
 
 
@@ -446,7 +446,7 @@ Also, in this case, the problem is defined in Eqs (10.15-10.16) on pages 151 and
 
 While in the first book the boundary conditions are Neumann-type, in the second book the
 boundary conditions are periodic. Also the initial values in the second book are different
-that those in the first book.
+from those in the first book.
 
 The model is given by:
 
@@ -609,11 +609,11 @@ The results can then be plotted with [brusselator_pde_plot.rs](https://github.co
 
 The results are shown below for the `U` field:
 
-![brusselator_pde_radau5_u.svg](data/figures/brusselator_pde_radau5_u.svg)
+![brusselator_pde_radau5_u.svg](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/brusselator_pde_radau5_u.svg)
 
 And below for the `V` field:
 
-![brusselator_pde_radau5_v.svg](data/figures/brusselator_pde_radau5_v.svg)
+![brusselator_pde_radau5_v.svg](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/brusselator_pde_radau5_v.svg)
 
 These figures compare well with the corresponding ones on pages 250 and 251 of Reference #1.
 
@@ -621,11 +621,11 @@ The computations with `russell` are also compared with values obtained with Math
 
 The figure below shows the `russell` (black dashed lines) and Mathematica (red solid lines) results for the `U` field:
 
-![test_radau5_brusselator_pde_u.svg](data/figures/test_radau5_brusselator_pde_u.svg)
+![test_radau5_brusselator_pde_u.svg](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/test_radau5_brusselator_pde_u.svg)
 
 The figure below shows the `russell` (black dashed lines) and Mathematica (red solid lines) results for the `V` field:
 
-![test_radau5_brusselator_pde_v.svg](data/figures/test_radau5_brusselator_pde_v.svg)
+![test_radau5_brusselator_pde_v.svg](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/test_radau5_brusselator_pde_v.svg)
 
 #### Second book
 
@@ -633,27 +633,27 @@ For the problem in the second book, we run [brusselator_pde_radau5_2nd.rs](https
 
 The results are shown below for the `U` field:
 
-![brusselator_pde_radau5_2nd_u.jpg](data/figures/brusselator_pde_radau5_2nd_u.jpg)
+![brusselator_pde_radau5_2nd_u.jpg](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/brusselator_pde_radau5_2nd_u.jpg)
 
 And below for the `V` field:
 
-![brusselator_pde_radau5_2nd_v.jpg](data/figures/brusselator_pde_radau5_2nd_v.jpg)
+![brusselator_pde_radau5_2nd_v.jpg](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/brusselator_pde_radau5_2nd_v.jpg)
 
 The code [brusselator_pde_2nd_comparison.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_pde_2nd_comparison.rs) compares `russell` results with Mathematica results.
 
 The figure below shows the `russell` (black dashed lines) and Mathematica (red solid lines) results for the `U` field:
 
-![comparison U](data/figures/brusselator_pde_2nd_comparison_t1_u.svg)
+![comparison U](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/brusselator_pde_2nd_comparison_t1_u.svg)
 
 The figure below shows the `russell` (black dashed lines) and Mathematica (red solid lines) results for the `V` field:
 
-![comparison V](data/figures/brusselator_pde_2nd_comparison_t1_v.svg)
+![comparison V](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/brusselator_pde_2nd_comparison_t1_v.svg)
 
 
 
 ### Arenstorf orbits
 
-This example corresponds to Fig 0.1 on page 130 of Reference #1. The problem is defined in Eqs (0.1) and (0.2) on page 129 and 130 of Reference #1.
+This example corresponds to Fig 0.1 on page 130 of Reference #1. The problem is defined in Eqs (0.1) and (0.2) on pages 129 and 130 of Reference #1.
 
 From Hairer-Nørsett-Wanner:
 
@@ -701,7 +701,7 @@ Total time                       = 1.399021ms
 
 The results are plotted below:
 
-![Arenstorf Orbit: DoPri8](data/figures/arenstorf_dopri8.svg)
+![Arenstorf Orbit: DoPri8](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/arenstorf_dopri8.svg)
 
 
 
@@ -725,15 +725,14 @@ J = —— = │ -50 │
     dy   └     ┘
 ```
 
-This example illustrates the instability of the forward Euler method with step sizes above the stability limit. The equation is (reference # 2, page 2):
-
+This example illustrates the instability of the forward Euler method with step sizes above the stability limit. 
 This example also shows how to enable the output of accepted steps.
 
 See the code [hairer_wanner_eq1.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/hairer_wanner_eq1.rs)
 
-The results are show below:
+The results are shown below:
 
-![Hairer-Wanner Eq(1.1)](data/figures/hairer_wanner_eq1.svg)
+![Hairer-Wanner Eq(1.1)](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/hairer_wanner_eq1.svg)
 
 
 
@@ -751,7 +750,7 @@ y2' =                          3.0e7 y1²
 with  y0(0) = 1, y1(0) = 0, y2(0) = 0
 ```
 
-This example illustrates the Robertson's equation. In this problem DoPri5 uses many steps (about 200). On the other hand, Radau5 solves the problem with 17 accepted steps.
+This example illustrates Robertson's equation. In this problem DoPri5 uses many steps (about 200). On the other hand, Radau5 solves the problem with 17 accepted steps.
 
 This example also shows how to enable the output of accepted steps.
 
@@ -802,11 +801,11 @@ Total time                       = 3.705391ms
 
 The results are illustrated below:
 
-![Robertson's Equation - Solution](data/figures/robertson_a.svg)
+![Robertson's Equation - Solution](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/robertson_a.svg)
 
 The step sizes from the DoPri solution with Tol = 1e-2 are illustrated below:
 
-![Robertson's Equation - Step Sizes](data/figures/robertson_b.svg)
+![Robertson's Equation - Step Sizes](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/robertson_b.svg)
 
 
 
@@ -827,7 +826,7 @@ where ε defines the *stiffness* of the problem + conditions (equation + initial
 
 This example corresponds to Fig 2.6 on page 23 of Reference #2. The problem is defined in Eq (1.5') on page 5 of Reference #2.
 
-This example illustrated the *stiffness* of the Van der Pol problem with ε = 0.003. In this example, DoPri5 with Tol = 1e-3 is used.
+This example illustrates the *stiffness* of the Van der Pol problem with ε = 0.003. In this example, DoPri5 with Tol = 1e-3 is used.
 
 This example also shows how to enable the stiffness detection.
 
@@ -851,9 +850,9 @@ Max time spent on a step         = 2.558µs
 Total time                       = 1.715917ms
 ```
 
-The results are show below:
+The results are shown below:
 
-![Van der Pol's Equation - DoPri5](data/figures/van_der_pol_dopri5.svg)
+![Van der Pol's Equation - DoPri5](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/van_der_pol_dopri5.svg)
 
 The figure's red dashed lines mark the moment when stiffness has been detected first. The stiffness is confirmed after 15 accepted steps with repeated stiffness thresholds being reached. The positive thresholds are counted when h·ρ becomes greater than the corresponding factor·max(h·ρ)---the value on the stability limit (3.3 for DoPri5; factor ~= 0.976). Note that ρ is the approximation of the dominant eigenvalue of the Jacobian. After 6 accepted steps, if the thresholds are not reached, the stiffness detection flag is set to false.
 
@@ -861,7 +860,7 @@ The figure's red dashed lines mark the moment when stiffness has been detected f
 
 This example corresponds to Fig 8.1 on page 125 of Reference #2. The problem is defined in Eq (1.5') on page 5 of Reference #2.
 
-This example uses a smaller ε = 1e-6, making the problem + conditions much more stiff. It is solved with the Radau5 solver, which can handle stiff problems quite well. Note that DoPri5 would not solve this problem with such small ε, unless a very high number of steps (and oder configurations) were considered.
+This example uses a smaller ε = 1e-6, making the problem + conditions much more stiff. It is solved with the Radau5 solver, which can handle stiff problems quite well. Note that DoPri5 would not solve this problem with such small ε, unless a very high number of steps (and order configurations) were considered.
 
 The output is given below:
 
@@ -889,9 +888,9 @@ Max time spent on lin solution   = 4.010536ms
 Total time                       = 37.8697ms
 ```
 
-The results are show below:
+The results are shown below:
 
-![Van der Pol's Equation - Radau5](data/figures/van_der_pol_radau5.svg)
+![Van der Pol's Equation - Radau5](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/van_der_pol_radau5.svg)
 
 
 
@@ -984,7 +983,7 @@ Total time                       = 97.951021ms
 
 The results are plotted below:
 
-![One-transistor Amplifier - Radau5](data/figures/amplifier1t_radau5.svg)
+![One-transistor Amplifier - Radau5](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/amplifier1t_radau5.svg)
 
 
 

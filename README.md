@@ -762,7 +762,7 @@ std_dev = 312.7131690782321
     - [x] Implement 1D and 2D finite difference methods
 - [x] Implement `russell_nonlin`
     - [x] Implement natural continuation for nonlinear systems
-    - [x] Implement pseudo-arc-length continuation for nonlinear systems
+    - [x] Implement pseudo-arclength continuation for nonlinear systems
     - [x] Study better methods for step size control in continuation methods
 - [ ] Improve `russell_stat`
     - [x] Add probability distribution functions

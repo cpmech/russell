@@ -7,10 +7,14 @@ use serde::{Deserialize, Serialize};
 /// Verifies the linear system a ⋅ x = rhs
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct VerifyLinSys {
-    pub max_abs_a: f64,      // max abs a
-    pub max_abs_ax: f64,     // max abs a ⋅ x
-    pub max_abs_diff: f64,   // max abs diff = a ⋅ x - rhs
-    pub relative_error: f64, // max_abs_diff / (max_abs_a + 1)
+    /// Maximum absolute value in the matrix
+    pub max_abs_a: f64,
+    /// Maximum absolute value in the product a ⋅ x
+    pub max_abs_ax: f64,
+    /// Maximum absolute value of the difference a ⋅ x - rhs
+    pub max_abs_diff: f64,
+    /// Relative error, given by max_abs_diff / (max_abs_a + 1)
+    pub relative_error: f64,
 }
 
 impl VerifyLinSys {

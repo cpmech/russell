@@ -26,7 +26,7 @@ use crate::{Matrix, Vector, deriv1_central5};
 /// * `x_at` -- the scalar argument corresponding to the time/station when/where the Jacobian is to be computed
 /// * `y_at` -- the vector argument corresponding to the time/station when/where the Jacobian is to be computed
 /// * `function` -- the vector function `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)` where:
-///     * `f` -- the result of the the function evaluation
+///     * `f` -- the result of the function evaluation
 ///     * `x` -- the scalar argument (e.g., time)
 ///     * `y` -- the vector argument (e.g., position)
 ///     * `args` -- some additional arguments for the function

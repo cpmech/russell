@@ -38,7 +38,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 - [About the column major representation](#about-the-column-major-representation)
 - [Benchmarks](#benchmarks)
   - [Chebyshev polynomial evaluation](#chebyshev-polynomial-evaluation)
-  - [Jacobi Rotation versus LAPACK DSYEV](#jacobi-rotation-versus-lapack-dsyev)
+  - [Jacobi Rotation versus LAPACK DSYEV](#jacobi-rotation-versus-dsyev)
 - [For developers](#for-developers)
 
 
@@ -51,7 +51,7 @@ The code shall be implemented in *native Rust* code as much as possible. However
 
 The code is organized in modules:
 
-* `algo` — algorithms that depend on the other modules (e.g, Lagrange interpolation)
+* `algo` — algorithms that depend on the other modules (e.g., Lagrange interpolation)
 * `base` — "base" functionality to help other modules
 * `check` — functions to assist in unit and integration testing
 * `math` — mathematical (specialized) functions and constants
@@ -59,7 +59,7 @@ The code is organized in modules:
 * `matvec` — functions operating on matrices and vectors
 * `vector` — [NumVector] struct and associated functions
 
-For linear algebra, the main structures are `NumVector` and `NumMatrix`, that are generic Vector and Matrix structures. The Matrix data is stored as [column-major](#col-major). The `Vector` and `Matrix` are `f64` and `Complex64` aliases of `NumVector` and `NumMatrix`, respectively.
+For linear algebra, the main structures are `NumVector` and `NumMatrix`, that are generic Vector and Matrix structures. The Matrix data is stored as [column-major](#about-the-column-major-representation). The `Vector` and `Matrix` are `f64` and `Complex64` aliases of `NumVector` and `NumMatrix`, respectively.
 
 The linear algebra functions currently handle only `(f64, i32)` pairs, i.e., accessing the `(double, int)` C functions. We also consider `(Complex64, i32)` pairs.
 
@@ -69,7 +69,7 @@ There are many functions for linear algebra, such as (for Real and Complex types
 * Matrix addition, multiplication, copy, singular-value decomposition, eigenvalues, pseudo-inverse, inverse, norms, and more
 * Matrix-vector multiplication, and more
 * Solution of dense linear systems with symmetric or non-symmetric coefficient matrices, and more
-* Reading writing files, `linspace`, grid generators, Stopwatch, linear fitting, and more
+* Reading and writing files, `linspace`, grid generators, Stopwatch, linear fitting, and more
 * Checking results, comparing floating point numbers, and verifying the correctness of derivatives; see `russell_lab::check`
 
 ### Documentation
@@ -119,7 +119,7 @@ links MKL. Note that the
 [main README file](https://github.com/cpmech/russell) presents the steps to
 compile the required libraries according to each feature.
 
-`algebra_linear` is licensed BSD-3-Clause, because it is a port of LAPACK, which is.
+`algebra_linear` is licensed BSD-3-Clause, because it is a port of LAPACK, which is also BSD-3-Clause.
 This crate is MIT. A binary distribution of this crate links `algebra_linear` into
 the executable, so it must reproduce that crate's copyright notice and conditions
 as well as this one.
@@ -168,7 +168,7 @@ Both thread variables are needed because OpenMP builds of OpenBLAS read
 
 This section illustrates how to use `russell_lab`. See also:
 
-* [More examples on the documentation](https://docs.rs/russell_lab/)
+* [More examples in the documentation](https://docs.rs/russell_lab/)
 * [Examples directory](https://github.com/cpmech/russell/tree/main/russell_lab/examples)
 
 
@@ -266,7 +266,7 @@ fn main() -> Result<(), StrError> {
 
 Check the implementation of the first and second derivatives of f(x) (illustrated below).
 
-![Inverted and shifted Runge's equation](data/figures/test_function_002.svg)
+![Inverted and shifted Runge's equation](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_002.svg)
 
 [See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/check_1st_and_2nd_derivatives.rs)
 
@@ -359,7 +359,7 @@ fn main() -> Result<(), StrError> {
 
 Output:
 
-![Bessel functions](data/figures/math_bessel_functions_1.svg)
+![Bessel functions](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_bessel_functions_1.svg)
 
 
 
@@ -385,7 +385,7 @@ fn main() -> Result<(), StrError> {
 
 Results:
 
-![Linear fitting](data/figures/algo_linear_fitting_1.svg)
+![Linear fitting](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/algo_linear_fitting_1.svg)
 
 
 
@@ -397,7 +397,7 @@ This example illustrates the use of `InterpChebyshev` to interpolate data given 
 
 Results:
 
-![Chebyshev interpolation (given function)](data/figures/algo_interp_chebyshev_adapt.svg)
+![Chebyshev interpolation (given function)](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/algo_interp_chebyshev_adapt.svg)
 
 
 
@@ -409,7 +409,7 @@ This example illustrates the use of `InterpChebyshev` to interpolate discrete da
 
 Results:
 
-![Chebyshev interpolation (given data)](data/figures/algo_interp_chebyshev_data.svg)
+![Chebyshev interpolation (given data)](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/algo_interp_chebyshev_data.svg)
 
 
 
@@ -421,19 +421,19 @@ This example illustrates the use of `InterpChebyshev` to interpolate noisy data.
 
 Results:
 
-![Chebyshev interpolation (given noisy data)](data/figures/algo_interp_chebyshev_noisy_data.svg)
+![Chebyshev interpolation (given noisy data)](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/algo_interp_chebyshev_noisy_data.svg)
 
 
 
 ### Lagrange interpolation
 
-This example illustrates the use of `InterpLagrange` with at Chebyshev-Gauss-Lobatto grid to interpolate Runge's equation.
+This example illustrates the use of `InterpLagrange` with a Chebyshev-Gauss-Lobatto grid to interpolate Runge's equation.
 
 [See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/algo_interp_lagrange.rs)
 
 Results:
 
-![algo_interp_lagrange](data/figures/algo_interp_lagrange.svg)
+![algo_interp_lagrange](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/algo_interp_lagrange.svg)
 
 
 
@@ -471,7 +471,7 @@ u(x) = e  - ——————— e   + —
 
 Results:
 
-![algo_lorene_1d_pde_spectral_collocation](data/figures/algo_lorene_1d_pde_spectral_collocation.svg)
+![algo_lorene_1d_pde_spectral_collocation](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/algo_lorene_1d_pde_spectral_collocation.svg)
 
 
 
@@ -516,7 +516,7 @@ fn main() -> Result<(), StrError> {
 
 This example finds the local minimum between 0.1 and 0.3 and the root between 0.3 and 0.4 for the function illustrated below
 
-![finding a local minimum](data/figures/test_function_005.svg)
+![finding a local minimum](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_005.svg)
 
 [See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/algo_min_and_root_solver_brent.rs)
 
@@ -591,7 +591,7 @@ f @ refined roots =
 
 The function and the roots are illustrated in the figure below.
 
-![All roots in an interval](data/figures/algo_root_finding_chebyshev.svg)
+![All roots in an interval](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/algo_root_finding_chebyshev.svg)
 
 **References**
 
@@ -678,7 +678,7 @@ vismatrix /tmp/russell_lab/matrix_visualization.smat
 
 Output:
 
-![Matrix visualization](data/figures/matrix_vizualization.png)
+![Matrix visualization](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/matrix_vizualization.png)
 
 
 
@@ -882,9 +882,9 @@ bash ./zscripts/bench.bash
 
 Comparison of the performances of `InterpChebyshev::eval` implementing the Clenshaw algorithm and `InterpChebyshev::eval_using_trig` using the trigonometric functions.
 
-![Chebyshev evaluation (small)](data/figures/bench_chebyshev_eval_small.svg)
+![Chebyshev evaluation (small)](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/bench_chebyshev_eval_small.svg)
 
-![Chebyshev evaluation (large)](data/figures/bench_chebyshev_eval_large.svg)
+![Chebyshev evaluation (large)](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/bench_chebyshev_eval_large.svg)
 
 
 ### Jacobi rotation versus DSYEV
@@ -893,9 +893,9 @@ Comparison of the performances of `mat_eigen_sym_jacobi` (Jacobi rotation) versu
 `mat_eigen_sym`, which runs the tridiagonal `dsyev` pipeline: the native Rust
 implementation by default, or LAPACK through the C shim with `open_blas`/`intel_mkl`.
 
-![Jacobi Rotation versus LAPACK DSYEV (1-5)](data/figures/bench_mat_eigen_sym_1-5.svg)
+![Jacobi Rotation versus LAPACK DSYEV (1-5)](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/bench_mat_eigen_sym_1-5.svg)
 
-![Jacobi Rotation versus LAPACK DSYEV (1-32)](data/figures/bench_mat_eigen_sym_1-32.svg)
+![Jacobi Rotation versus LAPACK DSYEV (1-32)](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/bench_mat_eigen_sym_1-32.svg)
 
 
 

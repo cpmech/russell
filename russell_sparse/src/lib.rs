@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 //! Russell - Rust Scientific Library
 //!
 //! `russell_sparse`: Solvers for large sparse linear systems, with a pure-Rust Native backend and optional MUMPS and UMFPACK
@@ -12,7 +14,6 @@
 //! * [NumCscMatrix] (CSC) -- Compressed Sparse Column matrix
 //! * [NumCsrMatrix] (CSR) -- Compressed Sparse Row matrix
 //!
-//! ![Sparse-Matrix](https://raw.githubusercontent.com/cpmech/russell/main/russell_sparse/data/figures/sparse-matrix.svg)
 //!
 //! For convenience, this crate defines the following type aliases for Real and Complex matrices (with double precision):
 //!
@@ -28,7 +29,7 @@
 //!
 //! The three individual sparse matrix structures ([CooMatrix], [CscMatrix], and [CsrMatrix]) have functions to calculate the (sparse) matrix-vector product, which, albeit not computer optimized, are convenient for checking the solution to the linear problem A * x = b (see also the VerifyLinSys structure).
 //!
-//! We call the actual linear system solver implementation [Genie] because they work like "magic" after being "wrapped" via a C-interface. Note that these fantastic solvers are implemented in Fortran and C. You may easily access the linear solvers directly via the following structures:
+//! We call the actual linear system solver implementations [Genie] because they work like "magic" after being "wrapped" via a C-interface. Note that these fantastic solvers are implemented in Fortran and C. You may easily access the linear solvers directly via the following structures:
 //!
 //! * [SolverNative] -- pure-Rust LU factorization from `algebra_linear` (always available)
 //! * **SolverMUMPS** (optional) -- thin wrapper to the MUMPS solver
@@ -53,7 +54,7 @@
 //!
 //! If neither the structure nor the values of the coefficient matrix change, we can call `solve` repeatedly if needed (e.g., in a simulation of linear dynamics using the FEM).
 //!
-//! The linear solvers have numerous configuration parameters; however, we can use the default parameters initially. The configuration parameters are collected in the [LinSolParams] structures, which is an input to the [LinSolTrait::factorize()]. The parameters include options such as [Ordering] and [Scaling].
+//! The linear solvers have numerous configuration parameters; however, we can use the default parameters initially. The configuration parameters are collected in the [LinSolParams] structure, which is an input to the [LinSolTrait::factorize()]. The parameters include options such as [Ordering] and [Scaling].
 //!
 //! This library also provides functions to read and write Matrix Market files containing (huge) sparse matrices that can be used in performance benchmarking or other studies. The [read_matrix_market()] function reads a Matrix Market file and returns a [CooMatrix]. To write a Matrix Market file, we can use [CscMatrix::write_matrix_market()] (and similar), which automatically converts COO to CSC or COO to CSR, also performing the sum of duplicates. The `write_matrix_market` can also write an SMAT file (almost like the Matrix Market format) without the header and with zero-based indices. The SMAT file can be given to the fantastic [Vismatrix](https://github.com/cpmech/vismatrix) tool to visualize the sparse matrix structure and values interactively; see the example below.
 //!

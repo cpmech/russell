@@ -16,5 +16,5 @@ then
     sudo ldconfig 2> >(grep -v 'is not an ELF file\|is not a symbolic link' >&2)
     echo "DONE"
 else
-    echo "..cancelled.."
+    echo "..canceled.."
 fi

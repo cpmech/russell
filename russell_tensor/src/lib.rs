@@ -8,13 +8,13 @@
 //!
 //! # Introduction
 //!
-//! This library implements structures and functions for tensor analysis and calculus, with focus on applications in engineering and [Continuum Mechanics](https://en.wikipedia.org/wiki/Continuum_mechanics). The essential functionality for the targeted applications includes first-order, second-order, third-order, and fourth-order tensors, scalar "invariants," and derivatives.
+//! This library implements structures and functions for tensor analysis and calculus, with a focus on applications in engineering and [Continuum Mechanics](https://en.wikipedia.org/wiki/Continuum_mechanics). The essential functionality for the targeted applications includes first-order, second-order, third-order, and fourth-order tensors, scalar "invariants," and derivatives.
 //!
 //! # Capabilities
 //!
 //! * [Tensor1] — First-order tensors (vectors) in R³. Includes operations such as the dot and cross products
 //! * [Tensor2] — Second-order tensors in R³×R³. Allows symmetric specialization. Includes functions such as the determinant, inverse, norm, and invariants (principal, deviatoric, Lode, octahedral, ...)
-//! * [Tensor3] — Third-order tensors R³×R³×R³. Allows minor-symmetric specialization. Includes functions such as permutation (Levi-Civita) tensor
+//! * [Tensor3] — Third-order tensors R³×R³×R³. Allows minor-symmetric specialization. Includes functions such as the permutation (Levi-Civita) tensor
 //! * [Tensor4] — Fourth-order tensors R³×R³×R³×R³. Allows minor-symmetric specialization. Includes functions to generate isotropic tensors.
 //! * [EigenValuesT2], [EigenProjsT2], [EigenProjDerivsT2] — Eigenvalues, eigenprojectors, and the derivatives of the eigenprojectors for symmetric second-order tensors.
 //! * [LinElasticity] — The linear elasticity equations for small-strain problems (Generalized Hooke's law)

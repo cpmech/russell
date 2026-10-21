@@ -157,7 +157,7 @@ use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 /// }
 /// ```
 ///
-/// ![Results](data/figures/doc_example_spc_map.svg)
+/// ![Results](https://raw.githubusercontent.com/cpmech/russell/main/russell_pde/data/figures/doc_example_spc_map.svg)
 pub struct SpcMap2d<'a> {
     /// The 2D Chebyshev-Gauss-Lobatto grid on the reference domain [-1, 1] × [-1, 1]
     ///

@@ -33,7 +33,7 @@ Some essential distributions considered in this library are those classified as 
 
 The figure below shows an application in structural safety (see Reference #1) using first-order reliability modeling (see Reference #2).
 
-![Collage Structural Safety](data/figures/collage-structural-safety.png)
+![Collage Structural Safety](https://raw.githubusercontent.com/cpmech/russell/main/russell_stat/data/figures/collage-structural-safety.png)
 
 ### Documentation
 
@@ -78,7 +78,7 @@ Note that the [main README file](https://github.com/cpmech/russell) presents the
 
 This section illustrates how to use `russell_stat`. See also:
 
-* [More examples on the documentation](https://docs.rs/russell_stat/)
+* [More examples in the documentation](https://docs.rs/russell_stat/)
 * [Examples directory](https://github.com/cpmech/russell/tree/main/russell_stat/examples)
 
 ### Descriptive Statistics

@@ -89,7 +89,7 @@ The following (Rust) features are available:
 * `intel_mkl`: Use Intel oneAPI MKL instead of OpenBLAS (takes precedence if both are enabled)
 * `umfpack`: UMFPACK support (opt-in); a local install under
   `RUSSELL_LOCAL_PREFIX` takes precedence over the package-manager one.
-* `mumps`: Use a locally compiled MUMPS, found through `RUSSELL_LOCAL_PREFIX`.
+* `mumps`: Use a locally compiled MUMPS, found through `RUSSELL_LOCAL_PREFIX` (Linux, macOS, and Windows with the GNU toolchain).
 
 Note that the [main README file](https://github.com/cpmech/russell) presents the steps to compile the required libraries according to each feature.
 

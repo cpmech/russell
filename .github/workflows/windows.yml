@@ -1,5 +1,6 @@
 name: Windows
 on:
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:
@@ -9,11 +10,18 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  test:
+  # MSYS2 with the GNU toolchain: the only Windows configuration that can link
+  # MUMPS, which is built from source here.
+  msys2:
+    name: MSYS2 (GNU toolchain)
     runs-on: windows-latest
+    env:
+      RUST_BACKTRACE: 1
+      MSYS2_PREFIX: '/ucrt64'
+      RUSSELL_LOCAL_PREFIX: '/ucrt64'
     steps:
       - uses: actions/checkout@v4
-      # 1. Setup MSYS2 with UCRT64 and required libraries
+
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
         with:
@@ -26,28 +34,93 @@ jobs:
             mingw-w64-ucrt-x86_64-openblas
             mingw-w64-ucrt-x86_64-suitesparse
 
-      # 2. Setup Rust with the matching GNU target
-      - name: Setup Rust
+      - name: Setup Rust (GNU host)
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable-x86_64-pc-windows-gnu
-          targets: x86_64-pc-windows-gnu
 
       - name: Cache the Rust build
         uses: Swatinem/rust-cache@v2
+        with:
+          key: msys2
 
-      # 3. Run Tests
+      - name: Compile MUMPS
+        shell: msys2 {0}
+        run: bash zscripts/windows-compile-mumps.bash
+
       - name: Run tests (Native)
         shell: msys2 {0}
-        env:
-          MSYS2_PREFIX: '/ucrt64'
-          RUST_BACKTRACE: 1
-        run: |
-          cargo test
+        run: cargo test
+
       - name: Run tests (UMFPACK)
         shell: msys2 {0}
-        env:
-          MSYS2_PREFIX: '/ucrt64'
-          RUST_BACKTRACE: 1
+        run: cargo test --features umfpack
+
+      - name: Run tests (MUMPS)
+        shell: msys2 {0}
+        run: cargo test --features mumps
+
+      - name: Run tests (UMFPACK + MUMPS)
+        shell: msys2 {0}
+        run: cargo test --features umfpack,mumps
+
+  # The MSVC toolchain, the default on Windows, taking UMFPACK from vcpkg.
+  msvc:
+    name: MSVC (vcpkg UMFPACK)
+    runs-on: windows-latest
+    env:
+      RUST_BACKTRACE: 1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup the MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Cache the Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: msvc
+
+      # Building OpenBLAS is the slow part, so the install tree is cached.
+      - name: Restore the vcpkg install tree
+        id: vcpkg
+        uses: actions/cache@v4
+        with:
+          path: C:\vcpkg\installed
+          key: vcpkg-${{ runner.os }}-x64-windows-umfpack-v1
+
+      - name: Install UMFPACK with vcpkg
+        if: steps.vcpkg.outputs.cache-hit != 'true'
+        shell: pwsh
         run: |
-          cargo test --features umfpack
+          & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install "suitesparse-umfpack[core]:x64-windows" --clean-after-build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      # Saved even when a later step fails, so a broken test does not cost the
+      # ten-minute OpenBLAS build on the next run.
+      - name: Save the vcpkg install tree
+        if: always() && steps.vcpkg.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: C:\vcpkg\installed
+          key: vcpkg-${{ runner.os }}-x64-windows-umfpack-v1
+
+      - name: Put the vcpkg DLLs on PATH
+        shell: pwsh
+        run: |
+          "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows\bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
+
+      - name: Run tests (Native)
+        shell: pwsh
+        run: cargo test
+
+      - name: Run tests (UMFPACK)
+        shell: pwsh
+        run: cargo test --features umfpack

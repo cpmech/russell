@@ -276,8 +276,9 @@ mod tests {
         assert!(info.contains(SUITESPARSE_VERSION), "Should contain SuiteSparse version");
     }
 
-    /// Guards the local-first selection: when the prefix contains UMFPACK the line
-    /// must say `local`, otherwise the system library must have been used.
+    /// Guards the source selection: when the prefix contains UMFPACK the line
+    /// must say `local`; on Windows a vcpkg install is the next source and says
+    /// `vcpkg`; otherwise the platform library must have been used.
     #[cfg(feature = "umfpack")]
     #[test]
     fn umfpack_source_follows_the_prefix() {
@@ -287,6 +288,9 @@ mod tests {
         let local = !trimmed.is_empty() && std::path::Path::new(trimmed).join("include/umfpack/umfpack.h").is_file();
         if local {
             assert!(source.starts_with("local"), "expected a local UMFPACK, got: {source}");
+        } else if source.starts_with("vcpkg") {
+            // Windows, where vcpkg sits between the local prefix and MSYS2.
+            assert!(cfg!(target_os = "windows"), "a vcpkg UMFPACK outside Windows: {source}");
         } else {
             assert!(source.starts_with("system"), "expected a system UMFPACK, got: {source}");
         }

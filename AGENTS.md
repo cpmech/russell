@@ -49,6 +49,13 @@ Extra features:
   exists. A prefix that is set but does not contain UMFPACK warns and falls back.
   `mumps` always comes from `RUSSELL_LOCAL_PREFIX` (`.../include/mumps`,
   `.../lib/mumps`), fails if it is unset or wrong, and is independent of `umfpack`.
+  On Windows it needs the GNU toolchain (MSYS2): the libraries are MinGW objects
+  plus gfortran, which MSVC cannot link.
+
+  On Windows, UMFPACK is searched in `RUSSELL_LOCAL_PREFIX` first, then in a
+  vcpkg install (`VCPKG_ROOT` or `VCPKG_INSTALLATION_ROOT`, triplet from
+  `RUSSELL_VCPKG_TRIPLET`/`VCPKG_DEFAULT_TRIPLET`), then in MSYS2
+  (`MSYS2_PREFIX`).
 
 ## WebAssembly
 
@@ -347,8 +354,13 @@ the Rust builds are cached with `Swatinem/rust-cache`.
   coverage threshold shown above. A second job installs the packaged
   `libsuitesparse-dev` and runs `umfpack` with `RUSSELL_LOCAL_PREFIX=/nonexistent`,
   exercising the system fallback; `src/util.rs` asserts which source was linked.
-- **macOS and Windows** run the default suite and `--features umfpack` against
-  the platform library (Homebrew and MSYS2 respectively).
+- **Windows** is a matrix over two toolchains: MSYS2 with the GNU toolchain
+  builds MUMPS from source and runs Native, `umfpack`, `mumps` and both; MSVC
+  takes UMFPACK from vcpkg and runs Native and `umfpack`, because the Windows
+  MUMPS build is MinGW objects plus gfortran. vcpkg's install tree is cached.
+- **macOS** runs the default suite and `--features umfpack` against Homebrew's
+  SuiteSparse, and a second job compiles MUMPS with Homebrew's gfortran (see
+  `zscripts/macos-compile-mumps.bash`) and runs `--features mumps`.
 - **Rocky and Arch** build their Docker images with the default and external
   solver configurations.
 - **Lint/MSRV** (Ubuntu): `cargo fmt --check`, `cargo doc` with

@@ -86,3 +86,8 @@ path = "benchmarks/small_ops_benchmark.rs"
 
 [lints]
 workspace = true
+
+# Browser builds have no `std::time::Instant`; `web-time` maps it to
+# `performance.now()`. WASI keeps the standard library version.
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+web-time = "1"

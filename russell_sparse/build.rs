@@ -4,9 +4,9 @@
 //! The interface files are small C shims that wrap the external solver libraries
 //! (UMFPACK and MUMPS) so that `russell_sparse` can call them through `extern "C"`.
 //!
-//! UMFPACK is optional and enabled by default through the `umfpack` feature.
-//! When it is enabled, the build looks for a local installation first and only
-//! then for the system one:
+//! UMFPACK is optional and enabled with the `umfpack` feature. When it is
+//! enabled, the build looks for a local installation first and only then for the
+//! system one:
 //!
 //! * `$RUSSELL_LOCAL_PREFIX/include/umfpack` and `$RUSSELL_LOCAL_PREFIX/lib/umfpack`
 //!   are used when `RUSSELL_LOCAL_PREFIX` is set and both directories exist;
@@ -37,7 +37,7 @@ use std::path::PathBuf;
 
 /// The C shim files compiled for the enabled solvers.
 ///
-/// UMFPACK joins with its feature (on by default); MUMPS with its own. Keeping
+/// UMFPACK joins with its feature (opt-in); MUMPS with its own. Keeping
 /// this in one place is what stops the Windows and Unix builds from drifting
 /// apart.
 fn shim_files() -> Vec<&'static str> {
@@ -293,8 +293,8 @@ mod unix {
                  Install it with `sudo apt install libsuitesparse-dev` (Debian/Ubuntu) or \
                  `sudo pacman -S suitesparse` (Arch), or set RUSSELL_LOCAL_PREFIX to a local install \
                  laid out as $RUSSELL_LOCAL_PREFIX/include/umfpack and \
-                 $RUSSELL_LOCAL_PREFIX/lib/umfpack. The `umfpack` feature is on by default; disable it \
-                 to build without UMFPACK."
+                 $RUSSELL_LOCAL_PREFIX/lib/umfpack. Alternatively, leave the `umfpack` feature \
+                 disabled to build without UMFPACK."
             );
         }
         build.includes(&include_dirs);

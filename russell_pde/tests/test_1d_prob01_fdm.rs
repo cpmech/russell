@@ -8,13 +8,13 @@ use serial_test::serial;
 #[test]
 fn test_1d_prob01_fdm() -> Result<(), StrError> {
     // SPS
-    run_fdm(false, 5, 1e-15, Genie::Umfpack, false)?;
+    run_fdm(false, 5, 1e-15, Genie::Native, false)?;
     // LMM
-    run_fdm(true, 5, 1e-15, Genie::Umfpack, false)?;
+    run_fdm(true, 5, 1e-15, Genie::Native, false)?;
     // SPS symmetric
-    run_fdm(false, 5, 1e-15, Genie::Umfpack, true)?;
+    run_fdm(false, 5, 1e-15, Genie::Native, true)?;
     // LMM symmetric
-    run_fdm(true, 5, 1e-15, Genie::Umfpack, true)?;
+    run_fdm(true, 5, 1e-15, Genie::Native, true)?;
     Ok(())
 }
 

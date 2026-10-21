@@ -12,13 +12,14 @@ categories = ["mathematics", "science"]
 keywords = ["matrix", "sparse", "solver"]
 
 [features]
-default = ["umfpack"]
+default = []
 # Links an external BLAS/LAPACK through `russell_lab`; off for targets
 # that have none, such as `wasm32-unknown-unknown`.
 open_blas = ["russell_lab/open_blas"]
 intel_mkl = ["russell_lab/intel_mkl"]
-# UMFPACK support. The build uses a local install under RUSSELL_LOCAL_PREFIX
-# first, and falls back to the system library when there is none.
+# UMFPACK support (opt-in). The build uses a local install under
+# RUSSELL_LOCAL_PREFIX first, and falls back to the system library when there
+# is none.
 umfpack = []
 # MUMPS from a local install under RUSSELL_LOCAL_PREFIX, independently of
 # UMFPACK.

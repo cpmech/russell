@@ -399,7 +399,7 @@ mod tests {
 
     #[test]
     fn new_captures_errors() {
-        let (system, _, _, _, _) = Samples::simple_system_with_mass_matrix(false, Genie::Umfpack);
+        let (system, _, _, _, _) = Samples::simple_system_with_mass_matrix(false, Genie::Native);
         let mut params = Params::new(Method::MdEuler);
         assert_eq!(
             OdeSolver::new(params, system).err(),

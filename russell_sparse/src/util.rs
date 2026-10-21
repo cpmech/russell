@@ -164,7 +164,7 @@ const SUITESPARSE_VERSION: &str = "latest (from GitHub)";
 /// Reports where each backend came from, plus the version that the project's
 /// installation scripts download:
 ///
-/// - **UMFPACK** — present when the `umfpack` feature is enabled (the default);
+/// - **UMFPACK** — present when the `umfpack` feature is enabled (opt-in);
 ///   the line says whether it is the package-manager library (`system`) or the
 ///   local install under `RUSSELL_LOCAL_PREFIX` that took precedence, with the
 ///   directory it was linked from; `[not compiled in]` otherwise

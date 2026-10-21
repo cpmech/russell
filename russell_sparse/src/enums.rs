@@ -15,7 +15,7 @@ pub enum Genie {
 
     /// Selects UMFPACK (unsymmetric multi-frontal) solver
     ///
-    /// Requires the `umfpack` feature, which is enabled by default.
+    /// Requires the `umfpack` feature, which is not enabled by default.
     ///
     /// Reference: <https://github.com/DrTimothyAldenDavis/SuiteSparse>
     Umfpack,
@@ -221,13 +221,13 @@ pub enum Scaling {
     Sum,
 }
 impl Genie {
-    /// Returns the Genie by name (default is umfpack)
+    /// Returns the Genie by name (unknown names select Native)
     pub fn from(genie: &str) -> Self {
         match genie.to_lowercase().as_str() {
             "mumps" => Genie::Mumps,
             "native" => Genie::Native,
             "umfpack" => Genie::Umfpack,
-            _ => Genie::Umfpack,
+            _ => Genie::Native,
         }
     }
 
@@ -430,7 +430,8 @@ mod tests {
     fn genie_functions_work() {
         assert_eq!(Genie::from("mumps"), Genie::Mumps);
         assert_eq!(Genie::from("umfpack"), Genie::Umfpack);
-        assert_eq!(Genie::from("blah-blah-blah"), Genie::Umfpack);
+        assert_eq!(Genie::from("native"), Genie::Native);
+        assert_eq!(Genie::from("blah-blah-blah"), Genie::Native);
 
         assert_eq!(Genie::from("Mumps"), Genie::Mumps);
         assert_eq!(Genie::from("Umfpack"), Genie::Umfpack);

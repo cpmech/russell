@@ -321,7 +321,7 @@ pub struct Fdm2d<'a> {
     /// Sparse linear solver type
     ///
     /// Determines which solver backend to use (e.g., UMFPACK, MUMPS).
-    /// Default: `Genie::Umfpack`
+    /// Default: `Genie::Native`
     genie: Genie,
 
     /// Use symmetric matrix storage
@@ -380,7 +380,7 @@ impl<'a> Fdm2d<'a> {
             molecule: vec![alpha, beta, beta, gamma, gamma],
             dx,
             dy,
-            genie: Genie::Umfpack,
+            genie: Genie::Native,
             symmetric: true,
         })
     }
@@ -389,7 +389,7 @@ impl<'a> Fdm2d<'a> {
     ///
     /// # Input
     ///
-    /// * `genie` - Sparse solver type (e.g., `Genie::Umfpack`, `Genie::Mumps`)
+    /// * `genie` - Sparse solver type (e.g., `Genie::Native`, `Genie::Mumps`)
     /// * `symmetric` - Whether to exploit matrix symmetry
     ///   * `true`: Store only lower/upper triangle (saves memory)
     ///   * `false`: Store full matrix

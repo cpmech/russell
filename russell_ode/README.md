@@ -87,7 +87,7 @@ The following (Rust) features are available:
 
 * `open_blas`: Use OpenBLAS instead of the native Rust BLAS/LAPACK
 * `intel_mkl`: Use Intel oneAPI MKL instead of OpenBLAS (takes precedence if both are enabled)
-* `umfpack` (default): UMFPACK support; a local install under
+* `umfpack`: UMFPACK support (opt-in); a local install under
   `RUSSELL_LOCAL_PREFIX` takes precedence over the package-manager one.
 * `mumps`: Use a locally compiled MUMPS, found through `RUSSELL_LOCAL_PREFIX`.
 

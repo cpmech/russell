@@ -14,7 +14,7 @@ struct Options {
     matrix_market_file: String,
 
     /// Solver selection
-    #[structopt(short = "g", long, default_value = "Umfpack")]
+    #[structopt(short = "g", long, default_value = "Native")]
     genie: String,
 
     /// Ordering strategy

@@ -41,7 +41,7 @@ the `algebra_linear` checkout). Nothing here needs a reference build, and there 
 
 Extra features:
 
-- `umfpack` (default) and `mumps` on `russell_sparse`, `russell_ode`,
+- `umfpack` (opt-in) and `mumps` on `russell_sparse`, `russell_ode`,
   `russell_pde`, `russell_nonlin` — `umfpack` compiles UMFPACK support. The build
   looks in `RUSSELL_LOCAL_PREFIX` first (`.../include/umfpack`,
   `.../lib/umfpack`); if that install is absent or the variable is unset, it falls
@@ -49,6 +49,16 @@ Extra features:
   exists. A prefix that is set but does not contain UMFPACK warns and falls back.
   `mumps` always comes from `RUSSELL_LOCAL_PREFIX` (`.../include/mumps`,
   `.../lib/mumps`), fails if it is unset or wrong, and is independent of `umfpack`.
+
+## WebAssembly
+
+The default features must compile for `wasm32-unknown-unknown` and
+`wasm32-wasip1`: the Native solver is pure Rust, and `russell_lab` uses
+`web-time` for the browser clock and `getrandom/wasm_js` for `russell_stat`'s
+random numbers. Do not enable `umfpack` or `mumps` in a wasm build. File-based
+helpers (Matrix Market, JSON stats) compile on both targets but return errors in
+the browser, where there is no filesystem; document that instead of adding a
+browser filesystem shim. The CI job `wasm` runs both `cargo check` commands.
 
 ## The BLAS/LAPACK kernels live in `algebra_linear`
 

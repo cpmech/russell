@@ -2,7 +2,7 @@
 //!
 //! `russell_sparse`: Solvers for large sparse linear systems, with a pure-Rust Native backend and optional MUMPS and UMFPACK
 //!
-//! **Important:** the Native backend is pure Rust; UMFPACK (the default `umfpack` feature) and MUMPS (`mumps`) need external libraries. Please check the [Installation Instructions on the GitHub Repository](https://github.com/cpmech/russell).
+//! **Important:** the Native backend is pure Rust; UMFPACK (the opt-in `umfpack` feature) and MUMPS (`mumps`) need external libraries. Please check the [Installation Instructions on the GitHub Repository](https://github.com/cpmech/russell).
 //!
 //! # Introduction
 //!
@@ -32,7 +32,7 @@
 //!
 //! * [SolverNative] -- pure-Rust LU factorization from `algebra_linear` (always available)
 //! * **SolverMUMPS** (optional) -- thin wrapper to the MUMPS solver
-//! * `SolverUMFPACK` (optional, on by default) -- thin wrapper to the UMFPACK solver
+//! * `SolverUMFPACK` (optional, behind the `umfpack` feature) -- thin wrapper to the UMFPACK solver
 //!
 //! This library also provides a unifying Trait called [LinSolTrait], which the above structures implement. In addition, the [LinSolver] structure holds a "pointer" to one of the above structures and is a more convenient way to use the linear solvers in generic codes when we need to switch from solver to solver (e.g., for benchmarking). After allocating a [LinSolver], if needed, we can access the actual implementations (interfaces/thin wrappers) via the [LinSolver::actual] data member.
 //!

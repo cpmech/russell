@@ -148,12 +148,12 @@ This project employs [SuiteSparse](https://github.com/DrTimothyAldenDavis/SuiteS
 
 The default build needs no external BLAS: `russell_lab` ships its own Rust implementation. To use an external one instead, select `open_blas` (OpenBLAS) or `intel_mkl` (Intel oneAPI MKL); if both are enabled, `intel_mkl` takes precedence and OpenBLAS is not linked.
 
-`russell_sparse` always has a direct solver: the pure-Rust Native backend. UMFPACK is an optional accelerator, enabled by default through the `umfpack` feature:
+`russell_sparse` always has a direct solver: the pure-Rust Native backend. UMFPACK is an optional accelerator, enabled with the `umfpack` feature:
 
-- `umfpack` (default) — use the local install under `RUSSELL_LOCAL_PREFIX` when it is there, otherwise fall back to the package-manager library located with `pkg-config`; fail if neither exists;
+- `umfpack` (opt-in) — use the local install under `RUSSELL_LOCAL_PREFIX` when it is there, otherwise fall back to the package-manager library located with `pkg-config`; fail if neither exists;
 - `mumps` — MUMPS from `RUSSELL_LOCAL_PREFIX`, independently of UMFPACK.
 
-Disable the default feature to build without UMFPACK (`default-features = false`). The local UMFPACK takes precedence over the system one, and a build links only one of the two sources: `pkg-config` is not consulted when the local install was found. This matters because the two SuiteSparse builds usually differ in version while sharing the `libumfpack.so.6` soname, so a mixture would not show up at run time. A locally compiled SuiteSparse is somewhat faster than the packaged one, at the cost of a long build.
+The default build uses only the Native backend; enable `umfpack` to add UMFPACK. The local UMFPACK takes precedence over the system one, and a build links only one of the two sources: `pkg-config` is not consulted when the local install was found. This matters because the two SuiteSparse builds usually differ in version while sharing the `libumfpack.so.6` soname, so a mixture would not show up at run time. A locally compiled SuiteSparse is somewhat faster than the packaged one, at the cost of a long build.
 
 Accelerators are worth it for large problems but not required: measured on a 13th-gen Intel i9, the native matrix multiplication kernels reach about half the throughput of OpenBLAS per core (roughly 2x slower), while dense solves are tens of times slower because `dgetrf` is not blocked yet. The [russell_lab README](russell_lab/README.md#performance-of-the-backends) has the table.
 
@@ -180,6 +180,17 @@ russell_sparse = { version = "*", features = ["intel_mkl", "umfpack", "mumps"] }
 Replace "*" with the desired version. Note that `russell_sparse` (and all other crates in this project) require `russell_lab` as a dependency.
 
 
+
+## WebAssembly
+
+The workspace builds for both WebAssembly targets with the default features, i.e. with the Native solver and no external libraries:
+
+```bash
+cargo check --workspace --target wasm32-unknown-unknown
+cargo check --workspace --target wasm32-wasip1
+```
+
+The browser target has no filesystem: the Matrix Market readers/writers and the JSON statistics helpers compile, but they return errors when called. WASI exposes the filesystem when the runtime preopens a directory. Timers work in both: `wasm32-unknown-unknown` uses [`web-time`](https://crates.io/crates/web-time) (`performance.now()`), while WASI uses the standard library clock. Enabling `umfpack` or `mumps` is only possible on native targets.
 
 ## Installation
 
@@ -741,7 +752,7 @@ Build-dependencies: `cc`, `pkg-config`.
 
 ### russell_sparse — sparse solvers
 
-`russell_sparse/build.rs` compiles the C shims for the sparse solvers. UMFPACK is optional and on by default (`umfpack`); MUMPS joins it when `mumps` is enabled. The features select which solvers are present, and the build selects the UMFPACK source:
+`russell_sparse/build.rs` compiles the C shims for the sparse solvers. UMFPACK is optional and off by default (`umfpack`); MUMPS joins it when `mumps` is enabled. The features select which solvers are present, and the build selects the UMFPACK source:
 
 - `umfpack` on: a local install under `$RUSSELL_LOCAL_PREFIX/include/umfpack` and `.../lib/umfpack` is used when `RUSSELL_LOCAL_PREFIX` is set and contains it, with no `pkg-config` lookup in that case; otherwise the build falls back to the package-manager library (`pkg-config`, trying both `UMFPACK` and `umfpack` spellings, then the built-in directory list). If neither answers, the build stops naming the package to install. A prefix that is set but incomplete prints a warning and falls back.
 - `umfpack` off: no UMFPACK shims are compiled and nothing is linked; the Native solver remains available.

@@ -78,10 +78,10 @@ The following (Rust) features are available:
 
 * `open_blas`: Use OpenBLAS instead of the native Rust BLAS/LAPACK
 * `intel_mkl`: Use Intel oneAPI MKL instead of OpenBLAS (takes precedence if both are enabled)
-* `umfpack` (default): UMFPACK support. The build looks for a local install under `RUSSELL_LOCAL_PREFIX` first, and falls back to the package-manager library.
+* `umfpack`: UMFPACK support (opt-in). The build looks for a local install under `RUSSELL_LOCAL_PREFIX` first, and falls back to the package-manager library.
 * `mumps`: Use a locally compiled MUMPS, found through `RUSSELL_LOCAL_PREFIX`.
 
-UMFPACK is optional and enabled by default. With `umfpack`, the build first checks for a local install at `$RUSSELL_LOCAL_PREFIX/include/umfpack` and `$RUSSELL_LOCAL_PREFIX/lib/umfpack`. If that installation is not there — or `RUSSELL_LOCAL_PREFIX` is unset — it falls back to the system library found with `pkg-config` (or the usual include/library directories), and fails as usual if neither is available. The local installation therefore takes precedence, and a build links only one of the two sources. `--no-default-features` builds without UMFPACK; the Native solver remains available.
+UMFPACK is optional and off by default. With `umfpack`, the build first checks for a local install at `$RUSSELL_LOCAL_PREFIX/include/umfpack` and `$RUSSELL_LOCAL_PREFIX/lib/umfpack`. If that installation is not there — or `RUSSELL_LOCAL_PREFIX` is unset — it falls back to the system library found with `pkg-config` (or the usual include/library directories), and fails as usual if neither is available. The local installation therefore takes precedence, and a build links only one of the two sources. The default build uses the Native solver; enable `umfpack` to add UMFPACK.
 
 MUMPS is independent of UMFPACK and always comes from `RUSSELL_LOCAL_PREFIX`, which must then be set and exported. The layout is fixed:
 
@@ -95,6 +95,10 @@ A prefix that is set but does not contain UMFPACK produces a build warning and t
 Note that the [main README file](https://github.com/cpmech/russell) presents the steps to compile the required libraries according to each feature.
 
 
+
+### WebAssembly
+
+With the default features (Native solver, no external libraries) the crate builds for `wasm32-unknown-unknown` and `wasm32-wasip1`. On the browser target the Matrix Market and JSON file helpers compile but return errors, since there is no filesystem; WASI provides one when the runtime preopens a directory.
 
 ## 🌟 Examples
 
@@ -206,7 +210,7 @@ See also the folder `examples`.
 
 ## Tools
 
-This crate includes a tool named `solve_matrix_market` to study the performance of the available sparse solvers (currently MUMPS and UMFPACK).
+This crate includes a tool named `solve_matrix_market` to study the performance of the available sparse solvers (Native, MUMPS and UMFPACK).
 
 `solve_matrix_market` reads a [Matrix Market file](https://math.nist.gov/MatrixMarket/formats.html) and solves the linear system:
 
@@ -232,7 +236,7 @@ cargo run --release --bin solve_matrix_market -- --help
 
 to see the options.
 
-The default solver of `solve_matrix_market` is UMFPACK. To run with MUMPS, use the `--genie` (-g) flag:
+The default solver of `solve_matrix_market` is Native. To run with MUMPS or UMFPACK, use the `--genie` (-g) flag:
 
 ```bash
 cargo run --release --bin solve_matrix_market -- -g mumps ~/Downloads/matrix-market/bfwb62.mtx

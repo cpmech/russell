@@ -28,3 +28,7 @@ plotpy = "1.24"
 
 [lints]
 workspace = true
+
+# `rand` needs a browser entropy source on wasm32-unknown-unknown.
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+getrandom = { version = "0.4", features = ["wasm_js"] }

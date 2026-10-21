@@ -901,7 +901,7 @@ mod tests {
 
     #[test]
     fn radau5_works_mass_matrix() {
-        let genie = Genie::Umfpack;
+        let genie = Genie::Native;
         for symmetric in [true, false] {
             for numerical in [true, false] {
                 // problem

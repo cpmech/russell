@@ -186,6 +186,12 @@ impl LinSolTrait for SolverNative {
             }
         }
 
+        // Pick the factorization before the first analysis; later calls reuse it.
+        let method = match params {
+            Some(par) if par.native_supernodal => LuMethod::Supernodal,
+            _ => LuMethod::Simplicial,
+        };
+
         // The structure is fixed by the first call; later calls may only change
         // the values.
         if !self.initialized {
@@ -198,7 +204,7 @@ impl LinSolTrait for SolverNative {
             let col_pointers: Vec<usize> = csc.get_col_pointers()[..=mat.ncol].iter().map(|&p| p as usize).collect();
             let row_indices: Vec<usize> = csc.get_row_indices()[..nnz].iter().map(|&i| i as usize).collect();
             let pattern = CscPattern::new(mat.nrow, mat.ncol, &col_pointers, &row_indices).map_err(native_error)?;
-            let symbolic = LuSymbolic::analyze(pattern, LuMethod::auto()).map_err(native_error)?;
+            let symbolic = LuSymbolic::analyze(pattern, method).map_err(native_error)?;
             self.time_initialize_ns = self.stopwatch.stop();
             self.csc = Some(csc);
             self.symbolic = Some(symbolic);

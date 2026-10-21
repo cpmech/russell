@@ -5,6 +5,22 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.0] - 2026-10-21
+
+### Added
+
+- `LinSolParams.native_supernodal` selects the experimental supernodal LU in the
+  Native solver. The CLI exposes it as `--native-supernodal`.
+
+### Changed
+
+- The Native solver (`SolverNative`, `ComplexSolverNative`) uses the simplicial LU
+  by default. It is faster than the supernodal path on every matrix in the
+  downstream benchmark; the supernodal path remains available for experiments.
+- `russell_sparse` depends on `algebra_linear` 1.2, which compresses the supernodal
+  fronts, applies the relaxation pass, skips the unused supernodal symbolic
+  analysis, and aligns the automatic method threshold with the upstream one.
+
 ## [4.0.0] - 2026-10-21
 
 ### Changed (breaking)

@@ -36,6 +36,11 @@ serde_json = "1.0"
 [dev-dependencies]
 serial_test = "4.0"
 
+# The browser test runs through `wasm-bindgen-test`; the runner comes from
+# `wasm-bindgen-cli` at the same version as the `wasm-bindgen` dependency.
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
+wasm-bindgen-test = "0.3"
+
 [build-dependencies]
 cc = "1.4"
 pkg-config = "0.3"

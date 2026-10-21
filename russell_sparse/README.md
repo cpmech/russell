@@ -98,7 +98,7 @@ Note that the [main README file](https://github.com/cpmech/russell) presents the
 
 ### WebAssembly
 
-With the default features (Native solver, no external libraries) the crate builds for `wasm32-unknown-unknown` and `wasm32-wasip1`. On the browser target the Matrix Market and JSON file helpers compile but return errors, since there is no filesystem; WASI provides one when the runtime preopens a directory.
+With the default features (Native solver, no external libraries) the crate builds for `wasm32-unknown-unknown` and `wasm32-wasip1`. On the browser target the Matrix Market and JSON file helpers compile but return errors, since there is no filesystem; WASI provides one when the runtime preopens a directory. A smoke test factorizes and solves a small system on the browser target, where there is neither a clock nor a filesystem, so the Native path is exercised there rather than only compiled.
 
 ## 🌟 Examples
 

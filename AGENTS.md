@@ -351,9 +351,11 @@ the Rust builds are cached with `Swatinem/rust-cache`.
   the platform library (Homebrew and MSYS2 respectively).
 - **Rocky and Arch** build their Docker images with the default and external
   solver configurations.
-- **Lint/MSRV** (Ubuntu): `cargo fmt --check`, `cargo clippy --workspace
-  --all-targets -- -D warnings`, `cargo doc` with `RUSTDOCFLAGS=-D warnings`,
-  and `cargo +1.85.0 check --workspace`.
+- **Lint/MSRV** (Ubuntu): `cargo fmt --check`, `cargo doc` with
+  `RUSTDOCFLAGS=-D warnings`, and `cargo +1.85.0 check --workspace`. Clippy is
+  deliberately not a CI step: its lint set moves with the toolchain, so a new
+  stable can fail the build on style that no code change touched. It stays a
+  local command (`cargo clippy --workspace --all-targets`).
 - **Wasm**: the Ubuntu job compile-checks both `wasm32-unknown-unknown` and
   `wasm32-wasip1`; `wasm.yml` runs the whole workspace test suite on
   `wasm32-wasip1` through `zscripts/wasmtime-runner.sh`, which preopens the

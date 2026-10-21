@@ -96,13 +96,11 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
-          components: rustfmt, clippy
+          components: rustfmt
       - name: Cache the Rust build
         uses: Swatinem/rust-cache@v2
       - name: Check formatting
         run: cargo fmt --all -- --check
-      - name: Run clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Build the documentation
         env:
           RUSTDOCFLAGS: -D warnings

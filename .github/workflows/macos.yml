@@ -33,3 +33,35 @@ jobs:
         run: cargo test
       - name: Run tests (UMFPACK)
         run: cargo test --features umfpack
+
+  # MUMPS is built locally: Homebrew ships no sequential package for it. Homebrew's
+  # gcc provides gfortran and Accelerate provides the BLAS/LAPACK.
+  mumps:
+    name: MUMPS (locally compiled)
+    runs-on: macos-latest
+    env:
+      RUST_BACKTRACE: 1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install gfortran
+        run: brew install gcc
+      - name: Compile and install MUMPS
+        run: |
+          prefix="$RUNNER_TEMP/mumps"
+          bash zscripts/macos-compile-mumps.bash "$prefix"
+          echo "RUSSELL_LOCAL_PREFIX=$prefix" >> "$GITHUB_ENV"
+          ls "$prefix/lib/mumps"
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+      - name: Cache the Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: mumps
+      - name: Run tests (MUMPS)
+        run: |
+          # The run path covers russell_sparse's own targets; the other crates'
+          # test binaries need the directory on the loader path.
+          export DYLD_LIBRARY_PATH="$RUSSELL_LOCAL_PREFIX/lib/mumps:${DYLD_LIBRARY_PATH:-}"
+          cargo test --features mumps

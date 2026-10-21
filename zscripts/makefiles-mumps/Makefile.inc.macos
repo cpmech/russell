@@ -1,0 +1,75 @@
+#
+#  This file is part of MUMPS 5.9.0
+#
+#  macOS variant: Homebrew gfortran, Apple's Accelerate framework for the BLAS
+#  and LAPACK calls, sequential build (libseq, no MPI), PORD ordering only, and
+#  shared libraries only. The object code is the stock MUMPS source; this file
+#  selects the compiler, the library naming and the link flags the way the
+#  platform needs them.
+#
+
+# must be at the top
+PLAT = _cpmech
+
+# Begin orderings
+SCOTCHDIR =
+ISCOTCH   =
+
+LSCOTCH   =
+
+LPORDDIR = $(topdir)/PORD/lib/
+IPORD    = -I$(topdir)/PORD/include/
+LPORD    = -L$(LPORDDIR) -lpord$(PLAT)
+
+# METIS is optional and is not required by the crate's solver, so the macOS
+# build leaves it out and uses PORD only.
+LMETISDIR =
+IMETIS    =
+
+LMETIS    =
+
+# Corresponding variables reused later
+ORDERINGSF = -Dpord
+ORDERINGSC = $(ORDERINGSF)
+
+LORDERINGS = $(LPORD)
+IORDERINGSF = $(ISCOTCH)
+IORDERINGSC = $(IMETIS) $(IPORD) $(ISCOTCH)
+# End orderings
+################################################################################
+
+LIBEXT_SHARED  = .dylib
+SONAME = -install_name
+SHARED_OPT = -dynamiclib
+FPIC_OPT = -fPIC
+LIBEXT  = .a
+OUTC    = -o
+OUTF    = -o
+RM = /bin/rm -f
+CC = clang
+FC = gfortran
+FL = gfortran
+AR = ar vr
+RANLIB = ranlib
+LAPACK = -framework Accelerate
+
+INCSEQ = -I$(topdir)/libseq
+LIBSEQ  = $(LAPACK) -L$(topdir)/libseq -lmpiseq$(PLAT)
+
+LIBBLAS = -framework Accelerate
+LIBOTHERS = -lpthread
+
+#Preprocessor defs for calling Fortran from C (-DAdd_ or -DAdd__ or -DUPPER)
+CDEFS   = -DAdd_
+
+#Begin Optimized options
+# No OpenMP: macOS ships no OpenMP runtime for clang, and the crate runs the
+# sequential solver anyway.
+OPTF    = -O -fallow-argument-mismatch
+OPTL    = -O
+OPTC    = -O
+#End Optimized options
+
+INCS = $(INCSEQ)
+LIBS = $(LIBSEQ)
+LIBSEQNEEDED = libseqneeded

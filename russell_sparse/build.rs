@@ -186,7 +186,6 @@ mod windows {
                 super::emit_link_search(&prefix.join("lib"));
                 super::emit_umfpack_source("system (MSYS2)");
             }
-            println!("cargo:rustc-link-lib=dylib=umfpack");
         }
 
         // MUMPS, compiled locally with the `_cpmech` suffix: headers and shared
@@ -208,6 +207,13 @@ mod windows {
         }
 
         build.compile("c_code");
+
+        // UMFPACK comes after the shims that call it. The MSYS2 library is an
+        // import archive, and GNU ld pulls an archive member only for a symbol
+        // that is already undefined, so `-lumfpack` emitted before `-lc_code`
+        // resolves nothing and every `umfpack_*` reference is reported missing.
+        #[cfg(feature = "umfpack")]
+        println!("cargo:rustc-link-lib=dylib=umfpack");
     }
 
     /// The MSYS2 installation root, where the system UMFPACK lives.

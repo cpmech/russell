@@ -1,8 +1,8 @@
 //! Russell - Rust Scientific Library
 //!
-//! `russell_sparse`: Solvers for large sparse linear systems (wraps MUMPS and UMFPACK)
+//! `russell_sparse`: Solvers for large sparse linear systems, with a pure-Rust Native backend and optional MUMPS and UMFPACK
 //!
-//! **Important:** This crate depends on external libraries (non-Rust). Thus, please check the [Installation Instructions on the GitHub Repository](https://github.com/cpmech/russell).
+//! **Important:** the Native backend is pure Rust; UMFPACK (the default `umfpack` feature) and MUMPS (`mumps`) need external libraries. Please check the [Installation Instructions on the GitHub Repository](https://github.com/cpmech/russell).
 //!
 //! # Introduction
 //!
@@ -30,8 +30,9 @@
 //!
 //! We call the actual linear system solver implementation [Genie] because they work like "magic" after being "wrapped" via a C-interface. Note that these fantastic solvers are implemented in Fortran and C. You may easily access the linear solvers directly via the following structures:
 //!
+//! * [SolverNative] -- pure-Rust LU factorization from `algebra_linear` (always available)
 //! * **SolverMUMPS** (optional) -- thin wrapper to the MUMPS solver
-//! * [SolverUMFPACK] -- thin wrapper to the UMFPACK solver
+//! * `SolverUMFPACK` (optional, on by default) -- thin wrapper to the UMFPACK solver
 //!
 //! This library also provides a unifying Trait called [LinSolTrait], which the above structures implement. In addition, the [LinSolver] structure holds a "pointer" to one of the above structures and is a more convenient way to use the linear solvers in generic codes when we need to switch from solver to solver (e.g., for benchmarking). After allocating a [LinSolver], if needed, we can access the actual implementations (interfaces/thin wrappers) via the [LinSolver::actual] data member.
 //!
@@ -108,7 +109,7 @@
 //! }
 //! ```
 //!
-//! ## Solving a tiny sparse linear system using LinSolver (Umfpack)
+//! ## Solving a tiny sparse linear system using LinSolver (Native)
 //!
 //! ```
 //! use russell_lab::{vec_approx_eq, Vector};
@@ -121,7 +122,7 @@
 //!     let nnz = 5; // number of non-zero values
 //!
 //!     // allocate the linear solver
-//!     let mut solver = LinSolver::new(Genie::Umfpack)?;
+//!     let mut solver = LinSolver::new(Genie::Native)?;
 //!
 //!     // allocate the coefficient matrix
 //!     let mut coo = CooMatrix::new(ndim, ndim, nnz, Sym::No)?;
@@ -162,7 +163,7 @@
 //! }
 //! ```
 //!
-//! ## Solving a tiny sparse linear system using SolverUMFPACK
+//! ## Solving a tiny sparse linear system using SolverNative
 //!
 //! ```
 //! use russell_lab::{vec_approx_eq, Vector};
@@ -175,7 +176,7 @@
 //!     let nnz = 13; // number of non-zero values, including duplicates
 //!
 //!     // allocate solver
-//!     let mut umfpack = SolverUMFPACK::new()?;
+//!     let mut solver = SolverNative::new()?;
 //!
 //!     // allocate the coefficient matrix
 //!     // ┌                ┐
@@ -203,17 +204,16 @@
 //!     // parameters
 //!     let mut params = LinSolParams::new();
 //!     params.verbose = false;
-//!     params.compute_determinant = true;
 //!
 //!     // call factorize
-//!     umfpack.factorize(&coo, Some(params))?;
+//!     solver.factorize(&coo, Some(params))?;
 //!
 //!     // allocate x and rhs
 //!     let mut x = Vector::new(ndim);
 //!     let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
 //!
 //!     // calculate the solution
-//!     umfpack.solve(&mut x, &rhs, false)?;
+//!     solver.solve(&mut x, &rhs, false)?;
 //!     println!("x =\n{}", x);
 //!
 //!     // check the results
@@ -221,16 +221,13 @@
 //!     vec_approx_eq(&x, &correct, 1e-14);
 //!
 //!     // analysis
-//!     let mut stats = StatsLinSol::new();
-//!     umfpack.update_stats(&mut stats);
-//!     let (mx, ex) = (stats.determinant.mantissa_real, stats.determinant.exponent);
-//!     println!("det(a) = {:?}", mx * f64::powf(10.0, ex));
-//!     println!("rcond  = {:?}", stats.output.umfpack_rcond_estimate);
+//!     let stats = solver.stats().expect("statistics");
+//!     println!("fill ratio = {}", stats.fill_ratio);
 //!     Ok(())
 //! }
 //! ```
 //!
-//! ## Solving a tiny complex sparse linear system using ComplexLinSolver (Umfpack)
+//! ## Solving a tiny complex sparse linear system using ComplexLinSolver (Native)
 //!
 //! ```
 //! use russell_lab::{complex_vec_approx_eq, cpx, ComplexVector};
@@ -241,7 +238,7 @@
 //!     let ndim = 3;
 //!     let nnz = 7;
 //!
-//!     let mut solver = ComplexLinSolver::new(Genie::Umfpack)?;
+//!     let mut solver = ComplexLinSolver::new(Genie::Native)?;
 //!
 //!     // allocate the coefficient matrix
 //!     //   ┌                      ┐
@@ -271,7 +268,7 @@
 //! }
 //! ```
 //!
-//! ## Solving a tiny complex sparse linear system using ComplexSolverUMFPACK
+//! ## Solving a tiny complex sparse linear system using ComplexSolverNative
 //!
 //! ```
 //! use russell_lab::{complex_vec_approx_eq, cpx, ComplexVector};
@@ -282,7 +279,7 @@
 //!     let ndim = 5;
 //!     let nnz = 13;
 //!
-//!     let mut umfpack = ComplexSolverUMFPACK::new()?;
+//!     let mut solver = ComplexSolverNative::new()?;
 //!
 //!     // allocate the coefficient matrix
 //!     // ┌                                              ┐
@@ -309,9 +306,8 @@
 //!
 //!     let mut params = LinSolParams::new();
 //!     params.verbose = false;
-//!     params.compute_determinant = true;
 //!
-//!     umfpack.factorize(&coo, Some(params))?;
+//!     solver.factorize(&coo, Some(params))?;
 //!
 //!     let mut x = ComplexVector::new(ndim);
 //!     let rhs = ComplexVector::from(&[
@@ -322,7 +318,7 @@
 //!         cpx!(14.0, 24.0),
 //!     ]);
 //!
-//!     umfpack.solve(&mut x, &rhs, false)?;
+//!     solver.solve(&mut x, &rhs, false)?;
 //!
 //!     let correct = &[
 //!         cpx!(1.0, 1.0),
@@ -333,11 +329,8 @@
 //!     ];
 //!     complex_vec_approx_eq(&x, correct, 1e-14);
 //!
-//!     let mut stats = StatsLinSol::new();
-//!     umfpack.update_stats(&mut stats);
-//!     let (mx, my) = (stats.determinant.mantissa_real, stats.determinant.mantissa_imag);
-//!     let ex = stats.determinant.exponent;
-//!     println!("det(a) = {:?}", cpx!(mx, my) * cpx!(f64::powf(10.0, ex), 0.0));
+//!     let stats = solver.stats().expect("statistics");
+//!     println!("fill ratio = {}", stats.fill_ratio);
 //!     Ok(())
 //! }
 //! ```
@@ -349,7 +342,9 @@ mod aliases;
 mod complex_coo_matrix;
 mod complex_lin_solver;
 mod complex_solver_native;
+#[cfg(feature = "umfpack")]
 mod complex_solver_umfpack;
+#[cfg_attr(not(any(feature = "umfpack", feature = "mumps")), allow(dead_code))]
 mod constants;
 mod coo_matrix;
 mod csc_matrix;
@@ -362,6 +357,7 @@ pub mod prelude;
 mod read_matrix_market;
 mod samples;
 mod solver_native;
+#[cfg(feature = "umfpack")]
 mod solver_umfpack;
 mod stats_lin_sol;
 mod stats_lin_sol_mumps;
@@ -371,6 +367,7 @@ mod write_matrix_market;
 pub use aliases::*;
 pub use complex_lin_solver::*;
 pub use complex_solver_native::*;
+#[cfg(feature = "umfpack")]
 pub use complex_solver_umfpack::*;
 use constants::*;
 pub use coo_matrix::*;
@@ -383,6 +380,7 @@ pub use numerical_jacobian::*;
 pub use read_matrix_market::*;
 pub use samples::*;
 pub use solver_native::*;
+#[cfg(feature = "umfpack")]
 pub use solver_umfpack::*;
 pub use stats_lin_sol::*;
 pub use stats_lin_sol_mumps::*;

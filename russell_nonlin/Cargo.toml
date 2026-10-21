@@ -20,7 +20,7 @@ intel_mkl = [
   "russell_sparse/intel_mkl",
   "russell_ode/intel_mkl",
 ]
-local_umfpack = ["russell_sparse/local_umfpack", "russell_ode/local_umfpack"]
+umfpack = ["russell_sparse/umfpack", "russell_ode/umfpack"]
 mumps = ["russell_sparse/mumps", "russell_ode/mumps"]
 
 [dependencies]

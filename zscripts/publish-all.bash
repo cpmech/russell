@@ -6,7 +6,7 @@ cd ..
 sleep 5
 
 cd russell_sparse
-cargo publish --features intel_mkl,local_umfpack,mumps
+cargo publish --features intel_mkl,umfpack,mumps
 cd ..
 sleep 5
 
@@ -21,17 +21,17 @@ cd ..
 sleep 5
 
 cd russell_pde
-cargo publish --features intel_mkl,local_umfpack,mumps
+cargo publish --features intel_mkl,umfpack,mumps
 cd ..
 sleep 5
 
 cd russell_ode
-cargo publish --features intel_mkl,local_umfpack,mumps
+cargo publish --features intel_mkl,umfpack,mumps
 cd ..
 sleep 5
 
 cd russell_nonlin
-cargo publish --features intel_mkl,local_umfpack,mumps
+cargo publish --features intel_mkl,umfpack,mumps
 cd ..
 sleep 5
 

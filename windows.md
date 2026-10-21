@@ -67,5 +67,5 @@ You may now test the code with MUMPS by running:
 ```bash
 # the locally compiled solvers, installed under RUSSELL_LOCAL_PREFIX
 $env:RUSSELL_LOCAL_PREFIX = 'C:\local'
-cargo test --features local_umfpack,mumps
+cargo test --features umfpack,mumps
 ```

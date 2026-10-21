@@ -15,6 +15,8 @@ pub enum Genie {
 
     /// Selects UMFPACK (unsymmetric multi-frontal) solver
     ///
+    /// Requires the `umfpack` feature, which is enabled by default.
+    ///
     /// Reference: <https://github.com/DrTimothyAldenDavis/SuiteSparse>
     Umfpack,
 }

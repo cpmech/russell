@@ -13,8 +13,8 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Setting Cargo.toml](#setting-cargotoml)
   - [Optional features](#optional-features)
 - [🌟 Examples](#-examples)
-  - [Solve a tiny sparse linear system using UMFPACK](#solve-a-tiny-sparse-linear-system-using-umfpack)
-  - [Solve a complex sparse linear system using UMFPACK](#solve-a-complex-sparse-linear-system-using-umfpack)
+  - [Solve a tiny sparse linear system using the Native solver](#solve-a-tiny-sparse-linear-system-using-the-native-solver)
+  - [Solve a complex sparse linear system using the Native solver](#solve-a-complex-sparse-linear-system-using-the-native-solver)
 - [Tools](#tools)
 - [MUMPS + OpenBLAS issue](#mumps--openblas-issue)
   - [References](#references)
@@ -78,20 +78,19 @@ The following (Rust) features are available:
 
 * `open_blas`: Use OpenBLAS instead of the native Rust BLAS/LAPACK
 * `intel_mkl`: Use Intel oneAPI MKL instead of OpenBLAS (takes precedence if both are enabled)
-* `local_umfpack`: Use a locally compiled SuiteSparse (UMFPACK) instead of the
-  package-manager one; the install is found through `RUSSELL_LOCAL_PREFIX`.
+* `umfpack` (default): UMFPACK support. The build looks for a local install under `RUSSELL_LOCAL_PREFIX` first, and falls back to the package-manager library.
 * `mumps`: Use a locally compiled MUMPS, found through `RUSSELL_LOCAL_PREFIX`.
 
-UMFPACK is required in every configuration: without `local_umfpack` it comes from the package manager (found with `pkg-config`), and with the feature it comes from a local install. The two sources exclude each other, so a build never mixes a packaged SuiteSparse with a locally compiled one.
+UMFPACK is optional and enabled by default. With `umfpack`, the build first checks for a local install at `$RUSSELL_LOCAL_PREFIX/include/umfpack` and `$RUSSELL_LOCAL_PREFIX/lib/umfpack`. If that installation is not there — or `RUSSELL_LOCAL_PREFIX` is unset — it falls back to the system library found with `pkg-config` (or the usual include/library directories), and fails as usual if neither is available. The local installation therefore takes precedence, and a build links only one of the two sources. `--no-default-features` builds without UMFPACK; the Native solver remains available.
 
-The local installs are located through the `RUSSELL_LOCAL_PREFIX` environment variable, which must be set and exported whenever `local_umfpack` or `mumps` is enabled. The layout is fixed:
+MUMPS is independent of UMFPACK and always comes from `RUSSELL_LOCAL_PREFIX`, which must then be set and exported. The layout is fixed:
 
 ```text
 $RUSSELL_LOCAL_PREFIX/include/umfpack     $RUSSELL_LOCAL_PREFIX/lib/umfpack
 $RUSSELL_LOCAL_PREFIX/include/mumps       $RUSSELL_LOCAL_PREFIX/lib/mumps
 ```
 
-A missing or wrong prefix fails the build naming the path it expected. The directory of the selected UMFPACK must also be reachable by the dynamic loader at run time, since the two SuiteSparse builds share the `libumfpack.so.6` soname.
+A prefix that is set but does not contain UMFPACK produces a build warning and the system fallback; a missing MUMPS install fails the build naming the path it expected. The directory of the selected UMFPACK must also be reachable by the dynamic loader at run time, since the two SuiteSparse builds share the `libsolver.so.6` soname.
 
 Note that the [main README file](https://github.com/cpmech/russell) presents the steps to compile the required libraries according to each feature.
 
@@ -106,7 +105,7 @@ This section illustrates how to use `russell_sparse`. See also:
 
 
 
-### Solve a tiny sparse linear system using UMFPACK
+### Solve a tiny sparse linear system using the Native solver
 
 ```rust
 use russell_lab::{vec_approx_eq, Vector};
@@ -119,7 +118,7 @@ fn main() -> Result<(), StrError> {
     let nnz = 5; // number of non-zero values
 
     // allocate solver
-    let mut umfpack = SolverUMFPACK::new()?;
+    let mut solver = SolverNative::new()?;
 
     // allocate the coefficient matrix
     let mut coo = CooMatrix::new(ndim, ndim, nnz, Sym::No)?;
@@ -139,21 +138,21 @@ fn main() -> Result<(), StrError> {
     assert_eq!(format!("{}", a), correct);
 
     // call factorize
-    umfpack.factorize(&coo, None)?;
+    solver.factorize(&coo, None)?;
 
     // allocate two right-hand side vectors
     let b = Vector::from(&[1.0, 1.0, 1.0]);
 
     // calculate the solution
     let mut x = Vector::new(ndim);
-    umfpack.solve(&mut x, &b, false)?;
+    solver.solve(&mut x, &b, false)?;
     let correct = vec![3.0, 2.0, 4.0];
     vec_approx_eq(&x, &correct, 1e-14);
     Ok(())
 }
 ```
 
-### Solve a complex sparse linear system using UMFPACK
+### Solve a complex sparse linear system using the Native solver
 
 ```rust
 use russell_lab::{complex_vec_approx_eq, cpx, ComplexVector};
@@ -165,7 +164,7 @@ fn main() -> Result<(), StrError> {
     let nnz = 7;
 
     // allocate solver
-    let mut umfpack = ComplexSolverUMFPACK::new()?;
+    let mut solver = ComplexSolverNative::new()?;
 
     // allocate the coefficient matrix
     //   ┌                      ┐
@@ -183,14 +182,14 @@ fn main() -> Result<(), StrError> {
     coo.put(2, 2, cpx!(2.0, -1.0))?;
 
     // call factorize
-    umfpack.factorize(&coo, None)?;
+    solver.factorize(&coo, None)?;
 
     // right-hand side vector
     let b = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
 
     // calculate the solution
     let mut x = ComplexVector::new(ndim);
-    umfpack.solve(&mut x, &b, false)?;
+    solver.solve(&mut x, &b, false)?;
 
     // check the result
     let correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];

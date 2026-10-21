@@ -12,14 +12,16 @@ categories = ["mathematics", "science"]
 keywords = ["matrix", "sparse", "solver"]
 
 [features]
+default = ["umfpack"]
 # Links an external BLAS/LAPACK through `russell_lab`; off for targets
 # that have none, such as `wasm32-unknown-unknown`.
 open_blas = ["russell_lab/open_blas"]
 intel_mkl = ["russell_lab/intel_mkl"]
-# UMFPACK from a local install under RUSSELL_LOCAL_PREFIX, instead of the
-# package-manager one found with pkg-config.
-local_umfpack = []
-# MUMPS from a local install under RUSSELL_LOCAL_PREFIX, alongside UMFPACK.
+# UMFPACK support. The build uses a local install under RUSSELL_LOCAL_PREFIX
+# first, and falls back to the system library when there is none.
+umfpack = []
+# MUMPS from a local install under RUSSELL_LOCAL_PREFIX, independently of
+# UMFPACK.
 mumps = []
 
 [dependencies]
@@ -39,3 +41,28 @@ pkg-config = "0.3"
 
 [lints]
 workspace = true
+
+# Targets that call UMFPACK directly are only built with its feature.
+[[test]]
+name = "test_umfpack"
+required-features = ["umfpack"]
+
+[[test]]
+name = "test_complex_umfpack"
+required-features = ["umfpack"]
+
+[[example]]
+name = "doc_umfpack_tiny"
+required-features = ["umfpack"]
+
+[[example]]
+name = "doc_umfpack_quickstart_coo"
+required-features = ["umfpack"]
+
+[[example]]
+name = "doc_complex_umfpack_tiny"
+required-features = ["umfpack"]
+
+[[example]]
+name = "doc_complex_umfpack_quickstart_coo"
+required-features = ["umfpack"]

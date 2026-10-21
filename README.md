@@ -148,19 +148,18 @@ This project employs [SuiteSparse](https://github.com/DrTimothyAldenDavis/SuiteS
 
 The default build needs no external BLAS: `russell_lab` ships its own Rust implementation. To use an external one instead, select `open_blas` (OpenBLAS) or `intel_mkl` (Intel oneAPI MKL); if both are enabled, `intel_mkl` takes precedence and OpenBLAS is not linked.
 
-`russell_sparse` cannot work without UMFPACK: the crate always has a direct solver, and the features only choose where it comes from and whether MUMPS joins it:
+`russell_sparse` always has a direct solver: the pure-Rust Native backend. UMFPACK is an optional accelerator, enabled by default through the `umfpack` feature:
 
-- (no feature) — UMFPACK from the package manager, located with `pkg-config`;
-- `local_umfpack` — UMFPACK from a local install under `RUSSELL_LOCAL_PREFIX`;
-- `mumps` — MUMPS from that same local prefix, in addition to either UMFPACK.
+- `umfpack` (default) — use the local install under `RUSSELL_LOCAL_PREFIX` when it is there, otherwise fall back to the package-manager library located with `pkg-config`; fail if neither exists;
+- `mumps` — MUMPS from `RUSSELL_LOCAL_PREFIX`, independently of UMFPACK.
 
-The two UMFPACK sources exclude each other: the local install is never searched when the package-manager library is wanted, and `pkg-config` is never consulted when the local one is. This matters because the two SuiteSparse builds usually differ in version while sharing the `libumfpack.so.6` soname, so a mixture would not show up at run time. A locally compiled SuiteSparse is somewhat faster than the packaged one, at the cost of a long build.
+Disable the default feature to build without UMFPACK (`default-features = false`). The local UMFPACK takes precedence over the system one, and a build links only one of the two sources: `pkg-config` is not consulted when the local install was found. This matters because the two SuiteSparse builds usually differ in version while sharing the `libumfpack.so.6` soname, so a mixture would not show up at run time. A locally compiled SuiteSparse is somewhat faster than the packaged one, at the cost of a long build.
 
 Accelerators are worth it for large problems but not required: measured on a 13th-gen Intel i9, the native matrix multiplication kernels reach about half the throughput of OpenBLAS per core (roughly 2x slower), while dense solves are tens of times slower because `dgetrf` is not blocked yet. The [russell_lab README](russell_lab/README.md#performance-of-the-backends) has the table.
 
 The table below summarizes the features of each crate:
 
-|                  | `open_blas` | `intel_mkl` | `local_umfpack` | `mumps` |
+|                  | `open_blas` | `intel_mkl` | `umfpack` | `mumps` |
 | ---------------- | :---------: | :---------: | :-------------: | :-----: |
 | `russell_lab`    |      ✓      |      ✓      |                 |         |
 | `russell_nonlin` |      ✓      |      ✓      |        ✓        |    ✓    |
@@ -170,12 +169,12 @@ The table below summarizes the features of each crate:
 | `russell_stat`   |      ✓      |      ✓      |                 |         |
 | `russell_tensor` |      ✓      |      ✓      |                 |         |
 
-Below is an example of how to enable the `intel_mkl`, `local_umfpack` and `mumps` features with the `russell_sparse` crate in the `Cargo.toml` file:
+Below is an example of how to enable the `intel_mkl`, `umfpack` and `mumps` features with the `russell_sparse` crate in the `Cargo.toml` file:
 
 ```toml
 [dependencies]
 russell_lab = { version = "*", features = ["intel_mkl"] }
-russell_sparse = { version = "*", features = ["intel_mkl", "local_umfpack", "mumps"] }
+russell_sparse = { version = "*", features = ["intel_mkl", "umfpack", "mumps"] }
 ```
 
 Replace "*" with the desired version. Note that `russell_sparse` (and all other crates in this project) require `russell_lab` as a dependency.
@@ -188,14 +187,14 @@ Russell requires some non-Rust libraries ([OpenBLAS](https://github.com/OpenMath
 
 In addition to SuiteSparse (UMFPACK), the [MUMPS solver](https://mumps-solver.org) may be used as an optional feature: compile MUMPS locally, enable the **feature** named `mumps`, and leave the UMFPACK source as it is. MUMPS could in principle come from the package manager, but it is typically an *extra* package, often outdated, and the distributions do not always provide the *sequential* build (without OpenMPI) that this project uses, which is also the leaner one. Thus, compile MUMPS locally.
 
-The local solvers are found through one environment variable, `RUSSELL_LOCAL_PREFIX`, which must be set (and exported) whenever `local_umfpack` or `mumps` is enabled. The layout is fixed:
+The local solvers are found through one environment variable, `RUSSELL_LOCAL_PREFIX`. With `umfpack` it is optional: when set to a directory containing the UMFPACK layout below, that installation is used; otherwise the build falls back to the system library. With `mumps` it is required. The layout is fixed:
 
 ```text
 $RUSSELL_LOCAL_PREFIX/include/umfpack     $RUSSELL_LOCAL_PREFIX/lib/umfpack
 $RUSSELL_LOCAL_PREFIX/include/mumps       $RUSSELL_LOCAL_PREFIX/lib/mumps
 ```
 
-The compilation scripts below install into exactly that layout, with `RUSSELL_LOCAL_PREFIX=/usr/local`. Two SuiteSparse builds share the `libumfpack.so.6` soname, so the directory of the selected one must also be reachable by the dynamic loader at run time (`ldconfig` on a system prefix, or `LD_LIBRARY_PATH`); the binaries built inside this workspace carry a run path instead. A wrong or missing prefix stops the build with the expected paths rather than falling back to another installation.
+The compilation scripts below install into exactly that layout, with `RUSSELL_LOCAL_PREFIX=/usr/local`. Two SuiteSparse builds share the `libumfpack.so.6` soname, so the directory of the selected one must also be reachable by the dynamic loader at run time (`ldconfig` on a system prefix, or `LD_LIBRARY_PATH`); the binaries built inside this workspace carry a run path instead. A prefix that is set but does not contain UMFPACK produces a warning and the system fallback; a missing MUMPS installation stops the build with the expected paths.
 
 Note that, while it is possible to use Intel MKL with `russell_lab` and OpenBLAS with `russell_sparse`, this is not advantageous since Intel MKL is slightly more performant than OpenBLAS [(see this article)](https://onlinelibrary.wiley.com/doi/full/10.1002/nme.7545). Thus, if you have already installed Intel MKL, it is easy to compile SuiteSparse and MUMPS (Option 3 below). Thus, we do not consider a fourth option with MKL for `russell_lab` and OpenBLAS for `russell_sparse`.
 
@@ -224,7 +223,7 @@ bash zscripts/arch-compile-suitesparse.bash
 Set `Cargo.toml` as follows:
 
 ```toml
-russell_sparse = { version = "*", features = ["local_umfpack", "mumps"] }
+russell_sparse = { version = "*", features = ["umfpack", "mumps"] }
 ```
 
 #### Option 3: Locally compiled SuiteSparse and MUMPS with Intel MKL
@@ -241,7 +240,7 @@ bash zscripts/arch-compile-suitesparse.bash 1
 Set `Cargo.toml` as follows:
 
 ```toml
-russell_sparse = { version = "*", features = ["intel_mkl", "local_umfpack", "mumps"] }
+russell_sparse = { version = "*", features = ["intel_mkl", "umfpack", "mumps"] }
 ```
 
 
@@ -274,7 +273,7 @@ bash zscripts/debian-compile-suitesparse.bash
 Set `Cargo.toml` as follows:
 
 ```toml
-russell_sparse = { version = "*", features = ["local_umfpack", "mumps"] }
+russell_sparse = { version = "*", features = ["umfpack", "mumps"] }
 ```
 
 #### Option 3: Locally compiled SuiteSparse and MUMPS with Intel MKL
@@ -291,7 +290,7 @@ bash zscripts/debian-compile-suitesparse.bash 1
 Set `Cargo.toml` as follows:
 
 ```toml
-russell_sparse = { version = "*", features = ["intel_mkl", "local_umfpack", "mumps"] }
+russell_sparse = { version = "*", features = ["intel_mkl", "umfpack", "mumps"] }
 ```
 
 
@@ -742,13 +741,13 @@ Build-dependencies: `cc`, `pkg-config`.
 
 ### russell_sparse — sparse solvers
 
-`russell_sparse/build.rs` compiles the C shims for the sparse solvers. UMFPACK is required in every configuration; MUMPS joins it when `mumps` is enabled. The features select the source of UMFPACK, never its presence:
+`russell_sparse/build.rs` compiles the C shims for the sparse solvers. UMFPACK is optional and on by default (`umfpack`); MUMPS joins it when `mumps` is enabled. The features select which solvers are present, and the build selects the UMFPACK source:
 
-- `local_umfpack` off: UMFPACK from the package manager. `pkg-config` is asked first (both `UMFPACK` and `umfpack` spellings), and the built-in directory list is the fallback; `$RUSSELL_LOCAL_PREFIX` is deliberately absent from that list, so the two installations cannot be mixed. If neither answers, the build stops naming the package to install.
-- `local_umfpack` on: UMFPACK from `$RUSSELL_LOCAL_PREFIX/include/umfpack` and `.../lib/umfpack`, with no `pkg-config` lookup at all.
-- `mumps` on: MUMPS from `$RUSSELL_LOCAL_PREFIX/include/mumps` and `.../lib/mumps`, shared on Unix and static on Windows (`dmumps_cpmech`, `zmumps_cpmech`, `mumps_common_cpmech`, `mpiseq_cpmech`, `pord_cpmech`, `metis`, `gfortran`, `gomp`).
-- `RUSSELL_LOCAL_PREFIX` is trimmed of trailing separators, and a missing directory fails the build naming the exact path it expected.
-- The selected UMFPACK is recorded with `cargo:rustc-env`, so `get_library_versions()` reports whether it is the `system` or the `local` one.
+- `umfpack` on: a local install under `$RUSSELL_LOCAL_PREFIX/include/umfpack` and `.../lib/umfpack` is used when `RUSSELL_LOCAL_PREFIX` is set and contains it, with no `pkg-config` lookup in that case; otherwise the build falls back to the package-manager library (`pkg-config`, trying both `UMFPACK` and `umfpack` spellings, then the built-in directory list). If neither answers, the build stops naming the package to install. A prefix that is set but incomplete prints a warning and falls back.
+- `umfpack` off: no UMFPACK shims are compiled and nothing is linked; the Native solver remains available.
+- `mumps` on: MUMPS from `$RUSSELL_LOCAL_PREFIX/include/mumps` and `.../lib/mumps`, independently of UMFPACK, shared on Unix and static on Windows (`dmumps_cpmech`, `zmumps_cpmech`, `mumps_common_cpmech`, `mpiseq_cpmech`, `pord_cpmech`, `metis`, `gfortran`, `gomp`). A missing prefix fails the build naming the exact path it expected.
+- `RUSSELL_LOCAL_PREFIX` is trimmed of trailing separators.
+- The selected UMFPACK is recorded with `cargo:rustc-env`, so `get_library_versions()` reports whether it is the `system` or the `local` one, or that it was not compiled in.
 
 Build-dependencies: `cc`, `pkg-config`.
 

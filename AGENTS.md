@@ -41,13 +41,14 @@ the `algebra_linear` checkout). Nothing here needs a reference build, and there 
 
 Extra features:
 
-- `local_umfpack` and `mumps` on `russell_sparse`, `russell_ode`, `russell_pde`,
-  `russell_nonlin` — use the locally compiled SuiteSparse and MUMPS installed by
-  `zscripts/*-compile-suitesparse.bash` and `zscripts/*-compile-mumps.bash`. Both
-  read `RUSSELL_LOCAL_PREFIX` (`.../include/umfpack`, `.../lib/umfpack`,
-  `.../include/mumps`, `.../lib/mumps`) and fail the build if it is unset or wrong.
-  Without `local_umfpack` the UMFPACK comes from the package manager, found with
-  pkg-config; UMFPACK is required in every configuration, `mumps` is optional.
+- `umfpack` (default) and `mumps` on `russell_sparse`, `russell_ode`,
+  `russell_pde`, `russell_nonlin` — `umfpack` compiles UMFPACK support. The build
+  looks in `RUSSELL_LOCAL_PREFIX` first (`.../include/umfpack`,
+  `.../lib/umfpack`); if that install is absent or the variable is unset, it falls
+  back to the package-manager library found with pkg-config, and fails if neither
+  exists. A prefix that is set but does not contain UMFPACK warns and falls back.
+  `mumps` always comes from `RUSSELL_LOCAL_PREFIX` (`.../include/mumps`,
+  `.../lib/mumps`), fails if it is unset or wrong, and is independent of `umfpack`.
 
 ## The BLAS/LAPACK kernels live in `algebra_linear`
 
@@ -111,7 +112,7 @@ cargo test -p russell_lab --features intel_mkl
   cargo test --features dev_lapack)
 
 # Whole workspace (sparse crates need the locally compiled libraries)
-RUSSELL_LOCAL_PREFIX=/usr/local cargo test --workspace --features local_umfpack,mumps
+RUSSELL_LOCAL_PREFIX=/usr/local cargo test --workspace --features umfpack,mumps
 
 # Formatting (CI runs the check)
 cargo fmt --all
@@ -124,7 +125,7 @@ cargo clippy --all-targets
 # per source line (llvm-cov's `--fail-under-lines` counts a line once per
 # monomorphization, so const-generic dimension dispatch reads as uncovered; the
 # `DA:` records of the lcov export are merged per line and are what the gate uses)
-cargo llvm-cov --workspace --features local_umfpack,mumps \
+cargo llvm-cov --workspace --features umfpack,mumps \
   --ignore-filename-regex 'build.rs|mem_check.rs|mem_check_lab.rs|solve_matrix_market.rs|amplifier1t.rs|brusselator_pde.rs' \
   --lcov --output-path lcov.info
 bash zscripts/check-coverage.bash lcov.info 95
@@ -325,5 +326,5 @@ stale lock file.
 Workflows live in `.github/workflows/` (`ubuntu.yml`, `macos.yml`, `rocky.yml`,
 `arch.yml`, `windows.yml`). The Ubuntu job compiles MUMPS/SuiteSparse via
 `zscripts/debian-compile-*.bash` (into `/usr/local`, with `RUSSELL_LOCAL_PREFIX`
-set accordingly), runs `cargo test --features local_umfpack,mumps`, and on nightly
+set accordingly), runs `cargo test --features umfpack,mumps`, and on nightly
 enforces the coverage threshold shown above.

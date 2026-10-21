@@ -16,7 +16,7 @@ keywords = ["differential", "numerical", "solver"]
 # that have none, such as `wasm32-unknown-unknown`.
 open_blas = ["russell_lab/open_blas"]
 intel_mkl = ["russell_lab/intel_mkl", "russell_sparse/intel_mkl"]
-local_umfpack = ["russell_sparse/local_umfpack"]
+umfpack = ["russell_sparse/umfpack"]
 mumps = ["russell_sparse/mumps"]
 
 [dependencies]

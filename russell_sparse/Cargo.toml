@@ -2,6 +2,7 @@
 name = "russell_sparse"
 version = "4.0.0"
 edition = "2024"
+rust-version = "1.85"
 license = "MIT"
 description = "Sparse matrix calculations and solvers for linear systems"
 homepage = "https://github.com/cpmech/russell"
@@ -16,13 +17,16 @@ keywords = ["matrix", "sparse", "solver"]
 # that have none, such as `wasm32-unknown-unknown`.
 open_blas = ["russell_lab/open_blas"]
 intel_mkl = ["russell_lab/intel_mkl"]
-# UMFPACK from a local install under RUSSELL_LOCAL_PREFIX, instead of the
-# package-manager one found with pkg-config.
-local_umfpack = []
-# MUMPS from a local install under RUSSELL_LOCAL_PREFIX, alongside UMFPACK.
+# UMFPACK support (opt-in). The build uses a local install under
+# RUSSELL_LOCAL_PREFIX first, and falls back to the system library when there
+# is none.
+umfpack = []
+# MUMPS from a local install under RUSSELL_LOCAL_PREFIX, independently of
+# UMFPACK.
 mumps = []
 
 [dependencies]
+algebra_linear = "1.1"
 num-traits = "0.2"
 russell_lab = { path = "../russell_lab", version = "4" }
 structopt = "0.3"
@@ -32,9 +36,39 @@ serde_json = "1.0"
 [dev-dependencies]
 serial_test = "4.0"
 
+# The browser test runs through `wasm-bindgen-test`; the runner comes from
+# `wasm-bindgen-cli` at the same version as the `wasm-bindgen` dependency.
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
+wasm-bindgen-test = "0.3"
+
 [build-dependencies]
 cc = "1.4"
 pkg-config = "0.3"
 
 [lints]
 workspace = true
+
+# Targets that call UMFPACK directly are only built with its feature.
+[[test]]
+name = "test_umfpack"
+required-features = ["umfpack"]
+
+[[test]]
+name = "test_complex_umfpack"
+required-features = ["umfpack"]
+
+[[example]]
+name = "doc_umfpack_tiny"
+required-features = ["umfpack"]
+
+[[example]]
+name = "doc_umfpack_quickstart_coo"
+required-features = ["umfpack"]
+
+[[example]]
+name = "doc_complex_umfpack_tiny"
+required-features = ["umfpack"]
+
+[[example]]
+name = "doc_complex_umfpack_quickstart_coo"
+required-features = ["umfpack"]

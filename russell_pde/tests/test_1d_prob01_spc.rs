@@ -8,9 +8,9 @@ use serial_test::serial;
 #[test]
 fn test_1d_prob01_spc() -> Result<(), StrError> {
     // SPS
-    run_spc(false, 4, 1e-15, Genie::Umfpack)?;
+    run_spc(false, 4, 1e-15, Genie::Native)?;
     // LMM
-    run_spc(true, 4, 1e-15, Genie::Umfpack)?;
+    run_spc(true, 4, 1e-15, Genie::Native)?;
     Ok(())
 }
 

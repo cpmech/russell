@@ -41,13 +41,27 @@ the `algebra_linear` checkout). Nothing here needs a reference build, and there 
 
 Extra features:
 
-- `local_umfpack` and `mumps` on `russell_sparse`, `russell_ode`, `russell_pde`,
-  `russell_nonlin` — use the locally compiled SuiteSparse and MUMPS installed by
-  `zscripts/*-compile-suitesparse.bash` and `zscripts/*-compile-mumps.bash`. Both
-  read `RUSSELL_LOCAL_PREFIX` (`.../include/umfpack`, `.../lib/umfpack`,
-  `.../include/mumps`, `.../lib/mumps`) and fail the build if it is unset or wrong.
-  Without `local_umfpack` the UMFPACK comes from the package manager, found with
-  pkg-config; UMFPACK is required in every configuration, `mumps` is optional.
+- `umfpack` (opt-in) and `mumps` on `russell_sparse`, `russell_ode`,
+  `russell_pde`, `russell_nonlin` — `umfpack` compiles UMFPACK support. The build
+  looks in `RUSSELL_LOCAL_PREFIX` first (`.../include/umfpack`,
+  `.../lib/umfpack`); if that install is absent or the variable is unset, it falls
+  back to the package-manager library found with pkg-config, and fails if neither
+  exists. A prefix that is set but does not contain UMFPACK warns and falls back.
+  `mumps` always comes from `RUSSELL_LOCAL_PREFIX` (`.../include/mumps`,
+  `.../lib/mumps`), fails if it is unset or wrong, and is independent of `umfpack`.
+
+## WebAssembly
+
+The default features must compile for `wasm32-unknown-unknown` and
+`wasm32-wasip1`: the Native solver is pure Rust, and `russell_lab` uses
+`web-time` for the browser clock and `getrandom/wasm_js` for `russell_stat`'s
+random numbers. Do not enable `umfpack` or `mumps` in a wasm build. File-based
+helpers (Matrix Market, JSON stats) compile on both targets but return errors in
+the browser, where there is no filesystem; document that instead of adding a
+browser filesystem shim. The Ubuntu `wasm` job runs both `cargo check`
+commands; `wasm.yml` also runs a browser smoke test in `russell_sparse`
+(`tests/wasm_browser.rs`, through `wasm-bindgen-test-runner`), which is the only
+place the clock- and filesystem-free path is actually executed.
 
 ## The BLAS/LAPACK kernels live in `algebra_linear`
 
@@ -111,7 +125,7 @@ cargo test -p russell_lab --features intel_mkl
   cargo test --features dev_lapack)
 
 # Whole workspace (sparse crates need the locally compiled libraries)
-RUSSELL_LOCAL_PREFIX=/usr/local cargo test --workspace --features local_umfpack,mumps
+RUSSELL_LOCAL_PREFIX=/usr/local cargo test --workspace --features umfpack,mumps
 
 # Formatting (CI runs the check)
 cargo fmt --all
@@ -124,7 +138,7 @@ cargo clippy --all-targets
 # per source line (llvm-cov's `--fail-under-lines` counts a line once per
 # monomorphization, so const-generic dimension dispatch reads as uncovered; the
 # `DA:` records of the lcov export are merged per line and are what the gate uses)
-cargo llvm-cov --workspace --features local_umfpack,mumps \
+cargo llvm-cov --workspace --features umfpack,mumps \
   --ignore-filename-regex 'build.rs|mem_check.rs|mem_check_lab.rs|solve_matrix_market.rs|amplifier1t.rs|brusselator_pde.rs' \
   --lcov --output-path lcov.info
 bash zscripts/check-coverage.bash lcov.info 95
@@ -323,7 +337,30 @@ stale lock file.
 ## CI
 
 Workflows live in `.github/workflows/` (`ubuntu.yml`, `macos.yml`, `rocky.yml`,
-`arch.yml`, `windows.yml`). The Ubuntu job compiles MUMPS/SuiteSparse via
-`zscripts/debian-compile-*.bash` (into `/usr/local`, with `RUSSELL_LOCAL_PREFIX`
-set accordingly), runs `cargo test --features local_umfpack,mumps`, and on nightly
-enforces the coverage threshold shown above.
+`arch.yml`, `windows.yml`, `wasm.yml`). They run on pull requests, pushes to
+`main`, and a weekly schedule; a concurrency group cancels superseded runs, and
+the Rust builds are cached with `Swatinem/rust-cache`.
+
+- **Ubuntu** compiles MUMPS and SuiteSparse via `zscripts/debian-compile-*.bash`
+  (into `/usr/local`, with `RUSSELL_LOCAL_PREFIX` set), then runs the suite four
+  ways: default (Native), `umfpack`, `mumps`, and both. Nightly enforces the
+  coverage threshold shown above. A second job installs the packaged
+  `libsuitesparse-dev` and runs `umfpack` with `RUSSELL_LOCAL_PREFIX=/nonexistent`,
+  exercising the system fallback; `src/util.rs` asserts which source was linked.
+- **macOS and Windows** run the default suite and `--features umfpack` against
+  the platform library (Homebrew and MSYS2 respectively).
+- **Rocky and Arch** build their Docker images with the default and external
+  solver configurations.
+- **Lint/MSRV** (Ubuntu): `cargo fmt --check`, `cargo doc` with
+  `RUSTDOCFLAGS=-D warnings`, and `cargo +1.85.0 check --workspace`. Clippy is
+  deliberately not a CI step: its lint set moves with the toolchain, so a new
+  stable can fail the build on style that no code change touched. It stays a
+  local command (`cargo clippy --workspace --all-targets`).
+- **Wasm**: the Ubuntu job compile-checks both `wasm32-unknown-unknown` and
+  `wasm32-wasip1`; `wasm.yml` runs the whole workspace test suite on
+  `wasm32-wasip1` through `zscripts/wasmtime-runner.sh`, which preopens the
+  current directory for the file-based tests, and runs the `russell_sparse`
+  browser smoke test on `wasm32-unknown-unknown` with
+  `wasm-bindgen-test-runner`. The runner is installed at the `wasm-bindgen`
+  version that `cargo metadata` resolves, so it cannot drift from the
+  dependency.

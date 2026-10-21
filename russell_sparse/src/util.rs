@@ -164,17 +164,19 @@ const SUITESPARSE_VERSION: &str = "latest (from GitHub)";
 /// Reports where each backend came from, plus the version that the project's
 /// installation scripts download:
 ///
-/// - **UMFPACK** — always present; the line says whether it is the package-manager
-///   library (`system`, found with pkg-config) or a local install selected by the
-///   `local_umfpack` feature, with the directory it was linked from
+/// - **UMFPACK** — present when the `umfpack` feature is enabled (opt-in);
+///   the line says whether it is the package-manager library (`system`) or the
+///   local install under `RUSSELL_LOCAL_PREFIX` that took precedence, with the
+///   directory it was linked from; `[not compiled in]` otherwise
 /// - **MUMPS** — version downloaded by `zscripts/*-compile-mumps.bash`; annotated
 ///   `[not compiled in]` when the `mumps` feature is disabled
 /// - **SuiteSparse** — cloned from head of the upstream GitHub repository
 pub fn get_library_versions() -> String {
     let mut info = String::new();
 
-    // UMFPACK (always compiled in; the build script records which one)
-    info.push_str(&format!("UMFPACK: {}\n", env!("RUSSELL_SPARSE_UMFPACK")));
+    // UMFPACK (optional; the build script records which one, if any)
+    let umfpack = option_env!("RUSSELL_SPARSE_UMFPACK").unwrap_or("[not compiled in]");
+    info.push_str(&format!("UMFPACK: {umfpack}\n"));
 
     // MUMPS
     if cfg!(feature = "mumps") {
@@ -274,6 +276,22 @@ mod tests {
         assert!(info.contains(SUITESPARSE_VERSION), "Should contain SuiteSparse version");
     }
 
+    /// Guards the local-first selection: when the prefix contains UMFPACK the line
+    /// must say `local`, otherwise the system library must have been used.
+    #[cfg(feature = "umfpack")]
+    #[test]
+    fn umfpack_source_follows_the_prefix() {
+        let source = option_env!("RUSSELL_SPARSE_UMFPACK").unwrap_or("[not compiled in]");
+        let prefix = std::env::var("RUSSELL_LOCAL_PREFIX").unwrap_or_default();
+        let trimmed = prefix.trim().trim_end_matches(['/', '\\']);
+        let local = !trimmed.is_empty() && std::path::Path::new(trimmed).join("include/umfpack/umfpack.h").is_file();
+        if local {
+            assert!(source.starts_with("local"), "expected a local UMFPACK, got: {source}");
+        } else {
+            assert!(source.starts_with("system"), "expected a system UMFPACK, got: {source}");
+        }
+    }
+
     /// Guards the build-script wiring: the UMFPACK line must name the source the
     /// features selected, because two SuiteSparse installations can be present and
     /// the wrong one is otherwise invisible.
@@ -281,10 +299,7 @@ mod tests {
     fn get_library_versions_reports_the_umfpack_source() {
         let info = get_library_versions();
         let line = info.lines().find(|line| line.starts_with("UMFPACK: ")).expect("the UMFPACK line");
-        if cfg!(feature = "local_umfpack") {
-            assert!(line.contains("local"), "expected a local UMFPACK, got: {line}");
-        } else {
-            assert!(line.contains("system"), "expected a system UMFPACK, got: {line}");
-        }
+        let source = option_env!("RUSSELL_SPARSE_UMFPACK").unwrap_or("[not compiled in]");
+        assert!(line.contains(source), "expected {source:?} in: {line}");
     }
 }

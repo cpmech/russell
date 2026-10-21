@@ -1,7 +1,9 @@
 #[cfg(feature = "mumps")]
 use super::ComplexSolverMUMPS;
 
-use super::{ComplexCooMatrix, ComplexSolverUMFPACK, Genie, LinSolParams, StatsLinSol};
+#[cfg(feature = "umfpack")]
+use super::ComplexSolverUMFPACK;
+use super::{ComplexCooMatrix, ComplexSolverNative, Genie, LinSolParams, StatsLinSol};
 use crate::StrError;
 use russell_lab::ComplexVector;
 
@@ -77,11 +79,15 @@ impl<'a> ComplexLinSolver<'a> {
         // which feature to enable, instead of needing one whole copy of this match
         // per combination of features.
         let actual: Box<dyn Send + ComplexLinSolTrait> = match genie {
+            Genie::Native => Box::new(ComplexSolverNative::new()?),
             #[cfg(feature = "mumps")]
             Genie::Mumps => Box::new(ComplexSolverMUMPS::new()?),
             #[cfg(not(feature = "mumps"))]
             Genie::Mumps => return Err("MUMPS is not available; enable the `mumps` feature"),
+            #[cfg(feature = "umfpack")]
             Genie::Umfpack => Box::new(ComplexSolverUMFPACK::new()?),
+            #[cfg(not(feature = "umfpack"))]
+            Genie::Umfpack => return Err("UMFPACK is not available; enable the `umfpack` feature"),
         };
         Ok(ComplexLinSolver { actual })
     }
@@ -143,7 +149,7 @@ impl<'a> ComplexLinSolver<'a> {
     ///     let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
     ///
     ///     let mut x = ComplexVector::new(ndim);
-    ///     ComplexLinSolver::compute(Genie::Umfpack, &mut x, &mat, &rhs, None)?;
+    ///     ComplexLinSolver::compute(Genie::Native, &mut x, &mat, &rhs, None)?;
     ///
     ///     let correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
     ///     complex_vec_approx_eq(&x, correct, 1e-14);
@@ -193,8 +199,17 @@ mod tests {
         let (coo, _, _, _) = Samples::complex_symmetric_3x3_full();
         let mut x = ComplexVector::new(3);
         let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
-        ComplexLinSolver::compute(Genie::Umfpack, &mut x, &coo, &rhs, None).unwrap();
+        ComplexLinSolver::compute(Genie::Native, &mut x, &coo, &rhs, None).unwrap();
         let x_correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
         complex_vec_approx_eq(&x, x_correct, 1e-15);
+    }
+
+    #[test]
+    #[cfg(not(feature = "umfpack"))]
+    fn umfpack_requires_the_feature() {
+        assert_eq!(
+            ComplexLinSolver::new(Genie::Umfpack).err(),
+            Some("UMFPACK is not available; enable the `umfpack` feature")
+        );
     }
 }

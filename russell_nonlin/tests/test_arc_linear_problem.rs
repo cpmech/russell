@@ -10,8 +10,8 @@ const SAVE_FIGURE: bool = false;
 
 #[test]
 fn test_arc_linear_problem() {
-    run_test(Genie::Umfpack, false, false);
-    run_test(Genie::Umfpack, true, true);
+    run_test(Genie::Native, false, false);
+    run_test(Genie::Native, true, true);
 }
 
 #[cfg(feature = "mumps")]

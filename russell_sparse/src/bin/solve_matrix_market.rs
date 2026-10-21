@@ -14,7 +14,7 @@ struct Options {
     matrix_market_file: String,
 
     /// Solver selection
-    #[structopt(short = "g", long, default_value = "Umfpack")]
+    #[structopt(short = "g", long, default_value = "Native")]
     genie: String,
 
     /// Ordering strategy
@@ -94,6 +94,7 @@ fn main() -> Result<(), StrError> {
     // select the symmetric handling option
     let handling = match genie {
         Genie::Mumps => MMsym::LeaveAsLower,
+        Genie::Native => MMsym::MakeItFull,
         Genie::Umfpack => MMsym::MakeItFull,
     };
 
@@ -182,6 +183,7 @@ fn main() -> Result<(), StrError> {
             if stats.matrix.name == "bfwb62" {
                 let tolerance = match genie {
                     Genie::Mumps => 1e-10,
+                    Genie::Native => 1e-10,
                     Genie::Umfpack => 1e-10,
                 };
                 let correct_x = get_bfwb62_correct_x();

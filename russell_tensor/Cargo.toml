@@ -2,6 +2,7 @@
 name = "russell_tensor"
 version = "4.0.0"
 edition = "2024"
+rust-version = "1.85"
 license = "MIT"
 description = "Tensor analysis, calculus, and functions for continuum mechanics"
 homepage = "https://github.com/cpmech/russell"
@@ -19,6 +20,8 @@ keywords = ["tensor", "continuum", "mechanics"]
 # Enable `open_blas` (or `intel_mkl`) only to swap the native routines for a tuned library.
 open_blas = ["russell_lab/open_blas"]
 intel_mkl = ["russell_lab/intel_mkl"]
+# Benchmarks only; criterion pulls rayon, which does not build for wasm.
+bench = ["dep:criterion"]
 
 [dependencies]
 # Opt out of `russell_lab`'s defaults. Today its default is empty, so this
@@ -27,18 +30,18 @@ intel_mkl = ["russell_lab/intel_mkl"]
 russell_lab = { path = "../russell_lab", version = "4", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-
-[dev-dependencies]
-criterion = "0.8"
+criterion = { version = "0.8", optional = true }
 
 [[bench]]
 name = "polar_decomp_benchmark"
 harness = false
+required-features = ["bench"]
 path = "benchmarks/polar_decomp_benchmark.rs"
 
 [[bench]]
 name = "eigen_values_benchmark"
 harness = false
+required-features = ["bench"]
 path = "benchmarks/eigen_values_benchmark.rs"
 
 [lints]

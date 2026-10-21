@@ -334,7 +334,7 @@ impl<'a, A> OdeSolverTrait<A> for Radau5<'a, A> {
         }
 
         // constants
-        let concurrent = self.params.radau5.concurrent && self.params.newton.genie != Genie::Mumps;
+        let concurrent = cfg!(not(target_arch = "wasm32")) && self.params.radau5.concurrent && self.params.newton.genie != Genie::Mumps;
         let ndim = self.system.ndim;
 
         // Jacobian, K_real, K_comp, and factorizations (for all iterations: simple Newton's method)
@@ -901,7 +901,7 @@ mod tests {
 
     #[test]
     fn radau5_works_mass_matrix() {
-        let genie = Genie::Umfpack;
+        let genie = Genie::Native;
         for symmetric in [true, false] {
             for numerical in [true, false] {
                 // problem

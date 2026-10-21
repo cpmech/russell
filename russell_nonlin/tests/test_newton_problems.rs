@@ -176,7 +176,8 @@ fn test_two_eq_nr_prob_1_singular() {
     // solve problem
     let mut l = 0.0;
     let res = solver.solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::constant(1.0), None);
-    assert_eq!(res.err(), Some("Error(1): Matrix is singular"));
+    let err = res.err().unwrap();
+    assert!(err.contains("singular"), "expected a singular-matrix error, got {err:?}");
 }
 
 #[cfg(feature = "mumps")]
@@ -252,5 +253,6 @@ fn test_two_eq_nr_prob_2() {
         &DeltaLambda::constant(1.0),
         None,
     );
-    assert_eq!(res.err(), Some("Error(1): Matrix is singular"));
+    let err = res.err().unwrap();
+    assert!(err.contains("singular"), "expected a singular-matrix error, got {err:?}");
 }

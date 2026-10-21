@@ -18,7 +18,7 @@ USE_INTEL_MKL=${1:-0}
 
 # Installation paths
 PREFIX="/usr/local"
-# The layout the `local_umfpack` feature expects: $PREFIX/{include,lib}/umfpack
+# The layout the `umfpack` feature expects: $PREFIX/{include,lib}/umfpack
 INCDIR=$PREFIX/include/umfpack
 LIBDIR=$PREFIX/lib/umfpack
 

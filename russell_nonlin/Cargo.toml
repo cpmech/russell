@@ -2,6 +2,7 @@
 name = "russell_nonlin"
 version = "4.0.0"
 edition = "2024"
+rust-version = "1.85"
 license = "MIT"
 description = "Numerical continuation methods to solve nonlinear systems of equations"
 homepage = "https://github.com/cpmech/russell"
@@ -20,7 +21,7 @@ intel_mkl = [
   "russell_sparse/intel_mkl",
   "russell_ode/intel_mkl",
 ]
-local_umfpack = ["russell_sparse/local_umfpack", "russell_ode/local_umfpack"]
+umfpack = ["russell_sparse/umfpack", "russell_ode/umfpack"]
 mumps = ["russell_sparse/mumps", "russell_ode/mumps"]
 
 [dependencies]

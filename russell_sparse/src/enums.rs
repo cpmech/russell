@@ -8,7 +8,14 @@ pub enum Genie {
     /// Reference: <https://mumps-solver.org/index.php>
     Mumps,
 
+    /// Selects Rust-native (non-performant) solver
+    ///
+    /// Reference: <https://github.com/cpmech/algebra_linear>
+    Native,
+
     /// Selects UMFPACK (unsymmetric multi-frontal) solver
+    ///
+    /// Requires the `umfpack` feature, which is not enabled by default.
     ///
     /// Reference: <https://github.com/DrTimothyAldenDavis/SuiteSparse>
     Umfpack,
@@ -65,72 +72,84 @@ pub enum Ordering {
     /// Ordering using the approximate minimum degree
     ///
     /// * MUMPS: ✅ available
+    /// * Native: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ✅ available
     Amd,
 
     /// Ordering using the approximate minimum fill-in
     ///
     /// * MUMPS: ✅ available
+    /// * Native: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     Amf,
 
     /// Automatic ordering method selection (default)
     ///
     /// * MUMPS: ✅ available
+    /// * Native: ✅ available (Colamd)
     /// * UMFPACK: ✅ available
     Auto,
 
     /// Try three methods and take the best
     ///
     /// * MUMPS: ❌ unavailable; defaults to automatic
+    /// * Native: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ✅ available
     Best,
 
     /// Block triangular form (BTF) combined with COLAMD. Supports global pivoting
     ///
     /// * MUMPS: ❌ unavailable; defaults to automatic
+    /// * Native: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     BtfColamd,
 
     /// Use Amd for symmetric, Colamd for unsymmetric, or Metis
     ///
     /// * MUMPS: ❌ unavailable; defaults to automatic
+    /// * Native: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ✅ available
     Cholmod,
 
     /// Use the column approximate minimum degree ordering algorithm
     ///
     /// * MUMPS: ❌ unavailable; defaults to automatic
+    /// * Native: ✅ available
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     Colamd,
 
     /// Ordering by Karpis & Kumar from the University of Minnesota
     ///
     /// * MUMPS: ✅ available
+    /// * Native: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ✅ available
     Metis,
 
     /// The matrix is factorized as-is
     ///
     /// * MUMPS: ❌ unavailable; defaults to automatic
+    /// * Native: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ✅ available
     No,
 
     /// Ordering by Schulze from the University of Paderborn
     ///
     /// * MUMPS: ✅ available
+    /// * Native: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     Pord,
 
     /// Ordering using the automatic quasi-dense row detection
     ///
     /// * MUMPS: ✅ available
+    /// * Native: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     Qamd,
 
     /// Ordering using the Scotch package
     ///
     /// * MUMPS: ✅ available
+    /// * Native: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     Scotch,
 }
@@ -141,64 +160,74 @@ pub enum Scaling {
     /// Automatic scaling method selection (default)
     ///
     /// * MUMPS: ✅ available
+    /// * Native: ✅ available (none)
     /// * UMFPACK: ✅ available (defaults to sum-of-row scaling)
     Auto,
 
     /// Column scaling
     ///
     /// * MUMPS: ✅ available
+    /// * Native: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     Column,
 
     /// Diagonal scaling
     ///
     /// * MUMPS: ✅ available
+    /// * Native: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     Diagonal,
 
     /// Divide each row by the max absolute value in the row
     ///
     /// * MUMPS: ❌ unavailable; defaults to automatic
+    /// * Native: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ✅ available
     Max,
 
     /// No scaling applied or computed
     ///
     /// * MUMPS: ✅ available
+    /// * Native: ✅ available
     /// * UMFPACK: ✅ available
     No,
 
     /// Row and column scaling based on infinite row/column norms
     ///
     /// * MUMPS: ✅ available
+    /// * Native: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     RowCol,
 
     /// Simultaneous row and column iterative scaling
     ///
     /// * MUMPS: ✅ available
+    /// * Native: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     RowColIter,
 
     /// Similar to RowColIter but more rigorous and expensive to compute
     ///
     /// * MUMPS: ✅ available
+    /// * Native: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     RowColRig,
 
     /// Divide each row by the sum of the absolute values in the row
     ///
     /// * MUMPS: ❌ unavailable; defaults to automatic
+    /// * Native: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ✅ available (also the default)
     Sum,
 }
 impl Genie {
-    /// Returns the Genie by name (default is umfpack)
+    /// Returns the Genie by name (unknown names select Native)
     pub fn from(genie: &str) -> Self {
         match genie.to_lowercase().as_str() {
             "mumps" => Genie::Mumps,
+            "native" => Genie::Native,
             "umfpack" => Genie::Umfpack,
-            _ => Genie::Umfpack,
+            _ => Genie::Native,
         }
     }
 
@@ -207,6 +236,7 @@ impl Genie {
         if symmetric {
             match self {
                 Genie::Mumps => Sym::YesLower,
+                Genie::Native => Sym::YesFull,
                 Genie::Umfpack => Sym::YesFull,
             }
         } else {
@@ -219,6 +249,7 @@ impl std::fmt::Display for Genie {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Genie::Mumps => write!(f, "mumps"),
+            Genie::Native => write!(f, "native"),
             Genie::Umfpack => write!(f, "umfpack"),
         }
     }
@@ -399,7 +430,8 @@ mod tests {
     fn genie_functions_work() {
         assert_eq!(Genie::from("mumps"), Genie::Mumps);
         assert_eq!(Genie::from("umfpack"), Genie::Umfpack);
-        assert_eq!(Genie::from("blah-blah-blah"), Genie::Umfpack);
+        assert_eq!(Genie::from("native"), Genie::Native);
+        assert_eq!(Genie::from("blah-blah-blah"), Genie::Native);
 
         assert_eq!(Genie::from("Mumps"), Genie::Mumps);
         assert_eq!(Genie::from("Umfpack"), Genie::Umfpack);

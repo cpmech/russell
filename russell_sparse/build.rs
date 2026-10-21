@@ -4,23 +4,24 @@
 //! The interface files are small C shims that wrap the external solver libraries
 //! (UMFPACK and MUMPS) so that `russell_sparse` can call them through `extern "C"`.
 //!
-//! UMFPACK is required in every configuration, so the features never choose
-//! *whether* there is a direct solver -- only where it comes from, and whether
-//! MUMPS joins it:
+//! UMFPACK is optional and enabled with the `umfpack` feature. When it is
+//! enabled, the build looks for a local installation first and only then for the
+//! system one:
 //!
-//! * (no feature)      UMFPACK from the package manager, located with pkg-config;
-//! * `local_umfpack`   UMFPACK from a local install, under `RUSSELL_LOCAL_PREFIX`;
-//! * `mumps`           MUMPS from that same local prefix, alongside either UMFPACK.
+//! * `$RUSSELL_LOCAL_PREFIX/include/umfpack` and `$RUSSELL_LOCAL_PREFIX/lib/umfpack`
+//!   are used when `RUSSELL_LOCAL_PREFIX` is set and both directories exist;
+//! * otherwise pkg-config (Unix) or `MSYS2_PREFIX` (Windows) is used, and a hard
+//!   error is raised if the system library is missing too.
 //!
-//! The two UMFPACK sources exclude each other by construction: `/usr/local` (or
-//! wherever the local install lives) is never searched when the system UMFPACK is
-//! wanted, and pkg-config is never consulted when the local one is. A build
-//! therefore cannot mix a package-manager SuiteSparse with a locally compiled one
-//! -- they typically differ in version but share the `libumfpack.so.6` soname, so
-//! a mix would not even be visible at run time.
+//! A local installation therefore takes precedence over the system one. The two
+//! sources exclude each other within a build: pkg-config is not consulted when
+//! the local install was found, and the local prefix is not searched on the
+//! system fallback path. They typically differ in version but share the
+//! `libumfpack.so.6` soname, so a mix would not even be visible at run time.
 //!
-//! The local solvers live in a fixed layout, and `RUSSELL_LOCAL_PREFIX` must be
-//! set (and exported) when either feature is enabled:
+//! MUMPS is independent (`mumps` feature), always comes from
+//! `RUSSELL_LOCAL_PREFIX`, and may be enabled with or without UMFPACK. Its
+//! layout is fixed:
 //!
 //! ```text
 //! $RUSSELL_LOCAL_PREFIX/include/umfpack     $RUSSELL_LOCAL_PREFIX/lib/umfpack
@@ -31,16 +32,19 @@
 //! include roots and the library names differ -- shared libraries on Unix, and
 //! the statically linked `_cpmech` MUMPS on Windows.
 
-#[cfg(any(feature = "local_umfpack", feature = "mumps"))]
+#[cfg(any(feature = "umfpack", feature = "mumps"))]
 use std::path::PathBuf;
 
-/// The C shim files compiled in every configuration.
+/// The C shim files compiled for the enabled solvers.
 ///
-/// UMFPACK is always present; MUMPS joins with its feature. Keeping this in one
-/// place is what stops the Windows and Unix builds from drifting apart.
+/// UMFPACK joins with its feature (opt-in); MUMPS with its own. Keeping
+/// this in one place is what stops the Windows and Unix builds from drifting
+/// apart.
 fn shim_files() -> Vec<&'static str> {
-    #[cfg_attr(not(feature = "mumps"), allow(unused_mut))]
-    let mut files = vec!["c_code/interface_complex_umfpack.c", "c_code/interface_umfpack.c"];
+    #[cfg_attr(not(any(feature = "umfpack", feature = "mumps")), allow(unused_mut))]
+    let mut files = Vec::new();
+    #[cfg(feature = "umfpack")]
+    files.extend(["c_code/interface_complex_umfpack.c", "c_code/interface_umfpack.c"]);
     #[cfg(feature = "mumps")]
     files.extend(["c_code/interface_complex_mumps.c", "c_code/interface_mumps.c"]);
     files
@@ -50,6 +54,12 @@ fn main() {
     // The prefix decides which installation is linked, so changing it must rebuild.
     println!("cargo:rerun-if-env-changed=RUSSELL_LOCAL_PREFIX");
     println!("cargo:rerun-if-env-changed=MSYS2_PREFIX");
+
+    // Mirror the dense-crate notice: with neither external solver enabled the
+    // Native backend is the only one, and that choice should be visible in the
+    // build log.
+    #[cfg(not(any(feature = "umfpack", feature = "mumps")))]
+    println!("cargo:warning=russell_sparse: using the native Rust sparse solver (no external library)");
 
     #[cfg(target_os = "windows")]
     windows::compile();
@@ -62,25 +72,30 @@ fn main() {
 // Local installs: $RUSSELL_LOCAL_PREFIX/{include,lib}/<solver>
 // ----------------------------------------------------------------------------
 
-/// Reads `RUSSELL_LOCAL_PREFIX`, dropping trailing separators and whitespace.
+/// Reads `RUSSELL_LOCAL_PREFIX`, returning `None` when unset or empty.
 ///
-/// The variable is required by the local features, and an unset or empty value
-/// stops the build with the expected layout instead of guessing a prefix: the
-/// system and the local installations must never be confused, and a guess is how
-/// they would be.
-#[cfg(any(feature = "local_umfpack", feature = "mumps"))]
-fn local_prefix() -> PathBuf {
-    let raw = std::env::var("RUSSELL_LOCAL_PREFIX").unwrap_or_default();
+/// For UMFPACK an unset prefix simply means "use the system library"; MUMPS
+/// requires the variable (see [`local_prefix`]).
+#[cfg(any(feature = "umfpack", feature = "mumps"))]
+fn local_prefix_opt() -> Option<PathBuf> {
+    let raw = std::env::var("RUSSELL_LOCAL_PREFIX").ok()?;
     let trimmed = raw.trim().trim_end_matches(['/', '\\']);
-    if trimmed.is_empty() {
-        panic!(
-            "russell_sparse: RUSSELL_LOCAL_PREFIX is not set, and a locally compiled solver was \
-             requested. Export it as the root of the local install, laid out as\n\
-             \x20 $RUSSELL_LOCAL_PREFIX/include/umfpack   $RUSSELL_LOCAL_PREFIX/lib/umfpack\n\
-             \x20 $RUSSELL_LOCAL_PREFIX/include/mumps     $RUSSELL_LOCAL_PREFIX/lib/mumps"
-        );
+    if trimmed.is_empty() { None } else { Some(PathBuf::from(trimmed)) }
+}
+
+/// Reads `RUSSELL_LOCAL_PREFIX`, stopping the build when it is unset.
+///
+/// MUMPS is compiled locally only, so the variable is required with `mumps`.
+#[cfg(feature = "mumps")]
+fn local_prefix() -> PathBuf {
+    match local_prefix_opt() {
+        Some(prefix) => prefix,
+        None => panic!(
+            "russell_sparse: RUSSELL_LOCAL_PREFIX is not set, and MUMPS was requested. Export it as the \
+             root of the local install, laid out as\n\
+             \x20 $RUSSELL_LOCAL_PREFIX/include/mumps   $RUSSELL_LOCAL_PREFIX/lib/mumps"
+        ),
     }
-    PathBuf::from(trimmed)
 }
 
 /// Resolves `$RUSSELL_LOCAL_PREFIX/{include,lib}/<solver>`, checking the header
@@ -88,7 +103,7 @@ fn local_prefix() -> PathBuf {
 ///
 /// A wrong prefix fails here, naming the file it looked for, rather than later in
 /// the C compiler or, worse, at link time against some other installation.
-#[cfg(any(feature = "local_umfpack", feature = "mumps"))]
+#[cfg(feature = "mumps")]
 fn local_dirs(solver: &str, header: &str) -> (PathBuf, PathBuf) {
     let prefix = local_prefix();
     let include = prefix.join("include").join(solver);
@@ -106,7 +121,24 @@ fn local_dirs(solver: &str, header: &str) -> (PathBuf, PathBuf) {
     (include, lib)
 }
 
+/// Tries the local UMFPACK installation, returning `None` when it is not there.
+///
+/// The header is what selects the installation: a prefix that exists but does
+/// not contain UMFPACK must fall through to the system library, not fail.
+#[cfg(feature = "umfpack")]
+fn try_local_dirs(solver: &str, header: &str) -> Option<(PathBuf, PathBuf)> {
+    let prefix = local_prefix_opt()?;
+    let include = prefix.join("include").join(solver);
+    let lib = prefix.join("lib").join(solver);
+    if include.join(header).is_file() && lib.is_dir() {
+        Some((include, lib))
+    } else {
+        None
+    }
+}
+
 /// Tells the crate which UMFPACK was linked, for `get_library_versions`.
+#[cfg(feature = "umfpack")]
 fn emit_umfpack_source(source: &str) {
     println!("cargo:rustc-env=RUSSELL_SPARSE_UMFPACK={source}");
 }
@@ -115,36 +147,45 @@ fn emit_umfpack_source(source: &str) {
 // Windows (MSYS2)
 // ----------------------------------------------------------------------------
 
-/// Windows (MSYS2): the system UMFPACK and MUMPS come from `MSYS2_PREFIX`, the
-/// local ones from `RUSSELL_LOCAL_PREFIX`.
+/// Windows (MSYS2): the system UMFPACK comes from `MSYS2_PREFIX`, the local one
+/// from `RUSSELL_LOCAL_PREFIX`. The local installation wins when present.
 #[cfg(target_os = "windows")]
 mod windows {
     use super::shim_files;
-    #[cfg(not(feature = "local_umfpack"))]
+    #[cfg(feature = "umfpack")]
     use std::path::PathBuf;
 
     /// Compiles and links the shims.
     pub fn compile() {
+        let files = shim_files();
+        if files.is_empty() {
+            return;
+        }
         let mut build = cc::Build::new();
-        for file in shim_files() {
+        for file in files {
             build.file(file);
         }
 
-        // UMFPACK: the system one, unless the local install was asked for.
-        #[cfg(not(feature = "local_umfpack"))]
+        // UMFPACK: the local install first, then the MSYS2 one.
+        #[cfg(feature = "umfpack")]
         {
-            let prefix = msys2_prefix();
-            build.include(prefix.join("include").join("suitesparse"));
-            super::emit_link_search(&prefix.join("lib"));
-            super::emit_umfpack_source("system (MSYS2)");
-        }
-        #[cfg(feature = "local_umfpack")]
-        {
-            let (include, lib) = super::local_dirs("umfpack", "umfpack.h");
-            build.include(&include);
-            super::emit_link_search(&lib);
-            super::emit_rpath(&lib);
-            super::emit_umfpack_source(&format!("local ({})", lib.display()));
+            if let Some((include, lib)) = super::try_local_dirs("umfpack", "umfpack.h") {
+                build.include(&include);
+                super::emit_link_search(&lib);
+                super::emit_rpath(&lib);
+                super::emit_umfpack_source(&format!("local ({})", lib.display()));
+            } else {
+                if super::local_prefix_opt().is_some() {
+                    println!(
+                        "cargo:warning=russell_sparse: RUSSELL_LOCAL_PREFIX is set but does not contain \
+                         UMFPACK; falling back to the MSYS2 library"
+                    );
+                }
+                let prefix = msys2_prefix();
+                build.include(prefix.join("include").join("suitesparse"));
+                super::emit_link_search(&prefix.join("lib"));
+                super::emit_umfpack_source("system (MSYS2)");
+            }
         }
 
         // MUMPS, compiled locally with the `_cpmech` suffix: headers and shared
@@ -155,16 +196,6 @@ mod windows {
             build.include(&include);
             super::emit_link_search(&lib);
             super::emit_rpath(&lib);
-        }
-
-        build.compile("c_code");
-
-        println!("cargo:rustc-link-lib=dylib=umfpack");
-
-        // The Windows MUMPS build is static and drags in its Fortran and METIS
-        // dependencies; on Unix they are resolved by the shared libraries.
-        #[cfg(feature = "mumps")]
-        {
             println!("cargo:rustc-link-lib=static=dmumps_cpmech");
             println!("cargo:rustc-link-lib=static=zmumps_cpmech");
             println!("cargo:rustc-link-lib=static=mumps_common_cpmech");
@@ -174,10 +205,19 @@ mod windows {
             println!("cargo:rustc-link-lib=dylib=gomp");
             println!("cargo:rustc-link-lib=static=metis");
         }
+
+        build.compile("c_code");
+
+        // UMFPACK comes after the shims that call it. The MSYS2 library is an
+        // import archive, and GNU ld pulls an archive member only for a symbol
+        // that is already undefined, so `-lumfpack` emitted before `-lc_code`
+        // resolves nothing and every `umfpack_*` reference is reported missing.
+        #[cfg(feature = "umfpack")]
+        println!("cargo:rustc-link-lib=dylib=umfpack");
     }
 
     /// The MSYS2 installation root, where the system UMFPACK lives.
-    #[cfg(not(feature = "local_umfpack"))]
+    #[cfg(feature = "umfpack")]
     fn msys2_prefix() -> PathBuf {
         let raw = std::env::var("MSYS2_PREFIX").expect("MSYS2_PREFIX environment variable not set");
         PathBuf::from(raw)
@@ -195,28 +235,28 @@ mod unix {
     use super::shim_files;
 
     /// Include directories of a package-manager or Homebrew SuiteSparse, used only
-    /// when pkg-config cannot answer. `$RUSSELL_LOCAL_PREFIX` is deliberately
-    /// absent: the local install is the `local_umfpack` feature's business, and
-    /// searching it here is how the two get mixed.
-    #[cfg(not(feature = "local_umfpack"))]
+    /// when pkg-config cannot answer.
+    #[cfg(feature = "umfpack")]
     const SYSTEM_INCLUDE_DIRS: &[&str] = &["/opt/homebrew/include/suitesparse", "/usr/include/suitesparse"];
 
     /// Library directories of a package-manager or Homebrew SuiteSparse (see
     /// [`SYSTEM_INCLUDE_DIRS`]).
-    #[cfg(not(feature = "local_umfpack"))]
+    #[cfg(feature = "umfpack")]
     const SYSTEM_LIB_DIRS: &[&str] = &["/opt/homebrew/lib", "/usr/lib/x86_64-linux-gnu", "/usr/lib", "/usr/lib64"];
 
     /// Compiles and links the shims.
     pub fn compile() {
+        let files = shim_files();
+        if files.is_empty() {
+            return;
+        }
         let mut build = cc::Build::new();
-        for file in shim_files() {
+        for file in files {
             build.file(file);
         }
 
-        #[cfg(not(feature = "local_umfpack"))]
-        umfpack_system(&mut build);
-        #[cfg(feature = "local_umfpack")]
-        umfpack_local(&mut build);
+        #[cfg(feature = "umfpack")]
+        umfpack(&mut build);
 
         #[cfg(feature = "mumps")]
         mumps_local(&mut build);
@@ -224,9 +264,29 @@ mod unix {
         build.compile("c_code");
     }
 
+    /// UMFPACK: the local installation first, then the system one.
+    #[cfg(feature = "umfpack")]
+    fn umfpack(build: &mut cc::Build) {
+        if let Some((include, lib)) = super::try_local_dirs("umfpack", "umfpack.h") {
+            build.include(&include);
+            super::emit_link_search(&lib);
+            super::emit_rpath(&lib);
+            println!("cargo:rustc-link-lib=dylib=umfpack");
+            super::emit_umfpack_source(&format!("local ({})", lib.display()));
+            return;
+        }
+        if super::local_prefix_opt().is_some() {
+            println!(
+                "cargo:warning=russell_sparse: RUSSELL_LOCAL_PREFIX is set but does not contain UMFPACK; \
+                 falling back to the system library"
+            );
+        }
+        umfpack_system(build);
+    }
+
     /// UMFPACK from the package manager: pkg-config when it answers, the directory
     /// list above otherwise, and a hard failure if neither does.
-    #[cfg(not(feature = "local_umfpack"))]
+    #[cfg(feature = "umfpack")]
     fn umfpack_system(build: &mut cc::Build) {
         if let Some(lib) = probe_umfpack() {
             for include in &lib.include_paths {
@@ -243,9 +303,10 @@ mod unix {
             panic!(
                 "russell_sparse: UMFPACK was not found.\n\
                  Install it with `sudo apt install libsuitesparse-dev` (Debian/Ubuntu) or \
-                 `sudo pacman -S suitesparse` (Arch), or enable the `local_umfpack` feature and set \
-                 RUSSELL_LOCAL_PREFIX to a local install laid out as \
-                 $RUSSELL_LOCAL_PREFIX/include/umfpack and $RUSSELL_LOCAL_PREFIX/lib/umfpack."
+                 `sudo pacman -S suitesparse` (Arch), or set RUSSELL_LOCAL_PREFIX to a local install \
+                 laid out as $RUSSELL_LOCAL_PREFIX/include/umfpack and \
+                 $RUSSELL_LOCAL_PREFIX/lib/umfpack. Alternatively, leave the `umfpack` feature \
+                 disabled to build without UMFPACK."
             );
         }
         build.includes(&include_dirs);
@@ -254,17 +315,6 @@ mod unix {
         }
         println!("cargo:rustc-link-lib=dylib=umfpack");
         super::emit_umfpack_source(&format!("system ({})", include_dirs.join(", ")));
-    }
-
-    /// UMFPACK from `$RUSSELL_LOCAL_PREFIX`; pkg-config is not consulted.
-    #[cfg(feature = "local_umfpack")]
-    fn umfpack_local(build: &mut cc::Build) {
-        let (include, lib) = super::local_dirs("umfpack", "umfpack.h");
-        build.include(&include);
-        super::emit_link_search(&lib);
-        super::emit_rpath(&lib);
-        println!("cargo:rustc-link-lib=dylib=umfpack");
-        super::emit_umfpack_source(&format!("local ({})", lib.display()));
     }
 
     /// MUMPS from `$RUSSELL_LOCAL_PREFIX`, shared, so its dependencies are already
@@ -286,7 +336,7 @@ mod unix {
     /// Debian, Arch and upstream's own `make install` write `UMFPACK.pc`, while
     /// some setups use lowercase. Returns `None` if pkg-config is missing or does
     /// not know UMFPACK under either name.
-    #[cfg(not(feature = "local_umfpack"))]
+    #[cfg(feature = "umfpack")]
     fn probe_umfpack() -> Option<pkg_config::Library> {
         for name in ["UMFPACK", "umfpack"] {
             match pkg_config::Config::new().probe(name) {
@@ -312,7 +362,7 @@ mod unix {
     ///
     /// Apart from reducing command-line noise, this avoids entries such as
     /// `/usr/lib` shadowing what a Nix devShell provides.
-    #[cfg(not(feature = "local_umfpack"))]
+    #[cfg(feature = "umfpack")]
     fn existing_dirs(dirs: &[&str]) -> Vec<String> {
         dirs.iter()
             .filter(|dir| std::path::Path::new(dir).is_dir())
@@ -322,6 +372,7 @@ mod unix {
 }
 
 /// Emits a link search directory.
+#[cfg(any(feature = "umfpack", feature = "mumps"))]
 fn emit_link_search(dir: &std::path::Path) {
     println!("cargo:rustc-link-search=native={}", dir.display());
 }
@@ -335,7 +386,7 @@ fn emit_link_search(dir: &std::path::Path) {
 /// that was linked. The flags are scoped to this package's targets, so downstream
 /// crates are unaffected: they get the requirement documented instead (the library
 /// directory must be reachable at run time).
-#[cfg(any(feature = "local_umfpack", feature = "mumps"))]
+#[cfg(any(feature = "umfpack", feature = "mumps"))]
 fn emit_rpath(dir: &std::path::Path) {
     let flag = format!("-Wl,-rpath,{}", dir.display());
     let manifest = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));

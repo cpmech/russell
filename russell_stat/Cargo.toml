@@ -2,6 +2,7 @@
 name = "russell_stat"
 version = "4.0.0"
 edition = "2024"
+rust-version = "1.85"
 license = "MIT"
 description = "Statistics calculations and (engineering) probability distributions"
 homepage = "https://github.com/cpmech/russell"
@@ -28,3 +29,7 @@ plotpy = "1.24"
 
 [lints]
 workspace = true
+
+# `rand` needs a browser entropy source on wasm32-unknown-unknown.
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+getrandom = { version = "0.4", features = ["wasm_js"] }

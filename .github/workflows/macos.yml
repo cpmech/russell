@@ -1,5 +1,13 @@
 name: macOS
-on: [pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
     runs-on: macos-latest
@@ -7,13 +15,21 @@ jobs:
       RUST_BACKTRACE: 1
     steps:
       - uses: actions/checkout@v4
+      - name: Install SuiteSparse
+        run: |
+          brew install suite-sparse
       - name: Configure environment
         run: |
           echo TMPDIR=/tmp | tee -a $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=$(brew --prefix suite-sparse)/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
           env
-      - name: Install Libraries
-        run: |
-          brew install lapack openblas suite-sparse
-      - name: Run tests
-        run: |
-          cargo test
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+      - name: Cache the Rust build
+        uses: Swatinem/rust-cache@v2
+      - name: Run tests (Native)
+        run: cargo test
+      - name: Run tests (UMFPACK)
+        run: cargo test --features umfpack

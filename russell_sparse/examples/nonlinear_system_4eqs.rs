@@ -7,7 +7,7 @@ use structopt::StructOpt;
 #[derive(StructOpt, Debug)]
 #[structopt(name = "nonlinear_system_4equations", about = "Solve a nonlinear system four equations.")]
 struct Options {
-    #[structopt(short = "g", long, default_value = "Umfpack")]
+    #[structopt(short = "g", long, default_value = "Native")]
     genie: String,
 }
 

@@ -16,11 +16,11 @@ fn test_2d_prob01_spc() -> Result<(), StrError> {
     ] {
         let (nn, tol) = *nn_tol;
         // SPS
-        run_spc(true, false, nn, tol, Genie::Umfpack)?;
-        run_spc(false, false, nn, tol, Genie::Umfpack)?;
+        run_spc(true, false, nn, tol, Genie::Native)?;
+        run_spc(false, false, nn, tol, Genie::Native)?;
         // LMM
-        run_spc(true, true, nn, tol, Genie::Umfpack)?;
-        run_spc(false, true, nn, tol, Genie::Umfpack)?;
+        run_spc(true, true, nn, tol, Genie::Native)?;
+        run_spc(false, true, nn, tol, Genie::Native)?;
     }
     Ok(())
 }
@@ -33,11 +33,11 @@ fn test_2d_prob01_spc_map() -> Result<(), StrError> {
     ] {
         let (nn, tol) = *nn_tol;
         // SPS
-        run_spc_map(true, false, nn, tol, Genie::Umfpack)?;
-        run_spc_map(false, false, nn, tol, Genie::Umfpack)?;
+        run_spc_map(true, false, nn, tol, Genie::Native)?;
+        run_spc_map(false, false, nn, tol, Genie::Native)?;
         // LMM
-        run_spc_map(true, true, nn, tol, Genie::Umfpack)?;
-        run_spc_map(false, true, nn, tol, Genie::Umfpack)?;
+        run_spc_map(true, true, nn, tol, Genie::Native)?;
+        run_spc_map(false, true, nn, tol, Genie::Native)?;
     }
     Ok(())
 }

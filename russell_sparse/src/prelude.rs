@@ -5,6 +5,8 @@
 
 pub use crate::aliases::*;
 pub use crate::complex_lin_solver::*;
+pub use crate::complex_solver_native::ComplexSolverNative;
+#[cfg(feature = "umfpack")]
 pub use crate::complex_solver_umfpack::ComplexSolverUMFPACK;
 pub use crate::coo_matrix::NumCooMatrix;
 pub use crate::csc_matrix::NumCscMatrix;
@@ -14,6 +16,8 @@ pub use crate::lin_sol_params::LinSolParams;
 pub use crate::lin_solver::*;
 pub use crate::numerical_jacobian::numerical_jacobian;
 pub use crate::read_matrix_market;
+pub use crate::solver_native::SolverNative;
+#[cfg(feature = "umfpack")]
 pub use crate::solver_umfpack::SolverUMFPACK;
 pub use crate::stats_lin_sol::StatsLinSol;
 pub use crate::verify_lin_sys::VerifyLinSys;

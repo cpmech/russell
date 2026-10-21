@@ -60,6 +60,7 @@ fn check_jacobian() {
     mat_approx_eq(&jj_ana, &jj_num, 1e-8);
 }
 
+#[cfg(any(feature = "umfpack", feature = "mumps"))]
 fn solve_nonlinear_system(genie: Genie) -> Result<(), StrError> {
     let (neq, nnz) = (4, 16);
     let mut solver = LinSolver::new(genie)?;
@@ -107,6 +108,7 @@ fn test_nonlinear_system_mumps() -> Result<(), StrError> {
     solve_nonlinear_system(Genie::Mumps)
 }
 
+#[cfg(feature = "umfpack")]
 #[test]
 fn test_nonlinear_system_umfpack() -> Result<(), StrError> {
     solve_nonlinear_system(Genie::Umfpack)

@@ -8,7 +8,7 @@ if [ "$INTEL_MKL" = "1" ]; then
     FEATURES="${FEATURES},intel_mkl"
 fi
 if [ "$LOCAL_SPARSE" = "1" ]; then
-    FEATURES="${FEATURES},local_umfpack,mumps"
+    FEATURES="${FEATURES},umfpack,mumps"
 fi
 
 for example in examples/*.rs; do

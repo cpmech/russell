@@ -40,7 +40,7 @@ struct Options {
     write_matrix: bool,
 
     /// Solver selection
-    #[structopt(short = "g", long, default_value = "Umfpack")]
+    #[structopt(short = "g", long, default_value = "Native")]
     genie: String,
 
     /// Ordering strategy

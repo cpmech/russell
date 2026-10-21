@@ -1,12 +1,20 @@
 name: Ubuntu
-on: [pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
     runs-on: ubuntu-latest
     env:
       RUST_BACKTRACE: 1
       # Where the locally compiled SuiteSparse and MUMPS are installed by the
-      # scripts below; the `local_umfpack` and `mumps` features read it.
+      # scripts below; `mumps` requires it and `umfpack` prefers it.
       RUSSELL_LOCAL_PREFIX: /usr/local
     strategy:
       matrix:
@@ -18,6 +26,10 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
           components: llvm-tools-preview
+      - name: Cache the Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.rust }}
       - name: Information
         run: |
           lsb_release -d
@@ -28,9 +40,14 @@ jobs:
       - name: Compile SuiteSparse
         run: |
           bash zscripts/debian-compile-suitesparse.bash
-      - name: Run tests
-        run: |
-          cargo test --features local_umfpack,mumps
+      - name: Run tests (Native, default features)
+        run: cargo test
+      - name: Run tests (UMFPACK)
+        run: cargo test --features umfpack
+      - name: Run tests (MUMPS)
+        run: cargo test --features mumps
+      - name: Run tests (UMFPACK + MUMPS)
+        run: cargo test --features umfpack,mumps
       - name: Install cargo-llvm-cov
         if: startsWith(matrix.rust, 'nightly')
         run: |
@@ -38,7 +55,7 @@ jobs:
       - name: Generate code coverage
         if: startsWith(matrix.rust, 'nightly')
         run: |
-          cargo llvm-cov --workspace --features local_umfpack,mumps \
+          cargo llvm-cov --workspace --features umfpack,mumps \
             --ignore-filename-regex 'build.rs|mem_check.rs|mem_check_lab.rs|solve_matrix_market.rs|amplifier1t.rs|brusselator_pde.rs' \
             --lcov --output-path lcov.info
       # The 95% threshold is applied to the DA records of the lcov file, not with
@@ -49,3 +66,73 @@ jobs:
         if: startsWith(matrix.rust, 'nightly')
         run: |
           bash zscripts/check-coverage.bash lcov.info 95
+
+  system-umfpack:
+    runs-on: ubuntu-latest
+    env:
+      RUSSELL_LOCAL_PREFIX: /nonexistent
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+      - name: Cache the Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: system-umfpack
+      - name: Install the packaged SuiteSparse
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsuitesparse-dev
+      - name: Test the system fallback
+        run: cargo test -p russell_sparse --features umfpack --lib
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          components: rustfmt
+      - name: Cache the Rust build
+        uses: Swatinem/rust-cache@v2
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Build the documentation
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc --workspace --no-deps
+
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust 1.85
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.85.0
+      - name: Cache the Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: msrv
+      - name: Check with the minimum supported Rust version
+        run: cargo check --workspace
+
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust with the WebAssembly targets
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown,wasm32-wasip1
+      - name: Cache the Rust build
+        uses: Swatinem/rust-cache@v2
+      - name: Check the browser target
+        run: cargo check --workspace --target wasm32-unknown-unknown
+      - name: Check the WASI target
+        run: cargo check --workspace --target wasm32-wasip1

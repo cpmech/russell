@@ -27,7 +27,7 @@ fn test_2d_prob05_fdm_sps() -> Result<(), StrError> {
         if err > err_max {
             err_max = err;
         }
-        approx_eq(a[m], analytical(x, y), 1e-15);
+        approx_eq(a[m], analytical(x, y), 1e-14);
     });
     println!("max(err) = {:>10.5e}", err_max);
 
@@ -125,7 +125,7 @@ fn test_2d_prob05_fdm_lmm() -> Result<(), StrError> {
         if err > err_max {
             err_max = err;
         }
-        approx_eq(a[m], analytical(x, y), 1e-15);
+        approx_eq(a[m], analytical(x, y), 1e-14);
     });
     println!("max(err) = {:>10.5e}", err_max);
     Ok(())

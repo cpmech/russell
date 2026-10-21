@@ -12,6 +12,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 - [Installation](#installation)
   - [Setting Cargo.toml](#setting-cargotoml)
   - [Optional features](#optional-features)
+- [Performance](#performance)
 - [🌟 Examples](#-examples)
   - [Solve a tiny sparse linear system using the Native solver](#solve-a-tiny-sparse-linear-system-using-the-native-solver)
   - [Solve a complex sparse linear system using the Native solver](#solve-a-complex-sparse-linear-system-using-the-native-solver)
@@ -99,6 +100,30 @@ Note that the [main README file](https://github.com/cpmech/russell) presents the
 ### WebAssembly
 
 With the default features (Native solver, no external libraries) the crate builds for `wasm32-unknown-unknown` and `wasm32-wasip1`. On the browser target the Matrix Market and JSON file helpers compile but return errors, since there is no filesystem; WASI provides one when the runtime preopens a directory. A smoke test factorizes and solves a small system on the browser target, where there is neither a clock nor a filesystem, so the Native path is exercised there rather than only compiled.
+
+## Performance
+
+The `Native` solver (`Genie::Native`) is the pure-Rust sparse solver. The table below compares it with UMFPACK on the benchmark matrices that completed; the data is from [benchmark-russell](https://github.com/cpmech/benchmark-russell).
+
+| Matrix | NROW | NNZ | Native | UMFPACK | UMFPACK / Native |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| bwm2000 | 2,000 | 7,996 | 1.11 ms | 0.750 ms | 1.47× faster |
+| mhd1280b (c) | 1,280 | 22,778 | 0.717 ms | 0.383 ms | 1.87× faster |
+| rdb5000 | 5,000 | 29,600 | 39.0 ms | 13.6 ms | 2.88× faster |
+| mplate (c) | 5,962 | 142,190 | 3.13 s | 627 ms | 4.99× faster |
+| Goodwin_040 | 17,922 | 561,677 | 449 ms | 107 ms | 4.19× faster |
+| fp | 7,548 | 848,553 | 904 ms | 154 ms | 5.85× faster |
+| xenon1 | 48,600 | 1,181,120 | 55.2 s | 598 ms | 92× faster |
+
+`(c)` marks a complex-valued matrix; rows are sorted by NNZ. **NNZ is the matrix-file non-zero count.** Times are five-run averages from the benchmark on the benchmark machine (Arch Linux, AMD Ryzen 9 9950X3D).
+
+The Native solver is fast on small systems: up to about 30,000 non-zeros it takes at most a few tens of milliseconds. It becomes very slow for matrices with more than **1 million** non-zeros: the `xenon1` case (NROW=48,600, 1,181,120 non-zeros) takes **55 s**, and the next real case (`twotone`, NROW=120,750, 1,224,224 non-zeros) did not finish within the 3-minute probe. For matrices with more than **1 million** non-zeros, expect **nearly a minute** or more.
+
+The threshold is not a function of NNZ alone. The complex `mplate` (NROW=5,962, 142,190 non-zeros) takes **3.13 s**, and `RFdevice` (NROW=74,104, 365,580 non-zeros) did not finish in **15 minutes**; sparsity structure and numerical type matter as much as the non-zero count.
+
+UMFPACK is faster than the Native solver on every matrix in the table; the gap grows with the fill-in, reaching **92×** on `xenon1`. The figure below shows the same ratios on a log scale (the dashed line is 1×):
+
+![UMFPACK speed-up over the Native solver](https://raw.githubusercontent.com/cpmech/russell/main/russell_sparse/data/figures/plot_speedup_umfpack.png)
 
 ## 🌟 Examples
 

@@ -3,6 +3,7 @@ use super::SolverMUMPS;
 
 #[cfg(feature = "umfpack")]
 use super::SolverUMFPACK;
+
 use super::{CooMatrix, Genie, LinSolParams, SolverNative, StatsLinSol};
 use crate::StrError;
 use russell_lab::Vector;

@@ -115,7 +115,7 @@ The `Native` solver (`Genie::Native`) is the pure-Rust sparse solver. The table 
 | fp | 7,548 | 848,553 | 904 ms | 154 ms | 5.85× faster |
 | xenon1 | 48,600 | 1,181,120 | 55.2 s | 598 ms | 92× faster |
 
-`(c)` marks a complex-valued matrix; rows are sorted by NNZ. **NNZ is the matrix-file non-zero count.** Times are five-run averages from the benchmark on the benchmark machine (Arch Linux, AMD Ryzen 9 9950X3D).
+`(c)` marks a complex-valued matrix; rows are sorted by NNZ. **NNZ is the matrix-file non-zero count.** Times are five-run averages from the benchmark on the benchmark machine (Arch Linux, Intel Core i9-13900KF).
 
 The Native solver is fast on small systems: up to about 30,000 non-zeros it takes at most a few tens of milliseconds. It becomes very slow for matrices with more than **1 million** non-zeros: the `xenon1` case (NROW=48,600, 1,181,120 non-zeros) takes **55 s**, and the next real case (`twotone`, NROW=120,750, 1,224,224 non-zeros) did not finish within the 3-minute probe. For matrices with more than **1 million** non-zeros, expect **nearly a minute** or more.
 

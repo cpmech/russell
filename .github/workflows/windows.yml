@@ -1,5 +1,6 @@
 name: Windows
 on:
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:
@@ -11,10 +12,29 @@ concurrency:
 jobs:
   test:
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # MSYS2 with the GNU toolchain: the only Windows configuration that
+          # can link MUMPS, which is built from source here.
+          - name: MSYS2 (GNU toolchain)
+            family: gnu
+            toolchain: stable-x86_64-pc-windows-gnu
+            shell: msys2 {0}
+          # The MSVC toolchain, taking UMFPACK from vcpkg and nothing else.
+          - name: MSVC (vcpkg UMFPACK)
+            family: msvc
+            toolchain: stable
+            shell: pwsh
+    name: ${{ matrix.name }}
+    env:
+      RUST_BACKTRACE: 1
     steps:
       - uses: actions/checkout@v4
-      # 1. Setup MSYS2 with UCRT64 and required libraries
+
       - name: Setup MSYS2
+        if: matrix.family == 'gnu'
         uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
@@ -26,28 +46,78 @@ jobs:
             mingw-w64-ucrt-x86_64-openblas
             mingw-w64-ucrt-x86_64-suitesparse
 
-      # 2. Setup Rust with the matching GNU target
+      - name: Setup the MSVC environment
+        if: matrix.family == 'msvc'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable-x86_64-pc-windows-gnu
-          targets: x86_64-pc-windows-gnu
+          toolchain: ${{ matrix.toolchain }}
 
       - name: Cache the Rust build
         uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.family }}
 
-      # 3. Run Tests
+      # UMFPACK for MSVC comes from vcpkg; the install tree is cached because
+      # building OpenBLAS is the slow part.
+      - name: Restore the vcpkg install tree
+        if: matrix.family == 'msvc'
+        id: vcpkg
+        uses: actions/cache@v4
+        with:
+          path: C:\vcpkg\installed
+          key: vcpkg-${{ runner.os }}-x64-windows-umfpack-v1
+
+      - name: Install UMFPACK with vcpkg
+        if: matrix.family == 'msvc' && steps.vcpkg.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install "suitesparse-umfpack[core]:x64-windows" --clean-after-build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Put the vcpkg DLLs on PATH
+        if: matrix.family == 'msvc'
+        shell: pwsh
+        run: |
+          "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows\bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
+
+      # The MUMPS libraries are compiled into the MSYS2 root, which is also the
+      # local prefix the build script reads.
+      - name: Compile MUMPS
+        if: matrix.family == 'gnu'
+        shell: msys2 {0}
+        run: bash zscripts/windows-compile-mumps.bash
+
       - name: Run tests (Native)
-        shell: msys2 {0}
+        shell: ${{ matrix.shell }}
         env:
           MSYS2_PREFIX: '/ucrt64'
-          RUST_BACKTRACE: 1
-        run: |
-          cargo test
+          RUSSELL_LOCAL_PREFIX: '/ucrt64'
+        run: cargo test
+
       - name: Run tests (UMFPACK)
+        shell: ${{ matrix.shell }}
+        env:
+          MSYS2_PREFIX: '/ucrt64'
+          RUSSELL_LOCAL_PREFIX: '/ucrt64'
+        run: cargo test --features umfpack
+
+      - name: Run tests (MUMPS)
+        if: matrix.family == 'gnu'
         shell: msys2 {0}
         env:
           MSYS2_PREFIX: '/ucrt64'
-          RUST_BACKTRACE: 1
-        run: |
-          cargo test --features umfpack
+          RUSSELL_LOCAL_PREFIX: '/ucrt64'
+        run: cargo test --features mumps
+
+      - name: Run tests (UMFPACK + MUMPS)
+        if: matrix.family == 'gnu'
+        shell: msys2 {0}
+        env:
+          MSYS2_PREFIX: '/ucrt64'
+          RUSSELL_LOCAL_PREFIX: '/ucrt64'
+        run: cargo test --features umfpack,mumps

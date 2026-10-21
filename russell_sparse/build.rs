@@ -137,6 +137,36 @@ fn try_local_dirs(solver: &str, header: &str) -> Option<(PathBuf, PathBuf)> {
     }
 }
 
+/// Tries the vcpkg installation of UMFPACK, returning `None` when there is none.
+///
+/// vcpkg is the standard way for the MSVC toolchain to get UMFPACK. The root is
+/// `VCPKG_ROOT`, or `VCPKG_INSTALLATION_ROOT` (which the GitHub Windows runners
+/// export); the triplet comes from `RUSSELL_VCPKG_TRIPLET`, then
+/// `VCPKG_DEFAULT_TRIPLET`, then the target architecture's dynamic triplet.
+///
+/// Only the dynamic triplet is accepted. Its `umfpack.lib` import library is all
+/// the link needs; a static install renames the libraries (`umfpack_static.lib`)
+/// and would also require the BLAS and its runtime to be linked by hand.
+#[cfg(all(target_os = "windows", feature = "umfpack"))]
+fn try_vcpkg_dirs(header: &str) -> Option<(PathBuf, PathBuf, String)> {
+    let root = std::env::var("VCPKG_ROOT").or_else(|_| std::env::var("VCPKG_INSTALLATION_ROOT")).ok()?;
+    let triplet = std::env::var("RUSSELL_VCPKG_TRIPLET")
+        .or_else(|_| std::env::var("VCPKG_DEFAULT_TRIPLET"))
+        .unwrap_or_else(|_| match std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() {
+            Ok("aarch64") => "arm64-windows".to_string(),
+            Ok("x86") | Ok("i686") => "x86-windows".to_string(),
+            _ => "x64-windows".to_string(),
+        });
+    let installed = PathBuf::from(root).join("installed").join(&triplet);
+    let include = installed.join("include").join("suitesparse");
+    let lib = installed.join("lib");
+    if include.join(header).is_file() && lib.join("umfpack.lib").is_file() {
+        Some((include, lib, triplet))
+    } else {
+        None
+    }
+}
+
 /// Tells the crate which UMFPACK was linked, for `get_library_versions`.
 #[cfg(feature = "umfpack")]
 fn emit_umfpack_source(source: &str) {
@@ -144,11 +174,19 @@ fn emit_umfpack_source(source: &str) {
 }
 
 // ----------------------------------------------------------------------------
-// Windows (MSYS2)
+// Windows (MSVC and MSYS2)
 // ----------------------------------------------------------------------------
 
-/// Windows (MSYS2): the system UMFPACK comes from `MSYS2_PREFIX`, the local one
-/// from `RUSSELL_LOCAL_PREFIX`. The local installation wins when present.
+/// Windows, where two toolchains are supported and the UMFPACK sources differ
+/// between them:
+///
+/// * a local install under `RUSSELL_LOCAL_PREFIX` (either toolchain);
+/// * a vcpkg install (`VCPKG_ROOT` or `VCPKG_INSTALLATION_ROOT` plus a triplet),
+///   which is how MSVC gets UMFPACK;
+/// * MSYS2 (`MSYS2_PREFIX`), which is how the GNU toolchain does.
+///
+/// MUMPS is only available with the GNU toolchain: its Windows build is made of
+/// MinGW objects and gfortran, which MSVC cannot link.
 #[cfg(target_os = "windows")]
 mod windows {
     use super::shim_files;
@@ -166,32 +204,26 @@ mod windows {
             build.file(file);
         }
 
-        // UMFPACK: the local install first, then the MSYS2 one.
+        // UMFPACK: the local install first, then vcpkg, then MSYS2.
         #[cfg(feature = "umfpack")]
         {
-            if let Some((include, lib)) = super::try_local_dirs("umfpack", "umfpack.h") {
-                build.include(&include);
-                super::emit_link_search(&lib);
-                super::emit_rpath(&lib);
-                super::emit_umfpack_source(&format!("local ({})", lib.display()));
-            } else {
-                if super::local_prefix_opt().is_some() {
-                    println!(
-                        "cargo:warning=russell_sparse: RUSSELL_LOCAL_PREFIX is set but does not contain \
-                         UMFPACK; falling back to the MSYS2 library"
-                    );
-                }
-                let prefix = msys2_prefix();
-                build.include(prefix.join("include").join("suitesparse"));
-                super::emit_link_search(&prefix.join("lib"));
-                super::emit_umfpack_source("system (MSYS2)");
-            }
+            let found = find_umfpack();
+            build.include(&found.include);
+            super::emit_link_search(&found.lib);
+            super::emit_rpath(&found.lib);
+            super::emit_umfpack_source(&found.label);
         }
 
         // MUMPS, compiled locally with the `_cpmech` suffix: headers and shared
-        // libraries here, static ones at link time.
+        // libraries here, static ones at link time. The Windows build is MinGW
+        // objects plus gfortran, so only the GNU toolchain can link it.
         #[cfg(feature = "mumps")]
         {
+            assert!(
+                target_env() != "msvc",
+                "russell_sparse: MUMPS on Windows needs the GNU toolchain (MSYS2); build with \
+                 `x86_64-pc-windows-gnu`, or disable the `mumps` feature"
+            );
             let (include, lib) = super::local_dirs("mumps", "dmumps_c.h");
             build.include(&include);
             super::emit_link_search(&lib);
@@ -216,12 +248,68 @@ mod windows {
         println!("cargo:rustc-link-lib=dylib=umfpack");
     }
 
-    /// The MSYS2 installation root, where the system UMFPACK lives.
+    /// Where the UMFPACK headers and import library were found.
     #[cfg(feature = "umfpack")]
-    fn msys2_prefix() -> PathBuf {
-        let raw = std::env::var("MSYS2_PREFIX").expect("MSYS2_PREFIX environment variable not set");
-        PathBuf::from(raw)
+    struct Umfpack {
+        include: PathBuf,
+        lib: PathBuf,
+        label: String,
     }
+
+    /// Selects the UMFPACK source: local prefix, then vcpkg, then MSYS2.
+    #[cfg(feature = "umfpack")]
+    fn find_umfpack() -> Umfpack {
+        if let Some((include, lib)) = super::try_local_dirs("umfpack", "umfpack.h") {
+            return Umfpack {
+                include,
+                lib: lib.clone(),
+                label: format!("local ({})", lib.display()),
+            };
+        }
+        if super::local_prefix_opt().is_some() {
+            println!(
+                "cargo:warning=russell_sparse: RUSSELL_LOCAL_PREFIX is set but does not contain \
+                 UMFPACK; looking for a vcpkg or MSYS2 install"
+            );
+        }
+        if let Some((include, lib, triplet)) = super::try_vcpkg_dirs("umfpack.h") {
+            return Umfpack {
+                include,
+                lib,
+                label: format!("vcpkg ({triplet})"),
+            };
+        }
+        if target_env() == "msvc" {
+            panic!(
+                "russell_sparse: UMFPACK was not found for MSVC.\n\
+                 Install it with vcpkg (`vcpkg install suitesparse-umfpack[core]:x64-windows`) and set \
+                 VCPKG_ROOT (or VCPKG_INSTALLATION_ROOT), or set RUSSELL_LOCAL_PREFIX to an install laid \
+                 out as $RUSSELL_LOCAL_PREFIX/include/umfpack and $RUSSELL_LOCAL_PREFIX/lib/umfpack. \
+                 Alternatively, leave the `umfpack` feature disabled to build without UMFPACK."
+            );
+        }
+        let raw = match std::env::var("MSYS2_PREFIX") {
+            Ok(raw) => raw,
+            Err(_) => panic!(
+                "russell_sparse: UMFPACK was not found.\n\
+                 Set MSYS2_PREFIX to the MSYS2 root that carries the SuiteSparse package, set \
+                 VCPKG_ROOT for a vcpkg install, set RUSSELL_LOCAL_PREFIX to a local install, or leave \
+                 the `umfpack` feature disabled."
+            ),
+        };
+        let prefix = PathBuf::from(raw);
+        Umfpack {
+            include: prefix.join("include").join("suitesparse"),
+            lib: prefix.join("lib"),
+            label: "system (MSYS2)".to_string(),
+        }
+    }
+}
+
+/// The target ABI on Windows: `"msvc"` or `"gnu"`.
+#[cfg(target_os = "windows")]
+fn target_env() -> String {
+    std::env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default()
 }
 
 // ----------------------------------------------------------------------------
@@ -388,6 +476,11 @@ fn emit_link_search(dir: &std::path::Path) {
 /// directory must be reachable at run time).
 #[cfg(any(feature = "umfpack", feature = "mumps"))]
 fn emit_rpath(dir: &std::path::Path) {
+    // MSVC's link.exe has no rpath and rejects -Wl arguments. Windows resolves
+    // the DLLs through PATH there, which the installation instructions say.
+    if std::env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc") {
+        return;
+    }
     let flag = format!("-Wl,-rpath,{}", dir.display());
     let manifest = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     // Cargo rejects the instruction for a target kind the package does not have, so

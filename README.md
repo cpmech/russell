@@ -341,9 +341,12 @@ The other options have not been tested yet.
 
 ### Windows
 
-The installation process on Windows requires the [MSYS2 environment](https://www.msys2.org), which provides a Unix-like terminal and package manager. After installing MSYS2, you can use the `pacman` package manager to install the necessary libraries.
+Two toolchains work on Windows:
 
-See [windows.md](https://github.com/cpmech/russell/blob/main/windows.md) for detailed instructions on how to set up the MSYS2 environment and install the required libraries on Windows.
+- **MSVC**, the default Rust toolchain there. The Native solver is pure Rust and needs nothing installed; add UMFPACK with [vcpkg](https://vcpkg.io) (`vcpkg install suitesparse-umfpack[core]:x64-windows`) and set `VCPKG_ROOT`. MUMPS is not available with MSVC.
+- **MSYS2 with the GNU toolchain**, which provides OpenBLAS, SuiteSparse and the MinGW/gfortran build of MUMPS. This is the only way to use MUMPS on Windows.
+
+See [windows.md](https://github.com/cpmech/russell/blob/main/windows.md) for step-by-step instructions for both.
 
 
 

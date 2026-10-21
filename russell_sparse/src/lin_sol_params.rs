@@ -48,6 +48,14 @@ pub struct LinSolParams {
     /// Enforces the unsymmetric strategy, even for symmetric matrices (not recommended; UMFPACK only)
     pub umfpack_enforce_unsymmetric_strategy: bool,
 
+    /// Selects the supernodal LU in the Native solver (Native only)
+    ///
+    /// The simplicial path is the default. The supernodal path is still
+    /// experimental: it uses the relaxed partition and compressed fronts, but
+    /// it has no BLAS-3 kernels and has been slower than simplicial on the
+    /// benchmark matrices so far.
+    pub native_supernodal: bool,
+
     /// Show additional messages
     pub verbose: bool,
 }
@@ -67,6 +75,7 @@ impl LinSolParams {
             mumps_num_threads: 0,
             mumps_override_prevent_nt_issue_with_openblas: false,
             umfpack_enforce_unsymmetric_strategy: false,
+            native_supernodal: false,
             verbose: false,
         }
     }
@@ -99,5 +108,6 @@ mod tests {
         assert_eq!(params.mumps_max_work_memory, 0);
         assert_eq!(params.mumps_num_threads, 0);
         assert!(!params.umfpack_enforce_unsymmetric_strategy);
+        assert!(!params.native_supernodal);
     }
 }

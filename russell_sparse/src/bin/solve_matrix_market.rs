@@ -61,6 +61,10 @@ struct Options {
     #[structopt(short = "u", long)]
     enforce_unsymmetric_strategy: bool,
 
+    /// Selects the supernodal LU in the Native solver (experimental; Native only)
+    #[structopt(long)]
+    native_supernodal: bool,
+
     /// Writes vismatrix file
     #[structopt(long)]
     vismatrix: bool,
@@ -106,6 +110,7 @@ fn main() -> Result<(), StrError> {
     params.compute_determinant = opt.determinant;
     params.mumps_num_threads = opt.mumps_nt as usize;
     params.umfpack_enforce_unsymmetric_strategy = opt.enforce_unsymmetric_strategy;
+    params.native_supernodal = opt.native_supernodal;
     params.compute_error_estimates = opt.error_estimates;
     params.compute_condition_numbers = opt.condition_numbers;
     params.mumps_override_prevent_nt_issue_with_openblas = opt.override_prevent_issue;

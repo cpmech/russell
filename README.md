@@ -38,6 +38,7 @@
 - [Introduction](#introduction)
   - [External associated and recommended crates](#external-associated-and-recommended-crates)
   - [Features](#features)
+- [WebAssembly](#webassembly)
 - [Installation](#installation)
   - [Arch Linux](#arch-linux)
     - [Option 1: (default) OpenBLAS and SuiteSparse from the package manager](#option-1-default-openblas-and-suitesparse-from-the-package-manager)
@@ -766,11 +767,16 @@ Build-dependencies: `cc`, `pkg-config`.
 ## About the name
 
 <p align="left">
-  <img src="assets/bertrand-russell.jpeg" width="110" alt="Bertrand Russell">
-  <img src="assets/bertrand-russell-stamp-200.jpg" width="110" alt="Bertrand Russell on a stamp">
+  <img src="assets/bertrand-russell.jpeg" alt="Bertrand Russell' book">
 </p>
 
-The library is named after [Bertrand Russell](https://en.wikipedia.org/wiki/Bertrand_Russell) (1872–1970), the British philosopher, logician, and mathematician, best known in this context for *Principia Mathematica* (1910–1913), his attempt with Alfred North Whitehead to derive mathematics from logic.
+The library is named after [Bertrand Russell](https://en.wikipedia.org/wiki/Bertrand_Russell) (1872–1970), a distinguished British philosopher, logician, mathematician, and pacifist. Among his many influential works is *Principia Mathematica* (1910–1913), co-authored with Alfred North Whitehead—an ambitious attempt to derive mathematics from logic and widely regarded as one of the twentieth century's most important contributions to mathematical logic. The book cover shown features [Introduction to Mathematical Philosophy](https://en.wikipedia.org/wiki/Introduction_to_Mathematical_Philosophy), in which Russell explains the principal ideas of *Principia Mathematica* in a more accessible, less technical manner.
+
+<p align="left">
+  <img src="assets/bertrand-russell-stamp-200.jpg" alt="Bertrand Russell on a stamp">
+</p>
+
+The photo of the stamp corresponds to India's commemorative postage stamp issued on 16 October 1972 for the birth centenary of Bertrand Russell, as part of the "Centenary Series" introduced that year by the Indian Posts and Telegraphs Department to mark the centenaries falling during the year ([issue note](https://istampgallery.com/india-on-bertrand-russell/)). Four personalities were honored on that date — the Telugu poet Vemana (300th birth anniversary), T. Prakasam and Bhai Vir Singh (birth centenaries), and Russell (₹1.45) — and all four stamps were released together on a single first day cover ([list of Indian stamps of 1972](https://en.wikipedia.org/wiki/List_of_postage_stamps_of_India_%281971%E2%80%931980%29)). India's reason for including a British philosopher was political as much as intellectual: Russell became chairman of the [India League](https://en.wikipedia.org/wiki/India_League) in Britain in 1932, presiding over its meetings and heading it during the delegation it sent to India that autumn, and he wrote the introduction to the delegation's report, *The Condition of India* (1932) ([South Asian Britain](https://southasianbritain.org/people/bertrand-russell/)). The department's own issue note puts it plainly: "Temperamentally sympathetic to the Indian struggle for liberty, Russell became Chairman of the Indian League formed in Britain to help the Indians and their claim for self-government." The stamp reproduces a photograph supplied with the courtesy of M/s Keystone Press Agency Ltd., London, and was designed and printed by photogravure at the India Security Press, Nasik Road, in a print run of three million (42 stamps per issue sheet, perforation 13½ × 14) ([technical data](https://thephilatelist.in/stamps/personality-centenary-series-bertrand-russell-1872-1970/)). The portrait is accompanied by the dates 1872–1970 and the legend बर्ट्रेंड रसल / भारत INDIA. The author of this Rust project is a proud owner of the stamp featured in the photo.
 
 ---
 

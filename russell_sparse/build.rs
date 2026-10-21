@@ -55,6 +55,12 @@ fn main() {
     println!("cargo:rerun-if-env-changed=RUSSELL_LOCAL_PREFIX");
     println!("cargo:rerun-if-env-changed=MSYS2_PREFIX");
 
+    // Mirror the dense-crate notice: with neither external solver enabled the
+    // Native backend is the only one, and that choice should be visible in the
+    // build log.
+    #[cfg(not(any(feature = "umfpack", feature = "mumps")))]
+    println!("cargo:warning=russell_sparse: using the native Rust sparse solver (no external library)");
+
     #[cfg(target_os = "windows")]
     windows::compile();
 

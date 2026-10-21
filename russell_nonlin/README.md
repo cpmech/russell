@@ -159,7 +159,7 @@ Last accepted/suggested stepsize = 0.0017592577896469867
 
 And the plot looks like this:
 
-![B-spline curve](https://raw.githubusercontent.com/cpmech/russell/main/russell_nonlin/data/figures/doc_arclength_bspline.svg)
+![B-spline curve](data/figures/doc_arclength_bspline.svg)
 
 ## For developers
 

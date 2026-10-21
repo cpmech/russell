@@ -367,7 +367,7 @@ Total time                       = 898.347µs
 
 A plot of the (dense) solution is shown below:
 
-![Brusselator results: DoPri8](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/brusselator_dopri8.svg)
+![Brusselator results: DoPri8](data/figures/brusselator_dopri8.svg)
 
 #### Variable step sizes
 
@@ -399,7 +399,7 @@ The results are:
 
 And the convergence plot is:
 
-![Brusselator results: var step](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/brusselator_ode_var_step.svg)
+![Brusselator results: var step](data/figures/brusselator_ode_var_step.svg)
 
 #### Fixed step sizes
 
@@ -432,7 +432,7 @@ The results are:
 
 And the convergence plot is:
 
-![Brusselator results: fix step](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/brusselator_ode_fix_step.svg)
+![Brusselator results: fix step](data/figures/brusselator_ode_fix_step.svg)
 
 
 
@@ -609,11 +609,11 @@ The results can then be plotted with [brusselator_pde_plot.rs](https://github.co
 
 The results are shown below for the `U` field:
 
-![brusselator_pde_radau5_u.svg](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/brusselator_pde_radau5_u.svg)
+![brusselator_pde_radau5_u.svg](data/figures/brusselator_pde_radau5_u.svg)
 
 And below for the `V` field:
 
-![brusselator_pde_radau5_v.svg](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/brusselator_pde_radau5_v.svg)
+![brusselator_pde_radau5_v.svg](data/figures/brusselator_pde_radau5_v.svg)
 
 These figures compare well with the corresponding ones on pages 250 and 251 of Reference #1.
 
@@ -621,11 +621,11 @@ The computations with `russell` are also compared with values obtained with Math
 
 The figure below shows the `russell` (black dashed lines) and Mathematica (red solid lines) results for the `U` field:
 
-![test_radau5_brusselator_pde_u.svg](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/test_radau5_brusselator_pde_u.svg)
+![test_radau5_brusselator_pde_u.svg](data/figures/test_radau5_brusselator_pde_u.svg)
 
 The figure below shows the `russell` (black dashed lines) and Mathematica (red solid lines) results for the `V` field:
 
-![test_radau5_brusselator_pde_v.svg](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/test_radau5_brusselator_pde_v.svg)
+![test_radau5_brusselator_pde_v.svg](data/figures/test_radau5_brusselator_pde_v.svg)
 
 #### Second book
 
@@ -633,21 +633,21 @@ For the problem in the second book, we run [brusselator_pde_radau5_2nd.rs](https
 
 The results are shown below for the `U` field:
 
-![brusselator_pde_radau5_2nd_u.jpg](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/brusselator_pde_radau5_2nd_u.jpg)
+![brusselator_pde_radau5_2nd_u.jpg](data/figures/brusselator_pde_radau5_2nd_u.jpg)
 
 And below for the `V` field:
 
-![brusselator_pde_radau5_2nd_v.jpg](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/brusselator_pde_radau5_2nd_v.jpg)
+![brusselator_pde_radau5_2nd_v.jpg](data/figures/brusselator_pde_radau5_2nd_v.jpg)
 
 The code [brusselator_pde_2nd_comparison.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_pde_2nd_comparison.rs) compares `russell` results with Mathematica results.
 
 The figure below shows the `russell` (black dashed lines) and Mathematica (red solid lines) results for the `U` field:
 
-![comparison U](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/brusselator_pde_2nd_comparison_t1_u.svg)
+![comparison U](data/figures/brusselator_pde_2nd_comparison_t1_u.svg)
 
 The figure below shows the `russell` (black dashed lines) and Mathematica (red solid lines) results for the `V` field:
 
-![comparison V](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/brusselator_pde_2nd_comparison_t1_v.svg)
+![comparison V](data/figures/brusselator_pde_2nd_comparison_t1_v.svg)
 
 
 
@@ -701,7 +701,7 @@ Total time                       = 1.399021ms
 
 The results are plotted below:
 
-![Arenstorf Orbit: DoPri8](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/arenstorf_dopri8.svg)
+![Arenstorf Orbit: DoPri8](data/figures/arenstorf_dopri8.svg)
 
 
 
@@ -732,7 +732,7 @@ See the code [hairer_wanner_eq1.rs](https://github.com/cpmech/russell/tree/main/
 
 The results are shown below:
 
-![Hairer-Wanner Eq(1.1)](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/hairer_wanner_eq1.svg)
+![Hairer-Wanner Eq(1.1)](data/figures/hairer_wanner_eq1.svg)
 
 
 
@@ -801,11 +801,11 @@ Total time                       = 3.705391ms
 
 The results are illustrated below:
 
-![Robertson's Equation - Solution](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/robertson_a.svg)
+![Robertson's Equation - Solution](data/figures/robertson_a.svg)
 
 The step sizes from the DoPri solution with Tol = 1e-2 are illustrated below:
 
-![Robertson's Equation - Step Sizes](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/robertson_b.svg)
+![Robertson's Equation - Step Sizes](data/figures/robertson_b.svg)
 
 
 
@@ -852,7 +852,7 @@ Total time                       = 1.715917ms
 
 The results are shown below:
 
-![Van der Pol's Equation - DoPri5](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/van_der_pol_dopri5.svg)
+![Van der Pol's Equation - DoPri5](data/figures/van_der_pol_dopri5.svg)
 
 The figure's red dashed lines mark the moment when stiffness has been detected first. The stiffness is confirmed after 15 accepted steps with repeated stiffness thresholds being reached. The positive thresholds are counted when h·ρ becomes greater than the corresponding factor·max(h·ρ)---the value on the stability limit (3.3 for DoPri5; factor ~= 0.976). Note that ρ is the approximation of the dominant eigenvalue of the Jacobian. After 6 accepted steps, if the thresholds are not reached, the stiffness detection flag is set to false.
 
@@ -890,7 +890,7 @@ Total time                       = 37.8697ms
 
 The results are shown below:
 
-![Van der Pol's Equation - Radau5](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/van_der_pol_radau5.svg)
+![Van der Pol's Equation - Radau5](data/figures/van_der_pol_radau5.svg)
 
 
 
@@ -983,7 +983,7 @@ Total time                       = 97.951021ms
 
 The results are plotted below:
 
-![One-transistor Amplifier - Radau5](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/amplifier1t_radau5.svg)
+![One-transistor Amplifier - Radau5](data/figures/amplifier1t_radau5.svg)
 
 
 

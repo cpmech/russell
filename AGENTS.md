@@ -58,7 +58,10 @@ The default features must compile for `wasm32-unknown-unknown` and
 random numbers. Do not enable `umfpack` or `mumps` in a wasm build. File-based
 helpers (Matrix Market, JSON stats) compile on both targets but return errors in
 the browser, where there is no filesystem; document that instead of adding a
-browser filesystem shim. The CI job `wasm` runs both `cargo check` commands.
+browser filesystem shim. The Ubuntu `wasm` job runs both `cargo check`
+commands; `wasm.yml` also runs a browser smoke test in `russell_sparse`
+(`tests/wasm_browser.rs`, through `wasm-bindgen-test-runner`), which is the only
+place the clock- and filesystem-free path is actually executed.
 
 ## The BLAS/LAPACK kernels live in `algebra_linear`
 
@@ -354,4 +357,8 @@ the Rust builds are cached with `Swatinem/rust-cache`.
 - **Wasm**: the Ubuntu job compile-checks both `wasm32-unknown-unknown` and
   `wasm32-wasip1`; `wasm.yml` runs the whole workspace test suite on
   `wasm32-wasip1` through `zscripts/wasmtime-runner.sh`, which preopens the
-  current directory for the file-based tests.
+  current directory for the file-based tests, and runs the `russell_sparse`
+  browser smoke test on `wasm32-unknown-unknown` with
+  `wasm-bindgen-test-runner`. The runner is installed at the `wasm-bindgen`
+  version that `cargo metadata` resolves, so it cannot drift from the
+  dependency.

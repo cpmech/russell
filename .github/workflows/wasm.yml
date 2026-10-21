@@ -1,10 +1,13 @@
 name: Wasm
 # The browser target (`wasm32-unknown-unknown`) is compile-checked in the Ubuntu
-# workflow; this job *runs* the library tests on `wasm32-wasip1`. Cargo cannot
-# execute a wasm binary by itself, so the runner script shells out to wasmtime
-# with the current directory preopened. That lets the file-based tests (Matrix
-# Market, JSON statistics) run instead of being skipped: the point is to test
-# the wasm build, not a path that only works because CI preopened something.
+# workflow; this job *runs* the library tests on `wasm32-wasip1` and the browser
+# smoke test on `wasm32-unknown-unknown`. Cargo cannot execute a wasm binary by
+# itself, so the WASI runner script shells out to wasmtime with the current
+# directory preopened, and the browser test goes through `wasm-bindgen`. That
+# lets the file-based tests (Matrix Market, JSON statistics) run instead of
+# being skipped: the point is to test the wasm build, not a path that only works
+# because CI preopened something. The browser run covers the one thing WASI
+# cannot: a target with no clock and no filesystem.
 on:
   push:
     branches: [main]
@@ -22,11 +25,11 @@ jobs:
       CARGO_TARGET_WASM32_WASIP1_RUNNER: ${{ github.workspace }}/zscripts/wasmtime-runner.sh
     steps:
       - uses: actions/checkout@v4
-      - name: Install Rust with the wasm target
+      - name: Install Rust with the wasm targets
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
-          targets: wasm32-wasip1
+          targets: wasm32-wasip1,wasm32-unknown-unknown
       - name: Cache the Rust build
         uses: Swatinem/rust-cache@v2
       - name: Install wasmtime
@@ -40,3 +43,16 @@ jobs:
       - name: Run the workspace tests on WASI
         run: |
           cargo test --workspace --target wasm32-wasip1
+      # The runner must match the `wasm-bindgen` that was actually resolved, or
+      # the generated glue and the CLI disagree. Taking the version from the
+      # dependency graph keeps them in step without pinning a number here.
+      - name: Install the matching wasm-bindgen runner
+        run: |
+          version=$(cargo metadata --format-version 1 --filter-platform wasm32-unknown-unknown \
+            | jq -r '.packages[] | select(.name == "wasm-bindgen") | .version')
+          echo "wasm-bindgen ${version}"
+          cargo install wasm-bindgen-cli --version "${version}" --locked
+      - name: Run the browser-target test
+        env:
+          CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: wasm-bindgen-test-runner
+        run: cargo test -p russell_sparse --target wasm32-unknown-unknown --test wasm_browser

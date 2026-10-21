@@ -1,7 +1,7 @@
 #[cfg(feature = "mumps")]
 use super::SolverMUMPS;
 
-use super::{CooMatrix, Genie, LinSolParams, SolverUMFPACK, StatsLinSol};
+use super::{CooMatrix, Genie, LinSolParams, SolverNative, SolverUMFPACK, StatsLinSol};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -115,6 +115,7 @@ impl<'a> LinSolver<'a> {
         // which feature to enable, instead of needing one whole copy of this match
         // per combination of features.
         let actual: Box<dyn Send + LinSolTrait> = match genie {
+            Genie::Native => Box::new(SolverNative::new()?),
             #[cfg(feature = "mumps")]
             Genie::Mumps => Box::new(SolverMUMPS::new()?),
             #[cfg(not(feature = "mumps"))]

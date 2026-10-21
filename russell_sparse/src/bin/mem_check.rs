@@ -6,6 +6,7 @@ fn test_solver(genie: Genie) {
     println!("----------------------------------------------------------------------\n");
     match genie {
         Genie::Mumps => println!("Testing MUMPS solver\n"),
+        Genie::Native => println!("Testing Native solver\n"),
         Genie::Umfpack => println!("Testing UMFPACK solver\n"),
     }
 
@@ -47,6 +48,7 @@ fn test_complex_solver(genie: Genie) {
     println!("----------------------------------------------------------------------\n");
     match genie {
         Genie::Mumps => println!("Testing Complex MUMPS solver\n"),
+        Genie::Native => println!("Testing Complex Native solver\n"),
         Genie::Umfpack => println!("Testing Complex UMFPACK solver\n"),
     }
 
@@ -60,6 +62,7 @@ fn test_complex_solver(genie: Genie) {
 
     let coo = match genie {
         Genie::Mumps => Samples::complex_symmetric_3x3_lower().0,
+        Genie::Native => Samples::complex_symmetric_3x3_full().0,
         Genie::Umfpack => Samples::complex_symmetric_3x3_full().0,
     };
 
@@ -90,6 +93,7 @@ fn test_solver_singular(genie: Genie) {
     println!("----------------------------------------------------------------------\n");
     match genie {
         Genie::Mumps => println!("Testing MUMPS solver (singular matrix)\n"),
+        Genie::Native => println!("Testing Native solver (singular matrix)\n"),
         Genie::Umfpack => println!("Testing UMFPACK solver (singular matrix)\n"),
     }
 
@@ -121,14 +125,17 @@ fn test_solver_singular(genie: Genie) {
 fn main() {
     // real
     test_solver(Genie::Mumps);
+    test_solver(Genie::Native);
     test_solver(Genie::Umfpack);
 
     // complex
     test_complex_solver(Genie::Mumps);
+    test_complex_solver(Genie::Native);
     test_complex_solver(Genie::Umfpack);
 
     // singular real
     test_solver_singular(Genie::Mumps);
+    test_solver_singular(Genie::Native);
     test_solver_singular(Genie::Umfpack);
 
     println!("----------------------------------------------------------------------\n");

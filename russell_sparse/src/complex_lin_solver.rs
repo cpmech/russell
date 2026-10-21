@@ -1,7 +1,7 @@
 #[cfg(feature = "mumps")]
 use super::ComplexSolverMUMPS;
 
-use super::{ComplexCooMatrix, ComplexSolverUMFPACK, Genie, LinSolParams, StatsLinSol};
+use super::{ComplexCooMatrix, ComplexSolverNative, ComplexSolverUMFPACK, Genie, LinSolParams, StatsLinSol};
 use crate::StrError;
 use russell_lab::ComplexVector;
 
@@ -77,6 +77,7 @@ impl<'a> ComplexLinSolver<'a> {
         // which feature to enable, instead of needing one whole copy of this match
         // per combination of features.
         let actual: Box<dyn Send + ComplexLinSolTrait> = match genie {
+            Genie::Native => Box::new(ComplexSolverNative::new()?),
             #[cfg(feature = "mumps")]
             Genie::Mumps => Box::new(ComplexSolverMUMPS::new()?),
             #[cfg(not(feature = "mumps"))]

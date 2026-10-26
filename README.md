@@ -147,7 +147,7 @@ The following crates are not part of `russell` but are associated with it and re
 
 ### Features
 
-This project employs [SuiteSparse](https://github.com/DrTimothyAldenDavis/SuiteSparse) (or [MUMPS](https://mumps-solver.org)) for the solution of large (sparse) linear systems of equations. Dense linear algebra comes from `russell_lab`'s own Rust implementation, and [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) or [Intel MKL](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html) may be selected as accelerators.
+This project can use [SuiteSparse](https://github.com/DrTimothyAldenDavis/SuiteSparse) (or [MUMPS](https://mumps-solver.org)) for the solution of large (sparse) linear systems of equations. Dense linear algebra comes from `russell_lab`'s own Rust implementation, and [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) or [Intel MKL](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html) may be selected as accelerators.
 
 **The default build needs no external library.** `russell_lab` ships pure-Rust BLAS/LAPACK kernels and `russell_sparse` has the pure-Rust Native solver, so `cargo build` works on every platform, WebAssembly included. The external libraries are optional, and each one is selected by a Cargo feature:
 
@@ -801,10 +801,10 @@ For example, the scalar coefficients `A`, `B`, and `C` in the second-derivative 
 
 ### russell_lab — BLAS/LAPACK
 
-`russell_lab/build.rs` compiles a single C shim (`c_code/interface_blas.c`) that wraps BLAS/LAPACK, selecting one of two paths via feature flags:
+With neither accelerator feature enabled, `russell_lab/build.rs` compiles no C code: the kernels come from `algebra_linear`. When `open_blas` or `intel_mkl` is enabled, it compiles a single C shim (`c_code/interface_blas.c`) that wraps BLAS/LAPACK and selects one of two paths:
 
 - `intel_mkl` — builds against Intel oneAPI MKL: resolves `MKL_VERSION` (env var, default `latest`), adds `/opt/intel/oneapi/mkl/{version}` to the include path, defines `USE_INTEL_MKL`, and links `mkl_intel_lp64`, `mkl_intel_thread`, `mkl_core`, `pthread`, `m`, `dl`, `iomp5`.
-- OpenBLAS (default) — split by OS:
+- `open_blas` (used only when `intel_mkl` is off) — split by OS:
   - Windows: locates headers/libraries via the `MSYS2_PREFIX` environment variable.
   - Other OS: probes `pkg-config` (`probe_blas_lapack`), trying `openblas` first and then the `cblas` + `lapack` pair (Nix). Before trusting a probe, it verifies the headers (`cblas.h`, `lapack.h`) actually exist — this avoids the RHEL/Rocky case where `lapack.pc` exists but ships no `lapack.h`. It falls back to hardcoded Homebrew/system paths (filtered via `existing_dirs` to drop non-existent directories) and links the `openblas` and `lapack` shared libraries.
 

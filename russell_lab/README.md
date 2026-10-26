@@ -109,15 +109,13 @@ russell_lab = "*"
 The default build uses [`algebra_linear`](https://crates.io/crates/algebra_linear),
 a crate of pure-Rust BLAS/LAPACK kernels: no external library to install, nothing to
 link, and every target -- `wasm32-unknown-unknown` included -- builds. The following
-(Rust) features are available:
+optional (Rust) features are available:
 
-* `open_blas`: use OpenBLAS instead of the native routines (needs its development headers)
-* `intel_mkl`: use Intel oneAPI MKL instead of the native routines
+* `open_blas`: Use OpenBLAS for the dense kernels (needs its development headers)
+* `intel_mkl`: Use Intel oneAPI MKL for the dense kernels; takes precedence over `open_blas` when both are enabled
 
-`intel_mkl` takes precedence over `open_blas`: enabling both is allowed and
-links MKL. Note that the
-[main README file](https://github.com/cpmech/russell) presents the steps to
-compile the required libraries according to each feature.
+The [main README file](https://github.com/cpmech/russell) has the installation
+steps for each platform.
 
 `algebra_linear` is licensed BSD-3-Clause, because it is a port of LAPACK, which is also BSD-3-Clause.
 This crate is MIT. A binary distribution of this crate links `algebra_linear` into

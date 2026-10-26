@@ -75,12 +75,12 @@ russell_sparse = "*"
 
 ### Optional features
 
-The following (Rust) features are available:
+The following optional (Rust) features are available:
 
-* `open_blas`: Use OpenBLAS instead of the native Rust BLAS/LAPACK
-* `intel_mkl`: Use Intel oneAPI MKL instead of OpenBLAS (takes precedence if both are enabled)
-* `umfpack`: UMFPACK support (opt-in). The build looks for a local install under `RUSSELL_LOCAL_PREFIX` first, and falls back to the package-manager library.
-* `mumps`: Use a locally compiled MUMPS, found through `RUSSELL_LOCAL_PREFIX` (Linux, macOS, and Windows with the GNU toolchain).
+* `open_blas`: Use OpenBLAS for the dense kernels (needs its development headers)
+* `intel_mkl`: Use Intel oneAPI MKL for the dense kernels; takes precedence over `open_blas` when both are enabled
+* `umfpack`: Add UMFPACK (SuiteSparse) as a sparse direct solver; a local install under `RUSSELL_LOCAL_PREFIX` takes precedence over the package-manager library
+* `mumps`: Add MUMPS as a sparse direct solver; requires a locally compiled MUMPS under `RUSSELL_LOCAL_PREFIX` (Linux, macOS, and Windows with the GNU toolchain)
 
 UMFPACK is optional and off by default. With `umfpack`, the build first checks for a local install at `$RUSSELL_LOCAL_PREFIX/include/umfpack` and `$RUSSELL_LOCAL_PREFIX/lib/umfpack`. If that installation is not there — or `RUSSELL_LOCAL_PREFIX` is unset — it falls back to the system library found with `pkg-config` (or the usual include/library directories), and fails as usual if neither is available. The local installation therefore takes precedence, and a build links only one of the two sources. The default build uses the Native solver; enable `umfpack` to add UMFPACK. On Windows the sources differ by toolchain: the GNU toolchain uses the MSYS2 package (through `MSYS2_PREFIX`), and the MSVC toolchain uses a vcpkg install (`VCPKG_ROOT` or `VCPKG_INSTALLATION_ROOT`). MUMPS needs the GNU toolchain there: its Windows build is MinGW objects plus gfortran, which MSVC cannot link.
 
@@ -93,7 +93,7 @@ $RUSSELL_LOCAL_PREFIX/include/mumps       $RUSSELL_LOCAL_PREFIX/lib/mumps
 
 A prefix that is set but does not contain UMFPACK produces a build warning and the system fallback; a missing MUMPS install fails the build naming the path it expected. The directory of the selected UMFPACK must also be reachable by the dynamic loader at run time, since the two SuiteSparse builds share the `libsolver.so.6` soname.
 
-Note that the [main README file](https://github.com/cpmech/russell) presents the steps to compile the required libraries according to each feature.
+The [main README file](https://github.com/cpmech/russell) has the installation steps for each platform.
 
 
 

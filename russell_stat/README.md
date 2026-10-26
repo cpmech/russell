@@ -48,7 +48,7 @@ The figure below shows an application in structural safety (see Reference #1) us
 
 ## Installation
 
-This crate depends on `russell_lab`, which requires non-Rust high-performance libraries. [See the main README file for the steps to install these dependencies.](https://github.com/cpmech/russell)
+The default build needs no external library: `russell_lab` ships pure-Rust BLAS/LAPACK kernels, so `cargo build` works on every platform, WebAssembly included. See the [main README file](https://github.com/cpmech/russell) for the installation steps of each platform.
 
 
 
@@ -65,12 +65,12 @@ russell_stat = "*"
 
 ### Optional features
 
-The following (Rust) features are available:
+The following optional (Rust) features are available:
 
-* `open_blas`: Use OpenBLAS instead of the native Rust BLAS/LAPACK
-* `intel_mkl`: Use Intel oneAPI MKL instead of OpenBLAS (takes precedence if both are enabled)
+* `open_blas`: Use OpenBLAS for the dense kernels (needs its development headers)
+* `intel_mkl`: Use Intel oneAPI MKL for the dense kernels; takes precedence over `open_blas` when both are enabled
 
-Note that the [main README file](https://github.com/cpmech/russell) presents the steps to compile the required libraries according to each feature.
+Without either feature the build uses the native Rust kernels.
 
 
 

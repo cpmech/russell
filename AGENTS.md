@@ -148,7 +148,9 @@ cargo clippy --all-targets
 cargo llvm-cov --workspace --features umfpack,mumps \
   --ignore-filename-regex 'build.rs|mem_check.rs|mem_check_lab.rs|solve_matrix_market.rs|amplifier1t.rs|brusselator_pde.rs' \
   --lcov --output-path lcov.info
-bash zscripts/check-coverage.bash lcov.info 95
+# then the shared check (CI runs it as the cpmech/rust-cov action):
+curl -sL -o /tmp/check-coverage.bash https://raw.githubusercontent.com/cpmech/rust-cov/v1/check-coverage.bash
+bash /tmp/check-coverage.bash lcov.info 95
 ```
 
 

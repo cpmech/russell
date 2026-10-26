@@ -48,24 +48,19 @@ jobs:
         run: cargo test --features mumps
       - name: Run tests (UMFPACK + MUMPS)
         run: cargo test --features umfpack,mumps
-      - name: Install cargo-llvm-cov
+      # `cpmech/rust-cov` installs cargo-llvm-cov, runs the workspace under
+      # instrumentation and applies the 95% threshold to the DA records of the lcov
+      # file, not with `--fail-under-lines`: llvm-cov's own summary counts a line
+      # once per monomorphization, which reports const-generic dimension dispatch as
+      # mostly uncovered -- russell_tensor reads 98.66% on the DA records and 87.32%
+      # on the summary.
+      - name: Coverage
         if: startsWith(matrix.rust, 'nightly')
-        run: |
-          curl -LsSf https://github.com/taiki-e/cargo-llvm-cov/releases/latest/download/cargo-llvm-cov-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
-      - name: Generate code coverage
-        if: startsWith(matrix.rust, 'nightly')
-        run: |
-          cargo llvm-cov --workspace --features umfpack,mumps \
-            --ignore-filename-regex 'build.rs|mem_check.rs|mem_check_lab.rs|solve_matrix_market.rs|amplifier1t.rs|brusselator_pde.rs' \
-            --lcov --output-path lcov.info
-      # The 95% threshold is applied to the DA records of the lcov file, not with
-      # `--fail-under-lines`: llvm-cov's own summary counts a line once per
-      # monomorphization, which reports const-generic dimension dispatch as two
-      # thirds uncovered. See zscripts/check-coverage.bash.
-      - name: Check line coverage
-        if: startsWith(matrix.rust, 'nightly')
-        run: |
-          bash zscripts/check-coverage.bash lcov.info 95
+        uses: cpmech/rust-cov@v1
+        with:
+          args: --workspace --features umfpack,mumps
+          ignore-filename-regex: 'build.rs|mem_check.rs|mem_check_lab.rs|solve_matrix_market.rs|amplifier1t.rs|brusselator_pde.rs'
+          min-lines: 95
 
   system-umfpack:
     runs-on: ubuntu-latest

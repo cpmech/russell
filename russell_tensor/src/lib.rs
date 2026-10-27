@@ -4,7 +4,12 @@
 //!
 //! `russell_tensor`: Tensor analysis, calculus, and functions for continuum mechanics
 //!
-//! **Important:** This crate depends on external libraries (non-Rust). Thus, please check the [Installation Instructions on the GitHub Repository](https://github.com/cpmech/russell).
+//! **The default build needs no external library:** `russell_lab` ships pure-Rust
+//! BLAS/LAPACK kernels, so the crate builds on every platform, WebAssembly
+//! included. The optional `open_blas` and `intel_mkl` features link an accelerator
+//! instead; see the
+//! [Installation Instructions on the GitHub Repository](https://github.com/cpmech/russell)
+//! for the platform-specific steps.
 //!
 //! # Introduction
 //!

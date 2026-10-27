@@ -1,6 +1,16 @@
 #![warn(missing_docs)]
 
-//! Numerical Continuation methods to solve nonlinear systems of equations
+//! Russell - Rust Scientific Library
+//!
+//! `russell_nonlin`: Numerical continuation methods to solve nonlinear systems of equations
+//!
+//! **The default build needs no external library:** `russell_lab` ships pure-Rust
+//! BLAS/LAPACK kernels and `russell_sparse` has the pure-Rust Native solver, so the
+//! crate builds on every platform, WebAssembly included. The optional `open_blas`,
+//! `intel_mkl`, `umfpack`, and `mumps` features enable the accelerators and
+//! external solvers; see the
+//! [Installation Instructions on the GitHub Repository](https://github.com/cpmech/russell)
+//! for the platform-specific steps.
 //!
 //! This crate implements Predictor-Corrector solvers based on the Euler-Newton method for
 //! tracing solution branches of parameterized nonlinear systems of the form:

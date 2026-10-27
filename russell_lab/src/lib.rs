@@ -4,7 +4,12 @@
 //!
 //! `russell_lab`: Scientific laboratory for linear algebra and numerical mathematics
 //!
-//! **Important:** This crate depends on external libraries (non-Rust). Thus, please check the [Installation Instructions on the GitHub Repository](https://github.com/cpmech/russell).
+//! **The default build needs no external library:** the BLAS/LAPACK kernels are
+//! pure Rust ([`algebra_linear`](https://crates.io/crates/algebra_linear)), so the
+//! crate builds on every platform, WebAssembly included. The optional `open_blas`
+//! and `intel_mkl` features link OpenBLAS or Intel MKL instead; see the
+//! [Installation Instructions on the GitHub Repository](https://github.com/cpmech/russell)
+//! for the platform-specific steps.
 //!
 //! # Introduction
 //!

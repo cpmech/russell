@@ -103,7 +103,7 @@ impl<'a, A> SolverNatural<'a, A> {
         // factorize Gu matrix
         work.stats.sw_factor.reset();
         work.stats.n_factor += 1;
-        self.ls.actual.factorize(&self.ggu, self.config.lin_sol_config)?;
+        self.ls.actual.preprocess(&self.ggu, self.config.lin_sol_config)?;
         work.stats.stop_sw_factor();
         Ok(())
     }

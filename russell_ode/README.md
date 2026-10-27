@@ -66,7 +66,7 @@ The ODE/DAE system can be easily defined using the System data structure; [see t
 
 ## Installation
 
-The default build needs no external library: `russell_lab` ships pure-Rust BLAS/LAPACK kernels and `russell_sparse` has the pure-Rust Native solver, so `cargo build` works on every platform, WebAssembly included. See the [main README file](https://github.com/cpmech/russell) for the installation steps of each platform.
+The default build needs no external library: `russell_lab` ships pure-Rust BLAS/LAPACK kernels and `russell_sparse` has the Direct solver (pure Rust), so `cargo build` works on every platform, WebAssembly included. See the [main README file](https://github.com/cpmech/russell) for the installation steps of each platform.
 
 
 
@@ -90,7 +90,7 @@ The following optional (Rust) features are available:
 * `umfpack`: Add UMFPACK (SuiteSparse) as a sparse direct solver; a local install under `RUSSELL_LOCAL_PREFIX` takes precedence over the package-manager library
 * `mumps`: Add MUMPS as a sparse direct solver; requires a locally compiled MUMPS under `RUSSELL_LOCAL_PREFIX` (Linux, macOS, and Windows with the GNU toolchain)
 
-Without any of these features the build uses the native Rust kernels and the Native sparse solver.
+Without any of these features the build uses the native Rust kernels and the Direct solver (pure Rust).
 
 
 

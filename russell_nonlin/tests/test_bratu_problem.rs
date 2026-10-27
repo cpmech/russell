@@ -243,7 +243,7 @@ fn test_bratu_1d_spc_auto_step() -> Result<(), StrError> {
     let spc = true;
     let one_dim = true;
     let ddl = DeltaLambda::auto(DDL_INI);
-    let genie = Genie::Native;
+    let genie = Genie::Direct;
     let symmetric = false;
     for (npt, tol1, tol2, tol3) in [
         (8, 0.0041, 0.0024, 0.0005),  //
@@ -276,7 +276,7 @@ fn test_bratu_1d_fdm_auto_step() -> Result<(), StrError> {
     let spc = false;
     let one_dim = true;
     let ddl = DeltaLambda::auto(DDL_INI);
-    let genie = Genie::Native;
+    let genie = Genie::Direct;
     for (npt, tol1, tol2, tol3) in [
         (8, 0.043, 0.064, 0.06), //
         (17, 0.015, 0.019, 0.012), //
@@ -312,7 +312,7 @@ fn test_bratu_2d_spc_auto_step() -> Result<(), StrError> {
     let spc = true;
     let one_dim = false;
     let ddl = DeltaLambda::auto(DDL_INI);
-    let genie = Genie::Native;
+    let genie = Genie::Direct;
     let symmetric = false;
     for (npt, tol1, tol2, tol3) in [
         (8, 0.015, 0.015, 0.0043), //
@@ -346,7 +346,7 @@ fn test_bratu_2d_fdm_auto_step() -> Result<(), StrError> {
     let spc = false;
     let one_dim = false;
     let ddl = DeltaLambda::auto(DDL_INI);
-    let genie = Genie::Native;
+    let genie = Genie::Direct;
     for (npt, tol1, tol2, tol3) in [
         (8, 0.053, 0.09, 0.123), //
         (9, 0.041, 0.08, 0.092), //
@@ -386,7 +386,7 @@ fn test_bratu_2d_fdm_fix_step() -> Result<(), StrError> {
     let lmm = true;
     let bordering = false;
     let ddl = DeltaLambda::constant(1.0);
-    let genie = Genie::Native;
+    let genie = Genie::Direct;
     let symmetric = false;
     for alpha in [0.0] {
         {

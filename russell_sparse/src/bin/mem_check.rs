@@ -6,7 +6,7 @@ fn test_solver(genie: Genie) {
     println!("----------------------------------------------------------------------\n");
     match genie {
         Genie::Mumps => println!("Testing MUMPS solver\n"),
-        Genie::Native => println!("Testing Native solver\n"),
+        Genie::Direct => println!("Testing Direct solver\n"),
         Genie::Umfpack => println!("Testing UMFPACK solver\n"),
     }
 
@@ -21,8 +21,8 @@ fn test_solver(genie: Genie) {
     let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
 
     let params = LinSolParams::new();
-    if let Err(e) = solver.actual.factorize(&coo, Some(params)) {
-        println!("FAIL(factorize): {}", e);
+    if let Err(e) = solver.actual.preprocess(&coo, Some(params)) {
+        println!("FAIL(preprocess): {}", e);
         return;
     };
 
@@ -48,7 +48,7 @@ fn test_complex_solver(genie: Genie) {
     println!("----------------------------------------------------------------------\n");
     match genie {
         Genie::Mumps => println!("Testing Complex MUMPS solver\n"),
-        Genie::Native => println!("Testing Complex Native solver\n"),
+        Genie::Direct => println!("Testing Complex Direct solver\n"),
         Genie::Umfpack => println!("Testing Complex UMFPACK solver\n"),
     }
 
@@ -62,12 +62,12 @@ fn test_complex_solver(genie: Genie) {
 
     let coo = match genie {
         Genie::Mumps => Samples::complex_symmetric_3x3_lower().0,
-        Genie::Native => Samples::complex_symmetric_3x3_full().0,
+        Genie::Direct => Samples::complex_symmetric_3x3_full().0,
         Genie::Umfpack => Samples::complex_symmetric_3x3_full().0,
     };
 
-    if let Err(e) = solver.actual.factorize(&coo, None) {
-        println!("FAIL(factorize): {}", e);
+    if let Err(e) = solver.actual.preprocess(&coo, None) {
+        println!("FAIL(preprocess): {}", e);
         return;
     };
 
@@ -93,7 +93,7 @@ fn test_solver_singular(genie: Genie) {
     println!("----------------------------------------------------------------------\n");
     match genie {
         Genie::Mumps => println!("Testing MUMPS solver (singular matrix)\n"),
-        Genie::Native => println!("Testing Native solver (singular matrix)\n"),
+        Genie::Direct => println!("Testing Direct solver (singular matrix)\n"),
         Genie::Umfpack => println!("Testing UMFPACK solver (singular matrix)\n"),
     }
 
@@ -117,25 +117,25 @@ fn test_solver_singular(genie: Genie) {
     coo_singular.put(0, 0, 1.0).unwrap();
     coo_singular.put(1, 0, 1.0).unwrap();
 
-    if let Err(e) = solver.actual.factorize(&coo_singular, None) {
-        println!("Ok(factorize singular matrix): {}\n", e)
+    if let Err(e) = solver.actual.preprocess(&coo_singular, None) {
+        println!("Ok(preprocess singular matrix): {}\n", e)
     };
 }
 
 fn main() {
     // real
     test_solver(Genie::Mumps);
-    test_solver(Genie::Native);
+    test_solver(Genie::Direct);
     test_solver(Genie::Umfpack);
 
     // complex
     test_complex_solver(Genie::Mumps);
-    test_complex_solver(Genie::Native);
+    test_complex_solver(Genie::Direct);
     test_complex_solver(Genie::Umfpack);
 
     // singular real
     test_solver_singular(Genie::Mumps);
-    test_solver_singular(Genie::Native);
+    test_solver_singular(Genie::Direct);
     test_solver_singular(Genie::Umfpack);
 
     println!("----------------------------------------------------------------------\n");

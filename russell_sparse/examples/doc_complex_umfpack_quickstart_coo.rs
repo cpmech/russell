@@ -36,8 +36,8 @@ fn main() -> Result<(), StrError> {
     params.verbose = false;
     params.compute_determinant = true;
 
-    // call factorize
-    umfpack.factorize(&coo, Some(params))?;
+    // call preprocess
+    umfpack.preprocess(&coo, Some(params))?;
 
     // allocate x and rhs
     let mut x = ComplexVector::new(ndim);

@@ -264,7 +264,7 @@ impl ParamsNewton {
         ParamsNewton {
             n_iteration_max: 7, // line 436 of radau5.f
             use_numerical_jacobian: false,
-            genie: Genie::Native,
+            genie: Genie::Direct,
             lin_sol_params: None,
             write_matrix_after_nstep_and_stop: None,
         }

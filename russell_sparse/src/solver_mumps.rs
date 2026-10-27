@@ -92,10 +92,10 @@ pub struct SolverMUMPS {
     /// Holds the number of non-zeros saved in initialize
     initialized_nnz: usize,
 
-    /// Holds the used ordering (after factorize)
+    /// Holds the used ordering (after preprocess)
     effective_ordering: i32,
 
-    /// Holds the used scaling (after factorize)
+    /// Holds the used scaling (after preprocess)
     effective_scaling: i32,
 
     /// Holds the OpenMP number of threads passed down to MUMPS (ICNTL(16))
@@ -125,8 +125,8 @@ pub struct SolverMUMPS {
     /// Time spent on initialize in nanoseconds
     time_initialize_ns: u128,
 
-    /// Time spent on factorize in nanoseconds
-    time_factorize_ns: u128,
+    /// Time spent on preprocess in nanoseconds
+    time_preprocess_ns: u128,
 
     /// Time spent on solve in nanoseconds
     time_solve_ns: u128,
@@ -171,7 +171,7 @@ impl SolverMUMPS {
                 error_analysis_array_len_8: vec![0.0; 8],
                 stopwatch: Stopwatch::new(),
                 time_initialize_ns: 0,
-                time_factorize_ns: 0,
+                time_preprocess_ns: 0,
                 time_solve_ns: 0,
                 fortran_indices_i: Vec::new(),
                 fortran_indices_j: Vec::new(),
@@ -181,7 +181,7 @@ impl SolverMUMPS {
 }
 
 impl LinSolTrait for SolverMUMPS {
-    /// Performs the factorization (and analysis/initialization if needed)
+    /// Performs the preprocessing (ordering, scaling, symbolic analysis, and numeric factorization)
     ///
     /// # Input
     ///
@@ -189,7 +189,7 @@ impl LinSolTrait for SolverMUMPS {
     ///   (`nrow = ncol`) and, if symmetric, the symmetric flag must be [Sym::YesLower]
     /// * `params` -- configuration parameters; None => use default
     ///
-    /// **Important:** `params` must be set to `None` when calling `factorize` again;
+    /// **Important:** `params` must be set to `None` when calling `preprocess` again;
     /// e.g., when the values of the coefficient matrix change but the structure remains the same.
     /// This limitation is required because the first factorization performs both the *symbolic* and
     /// *numeric* factorizations, whereas the subsequent factorizations are only *numeric*. Thus,
@@ -198,15 +198,15 @@ impl LinSolTrait for SolverMUMPS {
     /// # Notes
     ///
     /// 1. The structure of the matrix (nrow, ncol, nnz, sym) must be
-    ///    exactly the same among multiple calls to `factorize`. The values may differ
+    ///    exactly the same among multiple calls to `preprocess`. The values may differ
     ///    from call to call, nonetheless.
-    /// 2. The first call to `factorize` will define the structure which must be
+    /// 2. The first call to `preprocess` will define the structure which must be
     ///    kept the same for the next calls.
     /// 3. If the structure of the matrix needs to be changed, the solver must
     ///    be "dropped" and a new solver allocated.
     /// 4. For symmetric matrices, `MUMPS` requires [Sym::YesLower].
     /// 5. The COO matrix must be one-based.
-    fn factorize(&mut self, mat: &CooMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
+    fn preprocess(&mut self, mat: &CooMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
         // check
         if self.initialized {
             if mat.symmetric != self.initialized_sym {
@@ -319,7 +319,7 @@ impl LinSolTrait for SolverMUMPS {
                 return Err(handle_mumps_error_code(status));
             }
         }
-        self.time_factorize_ns = self.stopwatch.stop();
+        self.time_preprocess_ns = self.stopwatch.stop();
 
         // done
         self.factorized = true;
@@ -345,11 +345,11 @@ impl LinSolTrait for SolverMUMPS {
     /// * `rhs` -- the right-hand side vector with know values an dimension equal to mat.nrow
     /// * `verbose` -- shows messages
     ///
-    /// **Warning:** the matrix must be same one used in `factorize`.
+    /// **Warning:** the matrix must be same one used in `preprocess`.
     fn solve(&mut self, x: &mut Vector, rhs: &Vector, verbose: bool) -> Result<(), StrError> {
         // check
         if !self.factorized {
-            return Err("the function factorize must be called before solve");
+            return Err("the function preprocess must be called before solve");
         }
 
         // check vectors
@@ -420,7 +420,7 @@ impl LinSolTrait for SolverMUMPS {
         stats.mumps_stats.condition_number1 = self.error_analysis_array_len_8[6];
         stats.mumps_stats.condition_number2 = self.error_analysis_array_len_8[7];
         stats.time_nanoseconds.initialize_array.push(self.time_initialize_ns);
-        stats.time_nanoseconds.factorize_array.push(self.time_factorize_ns);
+        stats.time_nanoseconds.preprocess_array.push(self.time_preprocess_ns);
         stats.time_nanoseconds.solve_array.push(self.time_solve_ns);
     }
 
@@ -429,9 +429,9 @@ impl LinSolTrait for SolverMUMPS {
         self.time_initialize_ns
     }
 
-    /// Returns the nanoseconds spent on factorize
-    fn get_ns_fact(&self) -> u128 {
-        self.time_factorize_ns
+    /// Returns the nanoseconds spent on preprocess
+    fn get_ns_preprocess(&self) -> u128 {
+        self.time_preprocess_ns
     }
 
     /// Returns the nanoseconds spent on solve
@@ -587,22 +587,22 @@ mod tests {
 
     #[test]
     #[serial]
-    fn factorize_handles_errors() {
+    fn preprocess_handles_errors() {
         // allocate a new solver
         let mut solver = SolverMUMPS::new().unwrap();
         assert!(!solver.factorized);
 
         // check COO matrix
         let (coo, _, _, _) = Samples::rectangular_1x2(true, false);
-        assert_eq!(solver.factorize(&coo, None).err(), Some("the COO matrix must be square"));
+        assert_eq!(solver.preprocess(&coo, None).err(), Some("the COO matrix must be square"));
         let coo = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
         assert_eq!(
-            solver.factorize(&coo, None).err(),
+            solver.preprocess(&coo, None).err(),
             Some("the COO matrix must have at least one non-zero value")
         );
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_upper(true, false);
         assert_eq!(
-            solver.factorize(&coo, None).err(),
+            solver.preprocess(&coo, None).err(),
             Some("MUMPS requires Sym::YesLower for symmetric matrices")
         );
 
@@ -610,39 +610,39 @@ mod tests {
         let mut coo = CooMatrix::new(2, 2, 2, Sym::No).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 1, 2.0).unwrap();
-        // ... factorize once => OK
-        solver.factorize(&coo, None).unwrap();
+        // ... preprocess once => OK
+        solver.preprocess(&coo, None).unwrap();
         // ... change matrix (symmetric)
         let mut coo = CooMatrix::new(2, 2, 2, Sym::YesFull).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 1, 2.0).unwrap();
         assert_eq!(
-            solver.factorize(&coo, None).err(),
+            solver.preprocess(&coo, None).err(),
             Some("subsequent factorizations must use the same matrix (symmetric differs)")
         );
         // ... change matrix (ndim)
         let mut coo = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         assert_eq!(
-            solver.factorize(&coo, None).err(),
+            solver.preprocess(&coo, None).err(),
             Some("subsequent factorizations must use the same matrix (ndim differs)")
         );
         // ... change matrix (nnz)
         let mut coo = CooMatrix::new(2, 2, 1, Sym::No).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         assert_eq!(
-            solver.factorize(&coo, None).err(),
+            solver.preprocess(&coo, None).err(),
             Some("subsequent factorizations must use the same matrix (nnz differs)")
         );
     }
 
     #[test]
     #[serial]
-    fn factorize_fails_on_singular_matrix() {
+    fn preprocess_fails_on_singular_matrix() {
         let mut coo = CooMatrix::new(2, 2, 2, Sym::No).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         let mut solver = SolverMUMPS::new().unwrap();
-        assert_eq!(solver.factorize(&coo, None), Err("Error(-10): numerically singular matrix"));
+        assert_eq!(solver.preprocess(&coo, None), Err("Error(-10): numerically singular matrix"));
     }
 
     #[test]
@@ -657,10 +657,10 @@ mod tests {
         let rhs = Vector::new(2);
         assert_eq!(
             solver.solve(&mut x, &rhs, false),
-            Err("the function factorize must be called before solve")
+            Err("the function preprocess must be called before solve")
         );
         let mut x = Vector::new(1);
-        solver.factorize(&coo, None).unwrap();
+        solver.preprocess(&coo, None).unwrap();
         assert_eq!(
             solver.solve(&mut x, &rhs, false),
             Err("the dimension of the vector of unknown values x is incorrect")
@@ -675,7 +675,7 @@ mod tests {
 
     #[test]
     #[serial]
-    fn factorize_and_solve_work() {
+    fn preprocess_and_solve_work() {
         // allocate x and rhs
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
@@ -694,8 +694,8 @@ mod tests {
         params.scaling = Scaling::RowCol;
         params.compute_determinant = true;
 
-        // factorize works
-        solver.factorize(&coo, Some(params)).unwrap();
+        // preprocess works
+        solver.preprocess(&coo, Some(params)).unwrap();
         assert!(solver.factorized);
 
         // solve works
@@ -717,10 +717,10 @@ mod tests {
         assert_eq!(stats.output.effective_ordering, "Pord");
         assert_eq!(stats.output.effective_scaling, "No");
         assert_eq!(stats.time_nanoseconds.initialize_array.len(), 1);
-        assert_eq!(stats.time_nanoseconds.factorize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.preprocess_array.len(), 1);
         assert_eq!(stats.time_nanoseconds.solve_array.len(), 1);
         assert!(solver.get_ns_init() > 0);
-        assert!(solver.get_ns_fact() > 0);
+        assert!(solver.get_ns_preprocess() > 0);
         assert!(solver.get_ns_solve() > 0);
 
         // calling solve again works
@@ -730,23 +730,23 @@ mod tests {
 
     #[test]
     #[serial]
-    fn factorize_fails_when_params_changed_on_second_call() {
+    fn preprocess_fails_when_params_changed_on_second_call() {
         let mut solver = SolverMUMPS::new().unwrap();
         let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
         let mut params = LinSolParams::new();
         params.ordering = Ordering::Pord;
         params.scaling = Scaling::RowCol;
-        solver.factorize(&coo, Some(params)).unwrap();
+        solver.preprocess(&coo, Some(params)).unwrap();
         params.ordering = Ordering::Amd;
         assert_eq!(
-            solver.factorize(&coo, Some(params)),
+            solver.preprocess(&coo, Some(params)),
             Err("subsequent factorizations must not change LinSolParams")
         );
     }
 
     #[test]
     #[serial]
-    fn factorize_and_solve_work_spd() {
+    fn preprocess_and_solve_work_spd() {
         // set params
         let mut params = LinSolParams::new();
         params.ordering = Ordering::Auto;
@@ -757,7 +757,7 @@ mod tests {
         let mut solver = SolverMUMPS::new().unwrap();
 
         assert!(!solver.factorized);
-        solver.factorize(&coo_pd_lower, Some(params)).unwrap();
+        solver.preprocess(&coo_pd_lower, Some(params)).unwrap();
 
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
@@ -782,8 +782,8 @@ mod tests {
         // sample matrix
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(false, true);
 
-        // factorize works
-        solver.factorize(&coo, None).unwrap();
+        // preprocess works
+        solver.preprocess(&coo, None).unwrap();
         assert!(solver.factorized);
 
         // solve works

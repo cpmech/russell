@@ -7,7 +7,7 @@ use structopt::StructOpt;
 #[derive(StructOpt, Debug)]
 #[structopt(name = "nonlinear_system_4equations", about = "Solve a nonlinear system four equations.")]
 struct Options {
-    #[structopt(short = "g", long, default_value = "Native")]
+    #[structopt(short = "g", long, default_value = "Direct")]
     genie: String,
 }
 
@@ -17,6 +17,7 @@ fn main() -> Result<(), StrError> {
 
     // select linear solver
     let genie = match opt.genie.to_lowercase().as_str() {
+        "direct" => Genie::Direct,
         "mumps" => Genie::Mumps,
         "umfpack" => Genie::Umfpack,
         _ => return Err("genie is incorrect"),
@@ -64,8 +65,8 @@ fn main() -> Result<(), StrError> {
         // calculate Jacobian matrix
         calc_jacobian(&mut jj, &uu)?;
 
-        // factorize and solve linear system: J * mdu = rr
-        solver.actual.factorize(&jj, None)?;
+        // preprocess and solve linear system: J * mdu = rr
+        solver.actual.preprocess(&jj, None)?;
         solver.actual.solve(&mut mdu, &rr, false)?;
 
         // update the vector of unknowns: uu -= mdu

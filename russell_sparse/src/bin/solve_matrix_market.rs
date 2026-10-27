@@ -13,8 +13,8 @@ struct Options {
     /// Matrix-market file
     matrix_market_file: String,
 
-    /// Solver selection
-    #[structopt(short = "g", long, default_value = "Native")]
+    /// Solver selection: `direct`, `mumps`, or `umfpack`
+    #[structopt(short = "g", long, default_value = "Direct")]
     genie: String,
 
     /// Ordering strategy
@@ -61,9 +61,9 @@ struct Options {
     #[structopt(short = "u", long)]
     enforce_unsymmetric_strategy: bool,
 
-    /// Selects the supernodal LU in the Native solver (experimental; Native only)
+    /// Selects the supernodal LU in the Direct solver (experimental; Direct only)
     #[structopt(long)]
-    native_supernodal: bool,
+    direct_supernodal: bool,
 
     /// Writes vismatrix file
     #[structopt(long)]
@@ -76,7 +76,7 @@ struct Options {
     /// Number of runs
     ///
     /// If more than one run:
-    /// * The total time (initialize + factorize + solve) field will hold the average value
+    /// * The total time (initialize + preprocess + solve) field will hold the average value
     /// * The total time array will hold each individually result
     /// * The error fields will hold the maximum error among runs
     #[structopt(short = "r", long, default_value = "1")]
@@ -93,12 +93,17 @@ fn main() -> Result<(), StrError> {
     }
 
     // select linear solver
-    let genie = Genie::from(&opt.genie);
+    let genie = match opt.genie.to_lowercase().as_str() {
+        "direct" => Genie::Direct,
+        "mumps" => Genie::Mumps,
+        "umfpack" => Genie::Umfpack,
+        _ => return Err("genie must be one of: direct, mumps, umfpack"),
+    };
 
     // select the symmetric handling option
     let handling = match genie {
         Genie::Mumps => MMsym::LeaveAsLower,
-        Genie::Native => MMsym::MakeItFull,
+        Genie::Direct => MMsym::MakeItFull,
         Genie::Umfpack => MMsym::MakeItFull,
     };
 
@@ -110,7 +115,7 @@ fn main() -> Result<(), StrError> {
     params.compute_determinant = opt.determinant;
     params.mumps_num_threads = opt.mumps_nt as usize;
     params.umfpack_enforce_unsymmetric_strategy = opt.enforce_unsymmetric_strategy;
-    params.native_supernodal = opt.native_supernodal;
+    params.direct_supernodal = opt.direct_supernodal;
     params.compute_error_estimates = opt.error_estimates;
     params.compute_condition_numbers = opt.condition_numbers;
     params.mumps_override_prevent_nt_issue_with_openblas = opt.override_prevent_issue;
@@ -154,8 +159,8 @@ fn main() -> Result<(), StrError> {
             // allocate and configure the solver
             let mut solver = LinSolver::new(genie)?;
 
-            // call factorize
-            if let Err(e) = solver.actual.factorize(&coo, Some(params)) {
+            // call preprocess
+            if let Err(e) = solver.actual.preprocess(&coo, Some(params)) {
                 if is_memory_error(e) {
                     stats.main.out_of_memory = true;
                     if !opt.hide_json {
@@ -188,7 +193,7 @@ fn main() -> Result<(), StrError> {
             if stats.matrix.name == "bfwb62" {
                 let tolerance = match genie {
                     Genie::Mumps => 1e-10,
-                    Genie::Native => 1e-10,
+                    Genie::Direct => 1e-10,
                     Genie::Umfpack => 1e-10,
                 };
                 let correct_x = get_bfwb62_correct_x();
@@ -224,8 +229,8 @@ fn main() -> Result<(), StrError> {
             // allocate and configure the solver
             let mut solver = ComplexLinSolver::new(genie)?;
 
-            // call factorize
-            if let Err(e) = solver.actual.factorize(&coo, Some(params)) {
+            // call preprocess
+            if let Err(e) = solver.actual.preprocess(&coo, Some(params)) {
                 if is_memory_error(e) {
                     stats.main.out_of_memory = true;
                     if !opt.hide_json {

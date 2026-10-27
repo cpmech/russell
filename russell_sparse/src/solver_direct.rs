@@ -1,56 +1,26 @@
 use super::{CooMatrix, CscMatrix, LinSolParams, LinSolTrait, StatsLinSol, Sym};
 use crate::StrError;
-use algebra_linear::sparse::{CscPattern, CscView, LuMethod, LuSolver, LuSymbolic, SparseError, SparseLuStats};
+use algebra_linear::sparse::{LuMethod, SparseError, SparseLu, SparseLuStats};
 use russell_lab::{Stopwatch, Vector};
-use std::time::Duration;
 
 /// Maps an `algebra_linear` sparse error to the crate's string error.
-pub(crate) fn native_error(error: SparseError) -> StrError {
+pub(crate) fn direct_error(error: SparseError) -> StrError {
     match error {
+        SparseError::BadShape => "the matrix shape is inconsistent",
+        SparseError::InvalidStructure => "the matrix has an invalid CSC structure",
+        SparseError::UnsortedRows => "the matrix rows are not sorted",
+        SparseError::DuplicateEntry => "the matrix has a duplicate entry",
         SparseError::Singular => "the matrix is singular",
+        SparseError::IndexOverflow => "the matrix is too large for the direct solver",
         SparseError::StructureMismatch => "the structure of the matrix changed; allocate a new solver",
         SparseError::NotFinite => "the matrix has a NaN or infinite entry",
-        SparseError::BadShape => "the matrix shape is inconsistent",
-        SparseError::DuplicateEntry => "the matrix has a duplicate entry",
-        SparseError::UnsortedRows => "the matrix rows are not sorted",
-        SparseError::InvalidStructure => "the matrix has an invalid CSC structure",
-        SparseError::IndexOverflow => "the matrix is too large for the native solver",
-        _ => "the native LU factorization failed",
-    }
-}
-
-/// Builds the statistics of a native factorization.
-pub(crate) fn native_stats<T>(factors: &LuSolver<T>, n: usize, nnz_a: usize, initialize_ns: u128, factorize_ns: u128) -> SparseLuStats {
-    let (l_col_ptr, u_col_ptr) = match factors.as_simplicial() {
-        Some(f) => (f.l_col_ptr(), f.u_col_ptr()),
-        None => {
-            let f = factors.as_supernodal().expect("one of the two factor types");
-            (f.l_col_ptr(), f.u_col_ptr())
-        }
-    };
-    let nnz_l = l_col_ptr[n];
-    let nnz_u = u_col_ptr[n];
-    let mut flops_estimate = 0usize;
-    for j in 0..n {
-        let nl = l_col_ptr[j + 1] - l_col_ptr[j];
-        let nu = u_col_ptr[j + 1] - u_col_ptr[j];
-        flops_estimate = flops_estimate.saturating_add(nl.saturating_mul(nu));
-    }
-    SparseLuStats {
-        n,
-        nnz_a,
-        nnz_l,
-        nnz_u,
-        fill_ratio: if nnz_a == 0 { 0.0 } else { (nnz_l + nnz_u) as f64 / nnz_a as f64 },
-        flops_estimate,
-        ordering_time: Duration::from_nanos(initialize_ns as u64),
-        factorization_time: Duration::from_nanos(factorize_ns as u64),
+        SparseError::NotFactorized => "the matrix has not been factorized",
     }
 }
 
 /// Solves sparse linear systems with the pure-Rust LU from `algebra_linear`
 ///
-/// This is the `Genie::Native` backend. It is a direct LU factorization with
+/// This is the `Genie::Direct` backend. It is a direct LU factorization with
 /// partial pivoting and a COLAMD column ordering; a flop proxy chooses between
 /// the simplicial and supernodal variants. It needs no external library.
 ///
@@ -60,7 +30,9 @@ pub(crate) fn native_stats<T>(factors: &LuSolver<T>, n: usize, nnz_a: usize, ini
 ///   as `Auto`; this backend has no natural-ordering option.
 /// * `scaling`: no scaling is applied, for either `Auto` or `No`. Other values
 ///   are treated as `Auto`.
-/// * `compute_determinant`: not available; `factorize` returns an error.
+/// * `direct_supernodal`: selects the experimental supernodal factorization;
+///   the simplicial path is the default.
+/// * `compute_determinant`: not available; `preprocess` returns an error.
 /// * `compute_error_estimates` and `compute_condition_numbers`: not available;
 ///   the corresponding statistics stay zero.
 ///
@@ -77,7 +49,7 @@ pub(crate) fn native_stats<T>(factors: &LuSolver<T>, n: usize, nnz_a: usize, ini
 ///     let ndim = 3;
 ///     let nnz = 5;
 ///
-///     let mut solver = SolverNative::new()?;
+///     let mut solver = SolverDirect::new()?;
 ///
 ///     // ┌                   ┐
 ///     // │   0.2   0.2     0 │
@@ -91,7 +63,7 @@ pub(crate) fn native_stats<T>(factors: &LuSolver<T>, n: usize, nnz_a: usize, ini
 ///     coo.put(1, 1, -0.25)?;
 ///     coo.put(2, 2, 0.25)?;
 ///
-///     solver.factorize(&coo, None)?;
+///     solver.preprocess(&coo, None)?;
 ///
 ///     let rhs = Vector::from(&[1.0, 1.0, 1.0]);
 ///     let mut x = Vector::new(ndim);
@@ -102,32 +74,26 @@ pub(crate) fn native_stats<T>(factors: &LuSolver<T>, n: usize, nnz_a: usize, ini
 ///     Ok(())
 /// }
 /// ```
-pub struct SolverNative {
-    /// Holds the CSC matrix used in the last factorization
+pub struct SolverDirect {
+    /// Holds the CSC matrix used in the last preprocess
     csc: Option<CscMatrix>,
 
-    /// The symbolic analysis, reused while the structure does not change
-    symbolic: Option<LuSymbolic>,
-
-    /// The numeric factors
-    factors: Option<LuSolver<f64>>,
-
-    /// Statistics of the last factorization
-    stats: Option<SparseLuStats>,
+    /// The opaque LU handle
+    lu: Option<SparseLu<f64>>,
 
     /// Indicates whether the solver has been initialized or not
     initialized: bool,
 
-    /// Indicates whether the sparse matrix has been factorized or not
-    factorized: bool,
+    /// Indicates whether the sparse matrix has been preprocessed or not
+    preprocessed: bool,
 
-    /// Holds the symmetric flag saved at the first factorization
+    /// Holds the symmetric flag saved at the first preprocess
     initialized_sym: Sym,
 
-    /// Holds the matrix dimension saved at the first factorization
+    /// Holds the matrix dimension saved at the first preprocess
     initialized_ndim: usize,
 
-    /// Holds the number of non-zeros saved at the first factorization
+    /// Holds the number of non-zeros saved at the first preprocess
     initialized_nnz: usize,
 
     /// Stopwatch to measure computation times
@@ -137,40 +103,38 @@ pub struct SolverNative {
     time_initialize_ns: u128,
 
     /// Time spent on the numeric factorization in nanoseconds
-    time_factorize_ns: u128,
+    time_preprocess_ns: u128,
 
     /// Time spent on the solve in nanoseconds
     time_solve_ns: u128,
 }
 
-impl SolverNative {
+impl SolverDirect {
     /// Allocates a new instance
     pub fn new() -> Result<Self, StrError> {
-        Ok(SolverNative {
+        Ok(SolverDirect {
             csc: None,
-            symbolic: None,
-            factors: None,
-            stats: None,
+            lu: None,
             initialized: false,
-            factorized: false,
+            preprocessed: false,
             initialized_sym: Sym::No,
             initialized_ndim: 0,
             initialized_nnz: 0,
             stopwatch: Stopwatch::new(),
             time_initialize_ns: 0,
-            time_factorize_ns: 0,
+            time_preprocess_ns: 0,
             time_solve_ns: 0,
         })
     }
 
-    /// Returns the statistics of the last factorization, if any
+    /// Returns the statistics of the last preprocess, if any
     pub fn stats(&self) -> Option<&SparseLuStats> {
-        self.stats.as_ref()
+        self.lu.as_ref().and_then(|lu| lu.stats())
     }
 }
 
-impl LinSolTrait for SolverNative {
-    fn factorize(&mut self, mat: &CooMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
+impl LinSolTrait for SolverDirect {
+    fn preprocess(&mut self, mat: &CooMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
         if mat.nrow != mat.ncol {
             return Err("the matrix must be square");
         }
@@ -178,7 +142,7 @@ impl LinSolTrait for SolverNative {
             return Err("the COO matrix must have at least one non-zero value");
         }
         if mat.symmetric == Sym::YesLower || mat.symmetric == Sym::YesUpper {
-            return Err("Native requires Sym::YesFull for symmetric matrices");
+            return Err("Direct requires Sym::YesFull for symmetric matrices");
         }
         if let Some(par) = params {
             if par.compute_determinant {
@@ -188,12 +152,10 @@ impl LinSolTrait for SolverNative {
 
         // Pick the factorization before the first analysis; later calls reuse it.
         let method = match params {
-            Some(par) if par.native_supernodal => LuMethod::Supernodal,
+            Some(par) if par.direct_supernodal => LuMethod::Supernodal,
             _ => LuMethod::Simplicial,
         };
 
-        // The structure is fixed by the first call; later calls may only change
-        // the values.
         if !self.initialized {
             self.initialized_sym = mat.symmetric;
             self.initialized_ndim = mat.nrow;
@@ -203,11 +165,16 @@ impl LinSolTrait for SolverNative {
             let nnz = csc.get_info().2;
             let col_pointers: Vec<usize> = csc.get_col_pointers()[..=mat.ncol].iter().map(|&p| p as usize).collect();
             let row_indices: Vec<usize> = csc.get_row_indices()[..nnz].iter().map(|&i| i as usize).collect();
-            let pattern = CscPattern::new(mat.nrow, mat.ncol, &col_pointers, &row_indices).map_err(native_error)?;
-            let symbolic = LuSymbolic::analyze(pattern, method).map_err(native_error)?;
+            let mut lu = SparseLu::analyze(&col_pointers, &row_indices, method).map_err(direct_error)?;
             self.time_initialize_ns = self.stopwatch.stop();
+
+            self.stopwatch.reset();
+            lu.factorize(&col_pointers, &row_indices, &csc.get_values()[..nnz])
+                .map_err(direct_error)?;
+            self.time_preprocess_ns = self.stopwatch.stop();
+
             self.csc = Some(csc);
-            self.symbolic = Some(symbolic);
+            self.lu = Some(lu);
             self.initialized = true;
         } else {
             if mat.symmetric != self.initialized_sym {
@@ -219,30 +186,27 @@ impl LinSolTrait for SolverNative {
             if mat.nnz != self.initialized_nnz {
                 return Err("subsequent factorizations must use the same matrix (nnz differs)");
             }
+            self.stopwatch.reset();
             let csc = CscMatrix::from_coo(mat)?;
+            let nnz = csc.get_info().2;
+            let col_pointers: Vec<usize> = csc.get_col_pointers()[..=mat.ncol].iter().map(|&p| p as usize).collect();
+            let row_indices: Vec<usize> = csc.get_row_indices()[..nnz].iter().map(|&i| i as usize).collect();
+            self.lu
+                .as_mut()
+                .unwrap()
+                .factorize(&col_pointers, &row_indices, &csc.get_values()[..nnz])
+                .map_err(direct_error)?;
+            self.time_preprocess_ns = self.stopwatch.stop();
             self.csc = Some(csc);
         }
 
-        // Refresh the values (and re-widen the indices if the structure moved;
-        // the fingerprint in factorize catches that case).
-        let csc = self.csc.as_ref().unwrap();
-        let nnz = csc.get_info().2;
-        let col_pointers: Vec<usize> = csc.get_col_pointers()[..=mat.ncol].iter().map(|&p| p as usize).collect();
-        let row_indices: Vec<usize> = csc.get_row_indices()[..nnz].iter().map(|&i| i as usize).collect();
-        let view = CscView::new(mat.nrow, mat.ncol, &col_pointers, &row_indices, &csc.get_values()[..nnz]).map_err(native_error)?;
-
-        self.stopwatch.reset();
-        let factors = self.symbolic.as_ref().unwrap().factorize(view).map_err(native_error)?;
-        self.time_factorize_ns = self.stopwatch.stop();
-        self.stats = Some(native_stats(&factors, mat.nrow, mat.nnz, self.time_initialize_ns, self.time_factorize_ns));
-        self.factors = Some(factors);
-        self.factorized = true;
+        self.preprocessed = true;
         Ok(())
     }
 
     fn solve(&mut self, x: &mut Vector, rhs: &Vector, _verbose: bool) -> Result<(), StrError> {
-        if !self.factorized {
-            return Err("the function factorize must be called before solve");
+        if !self.preprocessed {
+            return Err("the function preprocess must be called before solve");
         }
         if x.dim() != self.initialized_ndim {
             return Err("the dimension of the vector of unknown values x is incorrect");
@@ -252,17 +216,17 @@ impl LinSolTrait for SolverNative {
         }
         x.as_mut_data().copy_from_slice(rhs.as_data());
         self.stopwatch.reset();
-        self.factors.as_ref().unwrap().solve(x.as_mut_data()).map_err(native_error)?;
+        self.lu.as_ref().unwrap().solve(x.as_mut_data()).map_err(direct_error)?;
         self.time_solve_ns = self.stopwatch.stop();
         Ok(())
     }
 
     fn update_stats(&self, stats: &mut StatsLinSol) {
-        stats.main.solver = "Native".to_string();
+        stats.main.solver = "Direct".to_string();
         stats.output.effective_ordering = "Colamd".to_string();
         stats.output.effective_scaling = "No".to_string();
         stats.time_nanoseconds.initialize_array.push(self.time_initialize_ns);
-        stats.time_nanoseconds.factorize_array.push(self.time_factorize_ns);
+        stats.time_nanoseconds.preprocess_array.push(self.time_preprocess_ns);
         stats.time_nanoseconds.solve_array.push(self.time_solve_ns);
     }
 
@@ -270,8 +234,8 @@ impl LinSolTrait for SolverNative {
         self.time_initialize_ns
     }
 
-    fn get_ns_fact(&self) -> u128 {
-        self.time_factorize_ns
+    fn get_ns_preprocess(&self) -> u128 {
+        self.time_preprocess_ns
     }
 
     fn get_ns_solve(&self) -> u128 {
@@ -286,27 +250,27 @@ mod tests {
     use russell_lab::{approx_eq, vec_approx_eq};
 
     #[test]
-    fn new_and_factorize_errors_work() {
-        let mut solver = SolverNative::new().unwrap();
-        assert!(!solver.factorized);
+    fn new_and_preprocess_errors_work() {
+        let mut solver = SolverDirect::new().unwrap();
+        assert!(!solver.preprocessed);
         assert!(solver.stats().is_none());
 
         // empty COO
         let coo = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
         assert_eq!(
-            solver.factorize(&coo, None).err(),
+            solver.preprocess(&coo, None).err(),
             Some("the COO matrix must have at least one non-zero value")
         );
 
         // rectangular
         let (coo, _, _, _) = Samples::rectangular_1x7();
-        assert_eq!(solver.factorize(&coo, None).err(), Some("the matrix must be square"));
+        assert_eq!(solver.preprocess(&coo, None).err(), Some("the matrix must be square"));
 
         // symmetric storage must be full
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(false, false);
         assert_eq!(
-            solver.factorize(&coo, None).err(),
-            Some("Native requires Sym::YesFull for symmetric matrices")
+            solver.preprocess(&coo, None).err(),
+            Some("Direct requires Sym::YesFull for symmetric matrices")
         );
 
         // determinant is not available
@@ -316,39 +280,39 @@ mod tests {
         let mut params = LinSolParams::new();
         params.compute_determinant = true;
         assert_eq!(
-            solver.factorize(&coo, Some(params)).err(),
+            solver.preprocess(&coo, Some(params)).err(),
             Some("determinant evaluation is not available for this Genie")
         );
 
         // structure changes are refused
-        solver.factorize(&coo, None).unwrap();
+        solver.preprocess(&coo, None).unwrap();
         let mut other = CooMatrix::new(2, 2, 2, Sym::YesFull).unwrap();
         other.put(0, 0, 1.0).unwrap();
         other.put(1, 1, 2.0).unwrap();
         assert_eq!(
-            solver.factorize(&other, None).err(),
+            solver.preprocess(&other, None).err(),
             Some("subsequent factorizations must use the same matrix (symmetric differs)")
         );
         let mut other = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
         other.put(0, 0, 1.0).unwrap();
         assert_eq!(
-            solver.factorize(&other, None).err(),
+            solver.preprocess(&other, None).err(),
             Some("subsequent factorizations must use the same matrix (ndim differs)")
         );
         let mut other = CooMatrix::new(2, 2, 1, Sym::No).unwrap();
         other.put(0, 0, 1.0).unwrap();
         assert_eq!(
-            solver.factorize(&other, None).err(),
+            solver.preprocess(&other, None).err(),
             Some("subsequent factorizations must use the same matrix (nnz differs)")
         );
     }
 
     #[test]
-    fn factorize_works_and_reuses_the_analysis() {
-        let mut solver = SolverNative::new().unwrap();
+    fn preprocess_works_and_reuses_the_analysis() {
+        let mut solver = SolverDirect::new().unwrap();
         let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
-        solver.factorize(&coo, None).unwrap();
-        assert!(solver.factorized);
+        solver.preprocess(&coo, None).unwrap();
+        assert!(solver.preprocessed);
         let stats = solver.stats().unwrap();
         assert_eq!(stats.n, 5);
         assert!(stats.nnz_l >= 5);
@@ -356,7 +320,7 @@ mod tests {
 
         // Second call with the same values works and keeps the analysis.
         let init = solver.get_ns_init();
-        solver.factorize(&coo, None).unwrap();
+        solver.preprocess(&coo, None).unwrap();
         assert_eq!(solver.get_ns_init(), init);
 
         // Changing only the values is allowed.
@@ -367,16 +331,37 @@ mod tests {
             let value = if i == j { 2.0 } else { coo.values[k] };
             other.put(i, j, value).unwrap();
         }
-        solver.factorize(&other, None).unwrap();
+        solver.preprocess(&other, None).unwrap();
     }
 
     #[test]
-    fn factorize_fails_on_singular_matrix() {
-        let mut solver = SolverNative::new().unwrap();
+    fn preprocess_detects_a_reordered_pattern() {
+        // Both matrices have the same sym, ndim and nnz, but the first stores
+        // (0,0) (0,1) (1,1) and the second (0,1) (1,0) (1,1).
+        let mut a = CooMatrix::new(2, 2, 3, Sym::No).unwrap();
+        a.put(0, 0, 1.0).unwrap();
+        a.put(0, 1, 2.0).unwrap();
+        a.put(1, 1, 3.0).unwrap();
+        let mut b = CooMatrix::new(2, 2, 3, Sym::No).unwrap();
+        b.put(0, 1, 2.0).unwrap();
+        b.put(1, 0, 1.0).unwrap();
+        b.put(1, 1, 3.0).unwrap();
+
+        let mut solver = SolverDirect::new().unwrap();
+        solver.preprocess(&a, None).unwrap();
+        assert_eq!(
+            solver.preprocess(&b, None),
+            Err("the structure of the matrix changed; allocate a new solver")
+        );
+    }
+
+    #[test]
+    fn preprocess_fails_on_singular_matrix() {
+        let mut solver = SolverDirect::new().unwrap();
         let mut coo = CooMatrix::new(2, 2, 2, Sym::No).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 1, 0.0).unwrap();
-        assert_eq!(solver.factorize(&coo, None), Err("the matrix is singular"));
+        assert_eq!(solver.preprocess(&coo, None), Err("the matrix is singular"));
     }
 
     #[test]
@@ -384,15 +369,15 @@ mod tests {
         let mut coo = CooMatrix::new(2, 2, 2, Sym::No).unwrap();
         coo.put(0, 0, 123.0).unwrap();
         coo.put(1, 1, 456.0).unwrap();
-        let mut solver = SolverNative::new().unwrap();
+        let mut solver = SolverDirect::new().unwrap();
         let mut x = Vector::new(2);
         let rhs = Vector::new(2);
         assert_eq!(
             solver.solve(&mut x, &rhs, false),
-            Err("the function factorize must be called before solve")
+            Err("the function preprocess must be called before solve")
         );
         let mut x = Vector::new(1);
-        solver.factorize(&coo, None).unwrap();
+        solver.preprocess(&coo, None).unwrap();
         assert_eq!(
             solver.solve(&mut x, &rhs, false),
             Err("the dimension of the vector of unknown values x is incorrect")
@@ -407,39 +392,55 @@ mod tests {
 
     #[test]
     fn solve_works_unsymmetric_and_symmetric() {
-        let mut solver = SolverNative::new().unwrap();
+        let mut solver = SolverDirect::new().unwrap();
         let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
         let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
         let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
         let mut x = Vector::new(5);
-        solver.factorize(&coo, None).unwrap();
+        solver.preprocess(&coo, None).unwrap();
         solver.solve(&mut x, &rhs, false).unwrap();
         vec_approx_eq(&x, x_correct, 1e-13);
 
         let mut stats = StatsLinSol::new();
         solver.update_stats(&mut stats);
-        assert_eq!(stats.main.solver, "Native");
+        assert_eq!(stats.main.solver, "Direct");
         assert_eq!(stats.output.effective_ordering, "Colamd");
         assert_eq!(stats.output.effective_scaling, "No");
         assert_eq!(stats.time_nanoseconds.initialize_array.len(), 1);
-        assert_eq!(stats.time_nanoseconds.factorize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.preprocess_array.len(), 1);
         assert_eq!(stats.time_nanoseconds.solve_array.len(), 1);
         assert!(solver.get_ns_init() > 0);
-        assert!(solver.get_ns_fact() > 0);
+        assert!(solver.get_ns_preprocess() > 0);
         assert!(solver.get_ns_solve() > 0);
 
         // Symmetric full matrix.
-        let mut solver = SolverNative::new().unwrap();
+        let mut solver = SolverDirect::new().unwrap();
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_full();
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
         let x_correct = &[-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
         let mut x = Vector::new(5);
-        solver.factorize(&coo, None).unwrap();
+        solver.preprocess(&coo, None).unwrap();
         solver.solve(&mut x, &rhs, false).unwrap();
         vec_approx_eq(&x, x_correct, 1e-10);
 
         // stats carry the fill numbers
         let stats = solver.stats().unwrap();
         approx_eq(stats.fill_ratio, (stats.nnz_l + stats.nnz_u) as f64 / coo.nnz as f64, 1e-14);
+    }
+
+    #[test]
+    fn direct_error_maps_every_variant() {
+        assert_eq!(direct_error(SparseError::BadShape), "the matrix shape is inconsistent");
+        assert_eq!(direct_error(SparseError::InvalidStructure), "the matrix has an invalid CSC structure");
+        assert_eq!(direct_error(SparseError::UnsortedRows), "the matrix rows are not sorted");
+        assert_eq!(direct_error(SparseError::DuplicateEntry), "the matrix has a duplicate entry");
+        assert_eq!(direct_error(SparseError::Singular), "the matrix is singular");
+        assert_eq!(direct_error(SparseError::IndexOverflow), "the matrix is too large for the direct solver");
+        assert_eq!(
+            direct_error(SparseError::StructureMismatch),
+            "the structure of the matrix changed; allocate a new solver"
+        );
+        assert_eq!(direct_error(SparseError::NotFinite), "the matrix has a NaN or infinite entry");
+        assert_eq!(direct_error(SparseError::NotFactorized), "the matrix has not been factorized");
     }
 }

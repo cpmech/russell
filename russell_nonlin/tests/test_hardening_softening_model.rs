@@ -437,7 +437,7 @@ fn run_hs_model(
     // Perform the numerical continuation
     let status = solver.solve(&mut args, &mut u, &mut l, direction, stop, &ddl, Some(out))?;
     // The exact failure mode at the limit depends on the linear solver's roundoff;
-    // Native and UMFPACK can stop in either of these two states.
+    // Direct and UMFPACK can stop in either of these two states.
     assert!(
         status == expected_status || status == Status::ContinuedFailure,
         "unexpected status: {status:?} (expected {expected_status:?})"

@@ -48,7 +48,7 @@ jobs:
         shell: msys2 {0}
         run: bash zscripts/windows-compile-mumps.bash
 
-      - name: Run tests (Native)
+      - name: Run tests (Direct)
         shell: msys2 {0}
         run: cargo test
 
@@ -117,7 +117,7 @@ jobs:
         run: |
           "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows\bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
 
-      - name: Run tests (Native)
+      - name: Run tests (Direct)
         shell: pwsh
         run: cargo test
 

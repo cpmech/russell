@@ -5,7 +5,7 @@
 //! `russell_nonlin`: Numerical continuation methods to solve nonlinear systems of equations
 //!
 //! **The default build needs no external library:** `russell_lab` ships pure-Rust
-//! BLAS/LAPACK kernels and `russell_sparse` has the pure-Rust Native solver, so the
+//! BLAS/LAPACK kernels and `russell_sparse` has the Direct solver (pure Rust), so the
 //! crate builds on every platform, WebAssembly included. The optional `open_blas`,
 //! `intel_mkl`, `umfpack`, and `mumps` features enable the accelerators and
 //! external solvers; see the

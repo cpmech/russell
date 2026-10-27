@@ -86,9 +86,9 @@ fn solve(genie: Genie) -> Result<(), StrError> {
     let mut params = LinSolParams::new();
     params.verbose = false;
 
-    // call factorize and solve
+    // call preprocess and solve
     let mut x = ComplexVector::new(ndim);
-    solver.actual.factorize(&coo, Some(params))?;
+    solver.actual.preprocess(&coo, Some(params))?;
     solver.actual.solve(&mut x, &b, false)?;
     println!("x =\n{}", x);
 

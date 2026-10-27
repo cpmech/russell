@@ -23,8 +23,8 @@ fn main() -> Result<(), StrError> {
     coo.put(2, 1, cpx!(-1.0, 1.0))?;
     coo.put(2, 2, cpx!(2.0, -1.0))?;
 
-    // call factorize
-    umfpack.factorize(&coo, None)?;
+    // call preprocess
+    umfpack.preprocess(&coo, None)?;
 
     // right-hand side vector
     let b = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);

@@ -256,8 +256,8 @@ impl<'a, A> Radau5<'a, A> {
 
     /// Factorizes the real and complex systems in serial
     fn factorize(&mut self) -> Result<(), StrError> {
-        self.solver_real.actual.factorize(&self.kk_real, self.params.newton.lin_sol_params)?;
-        self.solver_comp.actual.factorize(&self.kk_comp, self.params.newton.lin_sol_params)
+        self.solver_real.actual.preprocess(&self.kk_real, self.params.newton.lin_sol_params)?;
+        self.solver_comp.actual.preprocess(&self.kk_comp, self.params.newton.lin_sol_params)
     }
 
     /// Factorizes the real and complex systems concurrently
@@ -266,13 +266,13 @@ impl<'a, A> Radau5<'a, A> {
             let handle_real = scope.spawn(|| {
                 self.solver_real
                     .actual
-                    .factorize(&self.kk_real, self.params.newton.lin_sol_params)
+                    .preprocess(&self.kk_real, self.params.newton.lin_sol_params)
                     .unwrap();
             });
             let handle_comp = scope.spawn(|| {
                 self.solver_comp
                     .actual
-                    .factorize(&self.kk_comp, self.params.newton.lin_sol_params)
+                    .preprocess(&self.kk_comp, self.params.newton.lin_sol_params)
                     .unwrap();
             });
             let err_real = handle_real.join();
@@ -901,7 +901,7 @@ mod tests {
 
     #[test]
     fn radau5_works_mass_matrix() {
-        let genie = Genie::Native;
+        let genie = Genie::Direct;
         for symmetric in [true, false] {
             for numerical in [true, false] {
                 // problem

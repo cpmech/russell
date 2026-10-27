@@ -1,12 +1,12 @@
 use super::{ComplexCooMatrix, ComplexCscMatrix, ComplexLinSolTrait, LinSolParams, StatsLinSol, Sym};
 use crate::StrError;
-use crate::solver_native::{native_error, native_stats};
-use algebra_linear::sparse::{CscPattern, CscView, LuMethod, LuSolver, LuSymbolic, SparseLuStats};
+use crate::solver_direct::direct_error;
+use algebra_linear::sparse::{LuMethod, SparseLu, SparseLuStats};
 use russell_lab::{Complex64, ComplexVector, Stopwatch};
 
 /// Solves complex sparse linear systems with the pure-Rust LU from `algebra_linear`
 ///
-/// Complex twin of [`SolverNative`](crate::SolverNative). The supported
+/// Complex twin of [`SolverDirect`](crate::SolverDirect). The supported
 /// parameters, the determinant restriction and the statistics accessor are the
 /// same; see that type for the details.
 ///
@@ -25,8 +25,8 @@ use russell_lab::{Complex64, ComplexVector, Stopwatch};
 ///     coo.put(1, 0, cpx!(1.0, 0.0))?;
 ///     coo.put(1, 1, cpx!(1.0, -1.0))?;
 ///
-///     let mut solver = ComplexSolverNative::new()?;
-///     solver.factorize(&coo, None)?;
+///     let mut solver = ComplexSolverDirect::new()?;
+///     solver.preprocess(&coo, None)?;
 ///
 ///     let rhs = ComplexVector::from(&[cpx!(1.0, 0.0), cpx!(1.0, 0.0)]);
 ///     let mut x = ComplexVector::new(2);
@@ -34,32 +34,26 @@ use russell_lab::{Complex64, ComplexVector, Stopwatch};
 ///     Ok(())
 /// }
 /// ```
-pub struct ComplexSolverNative {
-    /// Holds the CSC matrix used in the last factorization
+pub struct ComplexSolverDirect {
+    /// Holds the CSC matrix used in the last preprocess
     csc: Option<ComplexCscMatrix>,
 
-    /// The symbolic analysis, reused while the structure does not change
-    symbolic: Option<LuSymbolic>,
-
-    /// The numeric factors
-    factors: Option<LuSolver<Complex64>>,
-
-    /// Statistics of the last factorization
-    stats: Option<SparseLuStats>,
+    /// The opaque LU handle
+    lu: Option<SparseLu<Complex64>>,
 
     /// Indicates whether the solver has been initialized or not
     initialized: bool,
 
-    /// Indicates whether the sparse matrix has been factorized or not
-    factorized: bool,
+    /// Indicates whether the sparse matrix has been preprocessed or not
+    preprocessed: bool,
 
-    /// Holds the symmetric flag saved at the first factorization
+    /// Holds the symmetric flag saved at the first preprocess
     initialized_sym: Sym,
 
-    /// Holds the matrix dimension saved at the first factorization
+    /// Holds the matrix dimension saved at the first preprocess
     initialized_ndim: usize,
 
-    /// Holds the number of non-zeros saved at the first factorization
+    /// Holds the number of non-zeros saved at the first preprocess
     initialized_nnz: usize,
 
     /// Stopwatch to measure computation times
@@ -69,40 +63,38 @@ pub struct ComplexSolverNative {
     time_initialize_ns: u128,
 
     /// Time spent on the numeric factorization in nanoseconds
-    time_factorize_ns: u128,
+    time_preprocess_ns: u128,
 
     /// Time spent on the solve in nanoseconds
     time_solve_ns: u128,
 }
 
-impl ComplexSolverNative {
+impl ComplexSolverDirect {
     /// Allocates a new instance
     pub fn new() -> Result<Self, StrError> {
-        Ok(ComplexSolverNative {
+        Ok(ComplexSolverDirect {
             csc: None,
-            symbolic: None,
-            factors: None,
-            stats: None,
+            lu: None,
             initialized: false,
-            factorized: false,
+            preprocessed: false,
             initialized_sym: Sym::No,
             initialized_ndim: 0,
             initialized_nnz: 0,
             stopwatch: Stopwatch::new(),
             time_initialize_ns: 0,
-            time_factorize_ns: 0,
+            time_preprocess_ns: 0,
             time_solve_ns: 0,
         })
     }
 
-    /// Returns the statistics of the last factorization, if any
+    /// Returns the statistics of the last preprocess, if any
     pub fn stats(&self) -> Option<&SparseLuStats> {
-        self.stats.as_ref()
+        self.lu.as_ref().and_then(|lu| lu.stats())
     }
 }
 
-impl ComplexLinSolTrait for ComplexSolverNative {
-    fn factorize(&mut self, mat: &ComplexCooMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
+impl ComplexLinSolTrait for ComplexSolverDirect {
+    fn preprocess(&mut self, mat: &ComplexCooMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
         if mat.nrow != mat.ncol {
             return Err("the matrix must be square");
         }
@@ -110,7 +102,7 @@ impl ComplexLinSolTrait for ComplexSolverNative {
             return Err("the COO matrix must have at least one non-zero value");
         }
         if mat.symmetric == Sym::YesLower || mat.symmetric == Sym::YesUpper {
-            return Err("Native requires Sym::YesFull for symmetric matrices");
+            return Err("Direct requires Sym::YesFull for symmetric matrices");
         }
         if let Some(par) = params {
             if par.compute_determinant {
@@ -120,7 +112,7 @@ impl ComplexLinSolTrait for ComplexSolverNative {
 
         // Pick the factorization before the first analysis; later calls reuse it.
         let method = match params {
-            Some(par) if par.native_supernodal => LuMethod::Supernodal,
+            Some(par) if par.direct_supernodal => LuMethod::Supernodal,
             _ => LuMethod::Simplicial,
         };
 
@@ -133,11 +125,16 @@ impl ComplexLinSolTrait for ComplexSolverNative {
             let nnz = csc.get_info().2;
             let col_pointers: Vec<usize> = csc.get_col_pointers()[..=mat.ncol].iter().map(|&p| p as usize).collect();
             let row_indices: Vec<usize> = csc.get_row_indices()[..nnz].iter().map(|&i| i as usize).collect();
-            let pattern = CscPattern::new(mat.nrow, mat.ncol, &col_pointers, &row_indices).map_err(native_error)?;
-            let symbolic = LuSymbolic::analyze(pattern, method).map_err(native_error)?;
+            let mut lu = SparseLu::analyze(&col_pointers, &row_indices, method).map_err(direct_error)?;
             self.time_initialize_ns = self.stopwatch.stop();
+
+            self.stopwatch.reset();
+            lu.factorize(&col_pointers, &row_indices, &csc.get_values()[..nnz])
+                .map_err(direct_error)?;
+            self.time_preprocess_ns = self.stopwatch.stop();
+
             self.csc = Some(csc);
-            self.symbolic = Some(symbolic);
+            self.lu = Some(lu);
             self.initialized = true;
         } else {
             if mat.symmetric != self.initialized_sym {
@@ -149,28 +146,27 @@ impl ComplexLinSolTrait for ComplexSolverNative {
             if mat.nnz != self.initialized_nnz {
                 return Err("subsequent factorizations must use the same matrix (nnz differs)");
             }
+            self.stopwatch.reset();
             let csc = ComplexCscMatrix::from_coo(mat)?;
+            let nnz = csc.get_info().2;
+            let col_pointers: Vec<usize> = csc.get_col_pointers()[..=mat.ncol].iter().map(|&p| p as usize).collect();
+            let row_indices: Vec<usize> = csc.get_row_indices()[..nnz].iter().map(|&i| i as usize).collect();
+            self.lu
+                .as_mut()
+                .unwrap()
+                .factorize(&col_pointers, &row_indices, &csc.get_values()[..nnz])
+                .map_err(direct_error)?;
+            self.time_preprocess_ns = self.stopwatch.stop();
             self.csc = Some(csc);
         }
 
-        let csc = self.csc.as_ref().unwrap();
-        let nnz = csc.get_info().2;
-        let col_pointers: Vec<usize> = csc.get_col_pointers()[..=mat.ncol].iter().map(|&p| p as usize).collect();
-        let row_indices: Vec<usize> = csc.get_row_indices()[..nnz].iter().map(|&i| i as usize).collect();
-        let view = CscView::new(mat.nrow, mat.ncol, &col_pointers, &row_indices, &csc.get_values()[..nnz]).map_err(native_error)?;
-
-        self.stopwatch.reset();
-        let factors = self.symbolic.as_ref().unwrap().factorize(view).map_err(native_error)?;
-        self.time_factorize_ns = self.stopwatch.stop();
-        self.stats = Some(native_stats(&factors, mat.nrow, mat.nnz, self.time_initialize_ns, self.time_factorize_ns));
-        self.factors = Some(factors);
-        self.factorized = true;
+        self.preprocessed = true;
         Ok(())
     }
 
     fn solve(&mut self, x: &mut ComplexVector, rhs: &ComplexVector, _verbose: bool) -> Result<(), StrError> {
-        if !self.factorized {
-            return Err("the function factorize must be called before solve");
+        if !self.preprocessed {
+            return Err("the function preprocess must be called before solve");
         }
         if x.dim() != self.initialized_ndim {
             return Err("the dimension of the vector of unknown values x is incorrect");
@@ -180,17 +176,17 @@ impl ComplexLinSolTrait for ComplexSolverNative {
         }
         x.as_mut_data().copy_from_slice(rhs.as_data());
         self.stopwatch.reset();
-        self.factors.as_ref().unwrap().solve(x.as_mut_data()).map_err(native_error)?;
+        self.lu.as_ref().unwrap().solve(x.as_mut_data()).map_err(direct_error)?;
         self.time_solve_ns = self.stopwatch.stop();
         Ok(())
     }
 
     fn update_stats(&self, stats: &mut StatsLinSol) {
-        stats.main.solver = "Native".to_string();
+        stats.main.solver = "Direct".to_string();
         stats.output.effective_ordering = "Colamd".to_string();
         stats.output.effective_scaling = "No".to_string();
         stats.time_nanoseconds.initialize_array.push(self.time_initialize_ns);
-        stats.time_nanoseconds.factorize_array.push(self.time_factorize_ns);
+        stats.time_nanoseconds.preprocess_array.push(self.time_preprocess_ns);
         stats.time_nanoseconds.solve_array.push(self.time_solve_ns);
     }
 
@@ -198,8 +194,8 @@ impl ComplexLinSolTrait for ComplexSolverNative {
         self.time_initialize_ns
     }
 
-    fn get_ns_fact(&self) -> u128 {
-        self.time_factorize_ns
+    fn get_ns_preprocess(&self) -> u128 {
+        self.time_preprocess_ns
     }
 
     fn get_ns_solve(&self) -> u128 {
@@ -214,23 +210,23 @@ mod tests {
     use russell_lab::{complex_vec_approx_eq, cpx};
 
     #[test]
-    fn factorize_handles_errors() {
-        let mut solver = ComplexSolverNative::new().unwrap();
-        assert!(!solver.factorized);
+    fn preprocess_handles_errors() {
+        let mut solver = ComplexSolverDirect::new().unwrap();
+        assert!(!solver.preprocessed);
 
         let (coo, _, _, _) = Samples::complex_rectangular_4x3();
-        assert_eq!(solver.factorize(&coo, None).err(), Some("the matrix must be square"));
+        assert_eq!(solver.preprocess(&coo, None).err(), Some("the matrix must be square"));
 
         let coo = ComplexCooMatrix::new(1, 1, 1, Sym::No).unwrap();
         assert_eq!(
-            solver.factorize(&coo, None).err(),
+            solver.preprocess(&coo, None).err(),
             Some("the COO matrix must have at least one non-zero value")
         );
 
         let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower();
         assert_eq!(
-            solver.factorize(&coo, None).err(),
-            Some("Native requires Sym::YesFull for symmetric matrices")
+            solver.preprocess(&coo, None).err(),
+            Some("Direct requires Sym::YesFull for symmetric matrices")
         );
 
         let mut coo = ComplexCooMatrix::new(2, 2, 2, Sym::No).unwrap();
@@ -239,30 +235,30 @@ mod tests {
         let mut params = LinSolParams::new();
         params.compute_determinant = true;
         assert_eq!(
-            solver.factorize(&coo, Some(params)).err(),
+            solver.preprocess(&coo, Some(params)).err(),
             Some("determinant evaluation is not available for this Genie")
         );
-        solver.factorize(&coo, None).unwrap();
+        solver.preprocess(&coo, None).unwrap();
     }
 
     #[test]
-    fn factorize_and_solve_work() {
-        let mut solver = ComplexSolverNative::new().unwrap();
+    fn preprocess_and_solve_work() {
+        let mut solver = ComplexSolverDirect::new().unwrap();
         let (coo, _, _, _) = Samples::complex_symmetric_3x3_full();
         let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
         let x_correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
         let mut x = ComplexVector::new(3);
-        solver.factorize(&coo, None).unwrap();
+        solver.preprocess(&coo, None).unwrap();
         solver.solve(&mut x, &rhs, false).unwrap();
         complex_vec_approx_eq(&x, x_correct, 1e-13);
 
         let mut stats = StatsLinSol::new();
         solver.update_stats(&mut stats);
-        assert_eq!(stats.main.solver, "Native");
+        assert_eq!(stats.main.solver, "Direct");
         assert_eq!(stats.output.effective_ordering, "Colamd");
         assert_eq!(stats.output.effective_scaling, "No");
         assert!(solver.get_ns_init() > 0);
-        assert!(solver.get_ns_fact() > 0);
+        assert!(solver.get_ns_preprocess() > 0);
         assert!(solver.get_ns_solve() > 0);
         assert!(solver.stats().is_some());
 
@@ -272,11 +268,32 @@ mod tests {
     }
 
     #[test]
+    fn preprocess_detects_a_reordered_pattern() {
+        // Both matrices have the same sym, ndim and nnz, but the first stores
+        // (0,0) (0,1) (1,1) and the second (0,1) (1,0) (1,1).
+        let mut a = ComplexCooMatrix::new(2, 2, 3, Sym::No).unwrap();
+        a.put(0, 0, cpx!(1.0, 0.0)).unwrap();
+        a.put(0, 1, cpx!(2.0, 0.0)).unwrap();
+        a.put(1, 1, cpx!(3.0, 0.0)).unwrap();
+        let mut b = ComplexCooMatrix::new(2, 2, 3, Sym::No).unwrap();
+        b.put(0, 1, cpx!(2.0, 0.0)).unwrap();
+        b.put(1, 0, cpx!(1.0, 0.0)).unwrap();
+        b.put(1, 1, cpx!(3.0, 0.0)).unwrap();
+
+        let mut solver = ComplexSolverDirect::new().unwrap();
+        solver.preprocess(&a, None).unwrap();
+        assert_eq!(
+            solver.preprocess(&b, None),
+            Err("the structure of the matrix changed; allocate a new solver")
+        );
+    }
+
+    #[test]
     fn singular_matrix_is_reported() {
-        let mut solver = ComplexSolverNative::new().unwrap();
+        let mut solver = ComplexSolverDirect::new().unwrap();
         let mut coo = ComplexCooMatrix::new(2, 2, 2, Sym::No).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         coo.put(1, 1, cpx!(0.0, 0.0)).unwrap();
-        assert_eq!(solver.factorize(&coo, None), Err("the matrix is singular"));
+        assert_eq!(solver.preprocess(&coo, None), Err("the matrix is singular"));
     }
 }

@@ -3,13 +3,13 @@ use super::ComplexSolverMUMPS;
 
 #[cfg(feature = "umfpack")]
 use super::ComplexSolverUMFPACK;
-use super::{ComplexCooMatrix, ComplexSolverNative, Genie, LinSolParams, StatsLinSol};
+use super::{ComplexCooMatrix, ComplexSolverDirect, Genie, LinSolParams, StatsLinSol};
 use crate::StrError;
 use russell_lab::ComplexVector;
 
 /// Defines a unified interface for complex linear system solvers
 pub trait ComplexLinSolTrait: Send {
-    /// Performs the factorization (and analysis/initialization if needed)
+    /// Performs the preprocessing (ordering, scaling, symbolic analysis, and numeric factorization)
     ///
     /// # Input
     ///
@@ -19,13 +19,13 @@ pub trait ComplexLinSolTrait: Send {
     /// # Notes
     ///
     /// 1. The structure of the matrix (nrow, ncol, nnz, sym) must be
-    ///    exactly the same among multiple calls to `factorize`. The values may differ
+    ///    exactly the same among multiple calls to `preprocess`. The values may differ
     ///    from call to call, nonetheless.
-    /// 2. The first call to `factorize` will define the structure which must be
+    /// 2. The first call to `preprocess` will define the structure which must be
     ///    kept the same for the next calls.
     /// 3. If the structure of the matrix needs to be changed, the solver must
     ///    be "dropped" and a new solver allocated.
-    fn factorize(&mut self, mat: &ComplexCooMatrix, params: Option<LinSolParams>) -> Result<(), StrError>;
+    fn preprocess(&mut self, mat: &ComplexCooMatrix, params: Option<LinSolParams>) -> Result<(), StrError>;
 
     /// Computes the solution of the linear system
     ///
@@ -46,7 +46,7 @@ pub trait ComplexLinSolTrait: Send {
     /// * `rhs` -- the right-hand side vector with know values an dimension equal to mat.ncol
     /// * `verbose` -- shows messages
     ///
-    /// **Warning:** the matrix must be same one used in `factorize`.
+    /// **Warning:** the matrix must be same one used in `preprocess`.
     fn solve(&mut self, x: &mut ComplexVector, rhs: &ComplexVector, verbose: bool) -> Result<(), StrError>;
 
     /// Updates the stats structure (should be called after solve)
@@ -55,8 +55,8 @@ pub trait ComplexLinSolTrait: Send {
     /// Returns the nanoseconds spent on initialize
     fn get_ns_init(&self) -> u128;
 
-    /// Returns the nanoseconds spent on factorize
-    fn get_ns_fact(&self) -> u128;
+    /// Returns the nanoseconds spent on preprocess
+    fn get_ns_preprocess(&self) -> u128;
 
     /// Returns the nanoseconds spent on solve
     fn get_ns_solve(&self) -> u128;
@@ -79,7 +79,7 @@ impl<'a> ComplexLinSolver<'a> {
         // which feature to enable, instead of needing one whole copy of this match
         // per combination of features.
         let actual: Box<dyn Send + ComplexLinSolTrait> = match genie {
-            Genie::Native => Box::new(ComplexSolverNative::new()?),
+            Genie::Direct => Box::new(ComplexSolverDirect::new()?),
             #[cfg(feature = "mumps")]
             Genie::Mumps => Box::new(ComplexSolverMUMPS::new()?),
             #[cfg(not(feature = "mumps"))]
@@ -116,7 +116,7 @@ impl<'a> ComplexLinSolver<'a> {
     ///
     /// 1. For symmetric matrices, `MUMPS` requires [crate::Sym::YesLower]
     /// 2. For symmetric matrices, `UMFPACK` requires [crate::Sym::YesFull]
-    /// 4. This function calls the actual implementation (genie) via the functions `factorize`, and `solve`.
+    /// 4. This function calls the actual implementation (genie) via the functions `preprocess`, and `solve`.
     /// 5. This function is best for a **single-use**, whereas the actual
     ///    solver should be considered for a recurrent use (e.g., inside a loop).
     ///
@@ -149,7 +149,7 @@ impl<'a> ComplexLinSolver<'a> {
     ///     let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
     ///
     ///     let mut x = ComplexVector::new(ndim);
-    ///     ComplexLinSolver::compute(Genie::Native, &mut x, &mat, &rhs, None)?;
+    ///     ComplexLinSolver::compute(Genie::Direct, &mut x, &mat, &rhs, None)?;
     ///
     ///     let correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
     ///     complex_vec_approx_eq(&x, correct, 1e-14);
@@ -164,7 +164,7 @@ impl<'a> ComplexLinSolver<'a> {
         params: Option<LinSolParams>,
     ) -> Result<Self, StrError> {
         let mut solver = ComplexLinSolver::new(genie)?;
-        solver.actual.factorize(mat, params)?;
+        solver.actual.preprocess(mat, params)?;
         let verbose = if let Some(p) = params { p.verbose } else { false };
         solver.actual.solve(x, rhs, verbose)?;
         Ok(solver)
@@ -199,7 +199,7 @@ mod tests {
         let (coo, _, _, _) = Samples::complex_symmetric_3x3_full();
         let mut x = ComplexVector::new(3);
         let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
-        ComplexLinSolver::compute(Genie::Native, &mut x, &coo, &rhs, None).unwrap();
+        ComplexLinSolver::compute(Genie::Direct, &mut x, &coo, &rhs, None).unwrap();
         let x_correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
         complex_vec_approx_eq(&x, x_correct, 1e-15);
     }

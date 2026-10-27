@@ -152,7 +152,7 @@ pub struct Spc1d<'a> {
     /// Sparse linear solver type
     ///
     /// Determines which solver backend to use (e.g., UMFPACK, MUMPS).
-    /// Default: `Genie::Native`
+    /// Default: `Genie::Direct`
     genie: Genie,
 }
 
@@ -223,7 +223,7 @@ impl<'a> Spc1d<'a> {
             mkx: -kx,
             equations,
             interp: interp_x,
-            genie: Genie::Native,
+            genie: Genie::Direct,
         })
     }
 
@@ -231,7 +231,7 @@ impl<'a> Spc1d<'a> {
     ///
     /// # Input
     ///
-    /// * `genie` - Sparse solver type (e.g., `Genie::Native`, `Genie::Mumps`)
+    /// * `genie` - Sparse solver type (e.g., `Genie::Direct`, `Genie::Mumps`)
     pub fn set_solver_options(&mut self, genie: Genie) {
         self.genie = genie;
     }
@@ -281,7 +281,7 @@ impl<'a> Spc1d<'a> {
 
         // solve the linear system
         let mut solver = LinSolver::new(self.genie)?;
-        solver.actual.factorize(&kk_bar, None)?;
+        solver.actual.preprocess(&kk_bar, None)?;
         solver.actual.solve(&mut a_bar, &f_bar, false)?;
 
         // results
@@ -330,7 +330,7 @@ impl<'a> Spc1d<'a> {
 
         // solve the linear system
         let mut solver = LinSolver::new(self.genie)?;
-        solver.actual.factorize(&mm, None)?;
+        solver.actual.preprocess(&mm, None)?;
         solver.actual.solve(&mut aa, &ff, false)?;
 
         // results

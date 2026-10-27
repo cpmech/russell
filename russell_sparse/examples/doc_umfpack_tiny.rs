@@ -27,8 +27,8 @@ fn main() -> Result<(), StrError> {
                    └                   ┘";
     assert_eq!(format!("{}", a), correct);
 
-    // call factorize
-    umfpack.factorize(&coo, None)?;
+    // call preprocess
+    umfpack.preprocess(&coo, None)?;
 
     // allocate two right-hand side vectors
     let b = Vector::from(&[1.0, 1.0, 1.0]);

@@ -4,7 +4,13 @@
 //!
 //! `russell_ode`: Solvers for ordinary differential equations and differential algebraic equations
 //!
-//! **Important:** This crate depends on external libraries (non-Rust). Thus, please check the [Installation Instructions on the GitHub Repository](https://github.com/cpmech/russell).
+//! **The default build needs no external library:** `russell_lab` ships pure-Rust
+//! BLAS/LAPACK kernels and `russell_sparse` has the pure-Rust Native solver, so the
+//! crate builds on every platform, WebAssembly included. The optional `open_blas`,
+//! `intel_mkl`, `umfpack`, and `mumps` features enable the accelerators and
+//! external solvers; see the
+//! [Installation Instructions on the GitHub Repository](https://github.com/cpmech/russell)
+//! for the platform-specific steps.
 //!
 //! ![arenstorf_dopri8](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/arenstorf_dopri8.svg)
 //!

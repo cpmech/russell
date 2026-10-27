@@ -4,7 +4,12 @@
 //!
 //! `russell_sparse`: Solvers for large sparse linear systems, with a pure-Rust Native backend and optional MUMPS and UMFPACK
 //!
-//! **Important:** the Native backend is pure Rust; UMFPACK (the opt-in `umfpack` feature) and MUMPS (`mumps`) need external libraries. Please check the [Installation Instructions on the GitHub Repository](https://github.com/cpmech/russell).
+//! **The default build needs no external library:** the sparse solver is pure Rust
+//! (the Native backend), so the crate builds on every platform, WebAssembly
+//! included. The optional `open_blas` and `intel_mkl` features accelerate the dense
+//! kernels, while `umfpack` and `mumps` add the external sparse solvers; see the
+//! [Installation Instructions on the GitHub Repository](https://github.com/cpmech/russell)
+//! for the platform-specific steps.
 //!
 //! # Introduction
 //!

@@ -1,18 +1,36 @@
 use crate::StrError;
 use serde::{Deserialize, Serialize};
 
+/// Selects a Krylov method for the iterative solvers
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
+pub enum IterativeMethod {
+    /// Preconditioned conjugate gradients, for symmetric positive-definite systems
+    Cg,
+
+    /// Right-preconditioned BiCGStab, for general square systems
+    BiCgStab,
+
+    /// Right-preconditioned restarted GMRES, for general square systems
+    Gmres,
+}
+
 /// Specifies the underlying library that does all the magic
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub enum Genie {
-    /// Selects MUMPS (multi-frontal massively parallel sparse direct) solver
-    ///
-    /// Reference: <https://mumps-solver.org/index.php>
-    Mumps,
-
     /// Selects the pure-Rust direct solver
     ///
     /// Reference: <https://github.com/cpmech/algebra_linear>
     Direct,
+
+    /// Selects a pure-Rust iterative solver with algebraic multigrid preconditioning
+    ///
+    /// Reference: <https://github.com/ddemidov/amgcl>
+    Iterative(IterativeMethod),
+
+    /// Selects MUMPS (multi-frontal massively parallel sparse direct) solver
+    ///
+    /// Reference: <https://mumps-solver.org/index.php>
+    Mumps,
 
     /// Selects UMFPACK (unsymmetric multi-frontal) solver
     ///
@@ -224,26 +242,31 @@ pub enum Scaling {
 impl Genie {
     /// Returns the Genie by name
     ///
-    /// The recognized names are `direct`, `mumps`, and `umfpack`, compared
-    /// case-insensitively. Any other name yields an error.
+    /// The recognized names are `direct`, `cg`, `bicgstab`, `gmres`, `mumps`,
+    /// and `umfpack`, compared case-insensitively. Any other name yields an
+    /// error.
     ///
     /// # Output
     ///
     /// Returns the [`Genie`] matching `genie`, or
-    /// `"genie must be one of: direct, mumps, umfpack"`.
+    /// `"genie must be one of: direct, cg, bicgstab, gmres, mumps, umfpack"`.
     pub fn from(genie: &str) -> Result<Self, StrError> {
         match genie.to_lowercase().as_str() {
             "direct" => Ok(Genie::Direct),
+            "cg" => Ok(Genie::Iterative(IterativeMethod::Cg)),
+            "bicgstab" => Ok(Genie::Iterative(IterativeMethod::BiCgStab)),
+            "gmres" => Ok(Genie::Iterative(IterativeMethod::Gmres)),
             "mumps" => Ok(Genie::Mumps),
             "umfpack" => Ok(Genie::Umfpack),
-            _ => Err("genie must be one of: direct, mumps, umfpack"),
+            _ => Err("genie must be one of: direct, cg, bicgstab, gmres, mumps, umfpack"),
         }
     }
 
     /// Tells whether this solver is available in the current build
     ///
-    /// The Direct solver is pure Rust and always available. The other two are
-    /// compiled in only when the crate feature of the same name is enabled:
+    /// The Direct and Iterative solvers are pure Rust and always available. The
+    /// other two are compiled in only when the crate feature of the same name
+    /// is enabled:
     ///
     /// * `Mumps` requires the `mumps` feature
     /// * `Umfpack` requires the `umfpack` feature
@@ -254,6 +277,7 @@ impl Genie {
     pub fn is_available(&self) -> bool {
         match self {
             Genie::Direct => true,
+            Genie::Iterative(_) => true,
             Genie::Mumps => cfg!(feature = "mumps"),
             Genie::Umfpack => cfg!(feature = "umfpack"),
         }
@@ -263,21 +287,30 @@ impl Genie {
     pub fn get_sym(&self, symmetric: bool) -> Sym {
         if symmetric {
             match self {
-                Genie::Mumps => Sym::YesLower,
                 Genie::Direct => Sym::YesFull,
+                Genie::Iterative(_) => Sym::YesFull,
+                Genie::Mumps => Sym::YesLower,
                 Genie::Umfpack => Sym::YesFull,
             }
         } else {
             Sym::No
         }
     }
+
+    /// Tells whether this Genie selects an iterative solver
+    pub fn is_iterative(&self) -> bool {
+        matches!(self, Genie::Iterative(_))
+    }
 }
 
 impl std::fmt::Display for Genie {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Genie::Mumps => write!(f, "mumps"),
             Genie::Direct => write!(f, "direct"),
+            Genie::Iterative(IterativeMethod::Cg) => write!(f, "cg"),
+            Genie::Iterative(IterativeMethod::BiCgStab) => write!(f, "bicgstab"),
+            Genie::Iterative(IterativeMethod::Gmres) => write!(f, "gmres"),
+            Genie::Mumps => write!(f, "mumps"),
             Genie::Umfpack => write!(f, "umfpack"),
         }
     }
@@ -457,35 +490,75 @@ mod tests {
     #[test]
     fn genie_functions_work() {
         assert_eq!(Genie::from("direct"), Ok(Genie::Direct));
+        assert_eq!(Genie::from("cg"), Ok(Genie::Iterative(IterativeMethod::Cg)));
+        assert_eq!(Genie::from("bicgstab"), Ok(Genie::Iterative(IterativeMethod::BiCgStab)));
+        assert_eq!(Genie::from("gmres"), Ok(Genie::Iterative(IterativeMethod::Gmres)));
         assert_eq!(Genie::from("mumps"), Ok(Genie::Mumps));
         assert_eq!(Genie::from("umfpack"), Ok(Genie::Umfpack));
 
         assert_eq!(Genie::from("Direct"), Ok(Genie::Direct));
+        assert_eq!(Genie::from("BiCgStab"), Ok(Genie::Iterative(IterativeMethod::BiCgStab)));
+        assert_eq!(Genie::from("GMRES"), Ok(Genie::Iterative(IterativeMethod::Gmres)));
         assert_eq!(Genie::from("Mumps"), Ok(Genie::Mumps));
         assert_eq!(Genie::from("Umfpack"), Ok(Genie::Umfpack));
 
-        // unknown names are errors; there is no fallback
-        assert_eq!(Genie::from("blah-blah-blah"), Err("genie must be one of: direct, mumps, umfpack"));
-
-        let genie = Genie::Mumps;
-        assert_eq!(genie.to_string(), "mumps");
-        assert_eq!(genie.get_sym(false), Sym::No);
-        assert_eq!(genie.get_sym(true), Sym::YesLower);
-
-        let genie = Genie::Umfpack;
-        assert_eq!(genie.to_string(), "umfpack");
-        assert_eq!(genie.get_sym(false,), Sym::No);
-        assert_eq!(genie.get_sym(true), Sym::YesFull);
+        // unknown names are errors; there is no fallback and no aliases
+        let message = "genie must be one of: direct, cg, bicgstab, gmres, mumps, umfpack";
+        assert_eq!(Genie::from("native"), Err(message));
+        assert_eq!(Genie::from("iterative"), Err(message));
+        assert_eq!(Genie::from("blah-blah-blah"), Err(message));
 
         let genie = Genie::Direct;
         assert_eq!(genie.to_string(), "direct");
         assert_eq!(genie.get_sym(false), Sym::No);
         assert_eq!(genie.get_sym(true), Sym::YesFull);
+        assert!(!genie.is_iterative());
+
+        let genie = Genie::Iterative(IterativeMethod::Cg);
+        assert_eq!(genie.to_string(), "cg");
+        assert_eq!(genie.get_sym(false), Sym::No);
+        assert_eq!(genie.get_sym(true), Sym::YesFull);
+        assert!(genie.is_iterative());
+
+        let genie = Genie::Iterative(IterativeMethod::BiCgStab);
+        assert_eq!(genie.to_string(), "bicgstab");
+        assert!(genie.is_iterative());
+
+        let genie = Genie::Iterative(IterativeMethod::Gmres);
+        assert_eq!(genie.to_string(), "gmres");
+        assert!(genie.is_iterative());
+
+        let genie = Genie::Mumps;
+        assert_eq!(genie.to_string(), "mumps");
+        assert_eq!(genie.get_sym(false), Sym::No);
+        assert_eq!(genie.get_sym(true), Sym::YesLower);
+        assert!(!genie.is_iterative());
+
+        let genie = Genie::Umfpack;
+        assert_eq!(genie.to_string(), "umfpack");
+        assert_eq!(genie.get_sym(false,), Sym::No);
+        assert_eq!(genie.get_sym(true), Sym::YesFull);
+        assert!(!genie.is_iterative());
+    }
+
+    #[test]
+    fn genie_iterative_serde_round_trips() {
+        let genie = Genie::Iterative(IterativeMethod::Cg);
+        let json = serde_json::to_string(&genie).unwrap();
+        assert_eq!(json, "{\"Iterative\":\"Cg\"}");
+        let from_json: Genie = serde_json::from_str(&json).unwrap();
+        assert_eq!(from_json, genie);
+
+        // the old name is not an alias for Direct
+        assert!(serde_json::from_str::<Genie>("\"Native\"").is_err());
     }
 
     #[test]
     fn genie_availability_matches_the_features() {
         assert!(Genie::Direct.is_available());
+        assert!(Genie::Iterative(IterativeMethod::Cg).is_available());
+        assert!(Genie::Iterative(IterativeMethod::BiCgStab).is_available());
+        assert!(Genie::Iterative(IterativeMethod::Gmres).is_available());
         assert_eq!(Genie::Mumps.is_available(), cfg!(feature = "mumps"));
         assert_eq!(Genie::Umfpack.is_available(), cfg!(feature = "umfpack"));
     }

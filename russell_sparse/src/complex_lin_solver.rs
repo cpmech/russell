@@ -80,6 +80,7 @@ impl<'a> ComplexLinSolver<'a> {
         // per combination of features.
         let actual: Box<dyn Send + ComplexLinSolTrait> = match genie {
             Genie::Direct => Box::new(ComplexSolverDirect::new()?),
+            Genie::Iterative(_) => return Err("the iterative solvers do not support complex matrices"),
             #[cfg(feature = "mumps")]
             Genie::Mumps => Box::new(ComplexSolverMUMPS::new()?),
             #[cfg(not(feature = "mumps"))]

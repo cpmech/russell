@@ -4,7 +4,7 @@ use super::SolverMUMPS;
 #[cfg(feature = "umfpack")]
 use super::SolverUMFPACK;
 
-use super::{CooMatrix, Genie, LinSolParams, SolverDirect, StatsLinSol};
+use super::{CooMatrix, Genie, LinSolParams, SolverDirect, SolverIterative, StatsLinSol};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -119,6 +119,7 @@ impl<'a> LinSolver<'a> {
         // per combination of features.
         let actual: Box<dyn Send + LinSolTrait> = match genie {
             Genie::Direct => Box::new(SolverDirect::new()?),
+            Genie::Iterative(method) => Box::new(SolverIterative::new(method)?),
             #[cfg(feature = "mumps")]
             Genie::Mumps => Box::new(SolverMUMPS::new()?),
             #[cfg(not(feature = "mumps"))]

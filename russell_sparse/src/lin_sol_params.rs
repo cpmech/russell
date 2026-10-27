@@ -1,5 +1,107 @@
 use super::{Ordering, Scaling};
 
+/// Selects the preconditioner used by the iterative solvers
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Preconditioner {
+    /// Algebraic multigrid
+    Amg,
+
+    /// Identity (no preconditioning)
+    Identity,
+}
+
+/// Selects the AMG coarsening strategy
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum AmgCoarsening {
+    /// Classical Ruge-Stüben C/F splitting with direct interpolation
+    RugeStuben,
+
+    /// Piecewise-constant tentative prolongation with scaled Galerkin products
+    Aggregation,
+
+    /// Strongly filtered, damped-Jacobi-smoothed tentative prolongation
+    SmoothedAggregation,
+}
+
+/// Selects the AMG smoother
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum AmgSmoother {
+    /// Forward pre-sweeps and backward post-sweeps of Gauss-Seidel
+    GaussSeidel,
+
+    /// Damped Jacobi with the AMGCL default damping factor
+    ///
+    /// This maps to `Smoother::DampedJacobi(0.72)`.
+    DampedJacobi,
+
+    /// Incomplete LU with zero fill-in
+    Ilu0,
+
+    /// Chebyshev polynomial relaxation
+    Chebyshev,
+
+    /// Diagonal sparse approximate inverse
+    Spai0,
+
+    /// Sparse approximate inverse with the sparsity pattern of the system matrix
+    Spai1,
+}
+
+/// Defines the configuration parameters for the iterative solvers
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct IterativeParams {
+    /// Selects the preconditioner
+    pub preconditioner: Preconditioner,
+
+    /// Relative residual target: `‖b-Ax‖₂ ≤ tol * ‖b‖₂`
+    pub tolerance: f64,
+
+    /// Absolute target; the solver stops at the larger of this and the relative target
+    pub absolute_tolerance: f64,
+
+    /// Maximum number of Krylov iterations
+    pub max_iterations: usize,
+
+    /// Maximum Krylov dimension between restarts (GMRES only)
+    pub gmres_restart: usize,
+
+    /// Number of worker threads, including the calling thread
+    pub num_threads: usize,
+
+    /// Minimum vector length or matrix row count before threads are created
+    pub min_parallel_len: usize,
+
+    /// AMG coarsening strategy
+    pub amg_coarsening: AmgCoarsening,
+
+    /// AMG smoother
+    pub amg_smoother: AmgSmoother,
+
+    /// Directly solve AMG levels with at most this many rows
+    pub amg_coarse_enough: usize,
+
+    /// Maximum number of AMG levels, including the finest and coarsest
+    pub amg_max_levels: usize,
+}
+
+impl Default for IterativeParams {
+    fn default() -> Self {
+        IterativeParams {
+            preconditioner: Preconditioner::Amg,
+            tolerance: 1e-10,
+            absolute_tolerance: 0.0,
+            max_iterations: 1000,
+            gmres_restart: 30,
+            num_threads: 1,
+            min_parallel_len: 1024,
+            amg_coarsening: AmgCoarsening::RugeStuben,
+            amg_smoother: AmgSmoother::GaussSeidel,
+            amg_coarse_enough: 64,
+            amg_max_levels: 32,
+        }
+    }
+}
+
 /// Defines the configuration parameters for the linear system solver
 #[derive(Clone, Copy, Debug)]
 pub struct LinSolParams {
@@ -58,6 +160,9 @@ pub struct LinSolParams {
 
     /// Show additional messages
     pub verbose: bool,
+
+    /// Configuration parameters for the iterative solvers
+    pub iterative: IterativeParams,
 }
 
 impl LinSolParams {
@@ -77,6 +182,7 @@ impl LinSolParams {
             umfpack_enforce_unsymmetric_strategy: false,
             direct_supernodal: false,
             verbose: false,
+            iterative: IterativeParams::default(),
         }
     }
 }
@@ -85,7 +191,7 @@ impl LinSolParams {
 
 #[cfg(test)]
 mod tests {
-    use super::LinSolParams;
+    use super::{AmgCoarsening, AmgSmoother, IterativeParams, LinSolParams, Preconditioner};
     use crate::{Ordering, Scaling};
 
     #[test]
@@ -109,5 +215,22 @@ mod tests {
         assert_eq!(params.mumps_num_threads, 0);
         assert!(!params.umfpack_enforce_unsymmetric_strategy);
         assert!(!params.direct_supernodal);
+        assert_eq!(params.iterative, IterativeParams::default());
+    }
+
+    #[test]
+    fn iterative_params_default_works() {
+        let params = IterativeParams::default();
+        assert_eq!(params.preconditioner, Preconditioner::Amg);
+        assert_eq!(params.tolerance, 1e-10);
+        assert_eq!(params.absolute_tolerance, 0.0);
+        assert_eq!(params.max_iterations, 1000);
+        assert_eq!(params.gmres_restart, 30);
+        assert_eq!(params.num_threads, 1);
+        assert_eq!(params.min_parallel_len, 1024);
+        assert_eq!(params.amg_coarsening, AmgCoarsening::RugeStuben);
+        assert_eq!(params.amg_smoother, AmgSmoother::GaussSeidel);
+        assert_eq!(params.amg_coarse_enough, 64);
+        assert_eq!(params.amg_max_levels, 32);
     }
 }

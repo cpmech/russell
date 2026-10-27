@@ -7,6 +7,7 @@ fn test_solver(genie: Genie) {
     match genie {
         Genie::Mumps => println!("Testing MUMPS solver\n"),
         Genie::Direct => println!("Testing Direct solver\n"),
+        Genie::Iterative(_) => println!("Testing iterative solver\n"),
         Genie::Umfpack => println!("Testing UMFPACK solver\n"),
     }
 
@@ -49,6 +50,10 @@ fn test_complex_solver(genie: Genie) {
     match genie {
         Genie::Mumps => println!("Testing Complex MUMPS solver\n"),
         Genie::Direct => println!("Testing Complex Direct solver\n"),
+        Genie::Iterative(_) => {
+            println!("Skipping the complex iterative solver\n");
+            return;
+        }
         Genie::Umfpack => println!("Testing Complex UMFPACK solver\n"),
     }
 
@@ -63,6 +68,7 @@ fn test_complex_solver(genie: Genie) {
     let coo = match genie {
         Genie::Mumps => Samples::complex_symmetric_3x3_lower().0,
         Genie::Direct => Samples::complex_symmetric_3x3_full().0,
+        Genie::Iterative(_) => unreachable!("the complex iterative solver is not supported"),
         Genie::Umfpack => Samples::complex_symmetric_3x3_full().0,
     };
 
@@ -94,6 +100,7 @@ fn test_solver_singular(genie: Genie) {
     match genie {
         Genie::Mumps => println!("Testing MUMPS solver (singular matrix)\n"),
         Genie::Direct => println!("Testing Direct solver (singular matrix)\n"),
+        Genie::Iterative(_) => println!("Testing iterative solver (singular matrix)\n"),
         Genie::Umfpack => println!("Testing UMFPACK solver (singular matrix)\n"),
     }
 

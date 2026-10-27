@@ -37,6 +37,7 @@
 //! We call the actual linear system solver implementations [Genie] because they work like "magic" after being "wrapped" via a C-interface. Note that these fantastic solvers are implemented in Fortran and C. You may easily access the linear solvers directly via the following structures:
 //!
 //! * [SolverDirect] -- pure-Rust LU factorization from `algebra_linear` (always available)
+//! * [SolverIterative] -- pure-Rust Krylov solvers with algebraic multigrid (always available)
 //! * **SolverMUMPS** (optional) -- thin wrapper to the MUMPS solver
 //! * `SolverUMFPACK` (optional, behind the `umfpack` feature) -- thin wrapper to the UMFPACK solver
 //!
@@ -47,7 +48,7 @@
 //! * [LinSolTrait::preprocess()] -- performs the initialization of the linear solver, if needed, analysis, and symbolic and numerical factorization of the coefficient matrix A from A * x = b
 //! * [LinSolTrait::solve()] -- find x from the linear system A * x = b after completing the factorization.
 //!
-//! If the **structure** of the coefficient matrix remains constant, but its values change during a simulation, we can repeatedly call `preprocess` again to perform the factorization. However, if the structure changes, the solver must be **dropped** and another solver allocated to force the **initialization** process.
+//! If the **structure** of the coefficient matrix remains constant, but its values change during a simulation, we can repeatedly call `preprocess` again to perform the factorization. However, if the structure changes, the solver must be **dropped** and another solver allocated to force the **initialization** process. This rule applies to the direct solvers; [SolverIterative] rebuilds its state on every `preprocess` and accepts a new structure.
 //!
 //! We call the **structure** of the coefficient matrix A from A * x = b the set with the following characteristics:
 //!
@@ -363,6 +364,7 @@ pub mod prelude;
 mod read_matrix_market;
 mod samples;
 mod solver_direct;
+mod solver_iterative;
 #[cfg(feature = "umfpack")]
 mod solver_umfpack;
 mod stats_lin_sol;
@@ -386,6 +388,7 @@ pub use numerical_jacobian::*;
 pub use read_matrix_market::*;
 pub use samples::*;
 pub use solver_direct::*;
+pub use solver_iterative::*;
 #[cfg(feature = "umfpack")]
 pub use solver_umfpack::*;
 pub use stats_lin_sol::*;

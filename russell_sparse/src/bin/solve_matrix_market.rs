@@ -13,7 +13,7 @@ struct Options {
     /// Matrix-market file
     matrix_market_file: String,
 
-    /// Solver selection: `direct`, `mumps`, or `umfpack`
+    /// Solver selection; accepted values: `direct`, `cg`, `bicgstab`, `gmres`, `mumps`, or `umfpack`
     #[structopt(short = "g", long, default_value = "Direct")]
     genie: String,
 
@@ -65,6 +65,10 @@ struct Options {
     #[structopt(long)]
     direct_supernodal: bool,
 
+    /// Iterative solver options (ignored by `direct`, `mumps`, and `umfpack`)
+    #[structopt(flatten)]
+    iterative: IterativeOptions,
+
     /// Writes vismatrix file
     #[structopt(long)]
     vismatrix: bool,
@@ -83,6 +87,54 @@ struct Options {
     nrun: u32,
 }
 
+// Iterative solver options (ignored by `direct`, `mumps`, and `umfpack`)
+#[derive(StructOpt, Debug)]
+struct IterativeOptions {
+    /// Relative residual tolerance (iterative solvers; ignored by `direct`, `mumps`, and `umfpack`)
+    #[structopt(long, default_value = "1e-10")]
+    iter_tol: f64,
+
+    /// Absolute residual tolerance (iterative solvers; ignored by `direct`, `mumps`, and `umfpack`)
+    #[structopt(long, default_value = "0")]
+    iter_abs_tol: f64,
+
+    /// Maximum number of Krylov iterations (ignored by `direct`, `mumps`, and `umfpack`)
+    #[structopt(long, default_value = "1000")]
+    iter_max: usize,
+
+    /// Preconditioner: `amg` or `identity` (ignored by `direct`, `mumps`, and `umfpack`)
+    #[structopt(long, default_value = "amg")]
+    iter_precond: String,
+
+    /// GMRES restart dimension (GMRES only; ignored by `direct`, `mumps`, and `umfpack`)
+    #[structopt(long, default_value = "30")]
+    iter_restart: usize,
+
+    /// Number of threads for the Krylov and AMG kernels (ignored by `direct`, `mumps`, and `umfpack`)
+    #[structopt(long, default_value = "1")]
+    iter_threads: usize,
+
+    /// Minimum vector length before threads are used (ignored by `direct`, `mumps`, and `umfpack`)
+    #[structopt(long, default_value = "1024")]
+    iter_min_parallel_len: usize,
+
+    /// AMG coarsening: `ruge-stuben`, `aggregation`, or `smoothed-aggregation` (ignored by `direct`, `mumps`, and `umfpack`)
+    #[structopt(long, default_value = "ruge-stuben")]
+    amg_coarsening: String,
+
+    /// AMG smoother: `gauss-seidel`, `damped-jacobi`, `ilu0`, `chebyshev`, `spai0`, or `spai1` (ignored by `direct`, `mumps`, and `umfpack`)
+    #[structopt(long, default_value = "gauss-seidel")]
+    amg_smoother: String,
+
+    /// AMG size at which the coarsest level is solved directly (ignored by `direct`, `mumps`, and `umfpack`)
+    #[structopt(long, default_value = "64")]
+    amg_coarse_enough: usize,
+
+    /// Maximum number of AMG levels (ignored by `direct`, `mumps`, and `umfpack`)
+    #[structopt(long, default_value = "32")]
+    amg_max_levels: usize,
+}
+
 fn main() -> Result<(), StrError> {
     // parse options
     let opt = Options::from_args();
@@ -95,15 +147,19 @@ fn main() -> Result<(), StrError> {
     // select linear solver
     let genie = match opt.genie.to_lowercase().as_str() {
         "direct" => Genie::Direct,
+        "cg" => Genie::Iterative(IterativeMethod::Cg),
+        "bicgstab" => Genie::Iterative(IterativeMethod::BiCgStab),
+        "gmres" => Genie::Iterative(IterativeMethod::Gmres),
         "mumps" => Genie::Mumps,
         "umfpack" => Genie::Umfpack,
-        _ => return Err("genie must be one of: direct, mumps, umfpack"),
+        _ => return Err("genie must be one of: direct, cg, bicgstab, gmres, mumps, umfpack"),
     };
 
     // select the symmetric handling option
     let handling = match genie {
         Genie::Mumps => MMsym::LeaveAsLower,
         Genie::Direct => MMsym::MakeItFull,
+        Genie::Iterative(_) => MMsym::MakeItFull,
         Genie::Umfpack => MMsym::MakeItFull,
     };
 
@@ -120,6 +176,17 @@ fn main() -> Result<(), StrError> {
     params.compute_condition_numbers = opt.condition_numbers;
     params.mumps_override_prevent_nt_issue_with_openblas = opt.override_prevent_issue;
     params.verbose = opt.verbose;
+    params.iterative.tolerance = opt.iterative.iter_tol;
+    params.iterative.absolute_tolerance = opt.iterative.iter_abs_tol;
+    params.iterative.max_iterations = opt.iterative.iter_max;
+    params.iterative.preconditioner = parse_preconditioner(&opt.iterative.iter_precond)?;
+    params.iterative.gmres_restart = opt.iterative.iter_restart;
+    params.iterative.num_threads = opt.iterative.iter_threads;
+    params.iterative.min_parallel_len = opt.iterative.iter_min_parallel_len;
+    params.iterative.amg_coarsening = parse_amg_coarsening(&opt.iterative.amg_coarsening)?;
+    params.iterative.amg_smoother = parse_amg_smoother(&opt.iterative.amg_smoother)?;
+    params.iterative.amg_coarse_enough = opt.iterative.amg_coarse_enough;
+    params.iterative.amg_max_levels = opt.iterative.amg_max_levels;
     if !using_intel_mkl() && opt.override_prevent_issue {
         println!("... WARNING: overriding the prevention of issue with OpenBLAS ...");
     }
@@ -194,6 +261,7 @@ fn main() -> Result<(), StrError> {
                 let tolerance = match genie {
                     Genie::Mumps => 1e-10,
                     Genie::Direct => 1e-10,
+                    Genie::Iterative(_) => 1e-10,
                     Genie::Umfpack => 1e-10,
                 };
                 let correct_x = get_bfwb62_correct_x();
@@ -268,6 +336,38 @@ fn main() -> Result<(), StrError> {
 
     // done
     Ok(())
+}
+
+/// Parses the `--iter-precond` option
+fn parse_preconditioner(value: &str) -> Result<Preconditioner, StrError> {
+    match value.to_lowercase().as_str() {
+        "amg" => Ok(Preconditioner::Amg),
+        "identity" => Ok(Preconditioner::Identity),
+        _ => Err("iter-precond must be one of: amg, identity"),
+    }
+}
+
+/// Parses the `--amg-coarsening` option
+fn parse_amg_coarsening(value: &str) -> Result<AmgCoarsening, StrError> {
+    match value.to_lowercase().as_str() {
+        "ruge-stuben" => Ok(AmgCoarsening::RugeStuben),
+        "aggregation" => Ok(AmgCoarsening::Aggregation),
+        "smoothed-aggregation" => Ok(AmgCoarsening::SmoothedAggregation),
+        _ => Err("amg-coarsening must be one of: ruge-stuben, aggregation, smoothed-aggregation"),
+    }
+}
+
+/// Parses the `--amg-smoother` option
+fn parse_amg_smoother(value: &str) -> Result<AmgSmoother, StrError> {
+    match value.to_lowercase().as_str() {
+        "gauss-seidel" => Ok(AmgSmoother::GaussSeidel),
+        "damped-jacobi" => Ok(AmgSmoother::DampedJacobi),
+        "ilu0" => Ok(AmgSmoother::Ilu0),
+        "chebyshev" => Ok(AmgSmoother::Chebyshev),
+        "spai0" => Ok(AmgSmoother::Spai0),
+        "spai1" => Ok(AmgSmoother::Spai1),
+        _ => Err("amg-smoother must be one of: gauss-seidel, damped-jacobi, ilu0, chebyshev, spai0, spai1"),
+    }
 }
 
 fn get_bfwb62_correct_x() -> Vector {

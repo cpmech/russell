@@ -231,6 +231,25 @@ impl Genie {
         }
     }
 
+    /// Tells whether this solver is available in the current build
+    ///
+    /// The Native solver is pure Rust and always available. The other two are
+    /// compiled in only when the crate feature of the same name is enabled:
+    ///
+    /// * `Mumps` requires the `mumps` feature
+    /// * `Umfpack` requires the `umfpack` feature
+    ///
+    /// The answer is fixed at compile time, so a solver reported as unavailable
+    /// can never be constructed; trying would make [crate::LinSolver::new] return
+    /// an error naming the feature to enable.
+    pub fn is_available(&self) -> bool {
+        match self {
+            Genie::Native => true,
+            Genie::Mumps => cfg!(feature = "mumps"),
+            Genie::Umfpack => cfg!(feature = "umfpack"),
+        }
+    }
+
     /// Returns the solver's required Sym type
     pub fn get_sym(&self, symmetric: bool) -> Sym {
         if symmetric {
@@ -445,6 +464,13 @@ mod tests {
         assert_eq!(genie.to_string(), "umfpack");
         assert_eq!(genie.get_sym(false,), Sym::No);
         assert_eq!(genie.get_sym(true), Sym::YesFull);
+    }
+
+    #[test]
+    fn genie_availability_matches_the_features() {
+        assert!(Genie::Native.is_available());
+        assert_eq!(Genie::Mumps.is_available(), cfg!(feature = "mumps"));
+        assert_eq!(Genie::Umfpack.is_available(), cfg!(feature = "umfpack"));
     }
 
     #[test]

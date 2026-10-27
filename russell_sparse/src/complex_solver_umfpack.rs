@@ -104,7 +104,7 @@ unsafe extern "C" {
 ///     coo.put(2, 1, cpx!(-1.0, 1.0))?;
 ///     coo.put(2, 2, cpx!(2.0, -1.0))?;
 ///
-///     umfpack.factorize(&coo, None)?;
+///     umfpack.preprocess(&coo, None)?;
 ///
 ///     let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
 ///
@@ -120,7 +120,7 @@ pub struct ComplexSolverUMFPACK {
     /// Holds a pointer to the C interface to UMFPACK
     solver: *mut InterfaceComplexUMFPACK,
 
-    /// Holds the CSC matrix used in factorize
+    /// Holds the CSC matrix used in preprocess
     csc: Option<ComplexCscMatrix>,
 
     /// Indicates whether the solver has been initialized or not (just once)
@@ -138,16 +138,16 @@ pub struct ComplexSolverUMFPACK {
     /// Holds the number of non-zeros saved in initialize
     initialized_nnz: usize,
 
-    /// Holds the used strategy (after factorize)
+    /// Holds the used strategy (after preprocess)
     effective_strategy: i32,
 
-    /// Holds the used ordering (after factorize)
+    /// Holds the used ordering (after preprocess)
     effective_ordering: i32,
 
-    /// Holds the used scaling (after factorize)
+    /// Holds the used scaling (after preprocess)
     effective_scaling: i32,
 
-    /// Reciprocal condition number estimate (after factorize)
+    /// Reciprocal condition number estimate (after preprocess)
     rcond_estimate: f64,
 
     /// Holds the determinant coefficient (if requested) (real part)
@@ -171,8 +171,8 @@ pub struct ComplexSolverUMFPACK {
     /// Time spent on initialize in nanoseconds
     time_initialize_ns: u128,
 
-    /// Time spent on factorize in nanoseconds
-    time_factorize_ns: u128,
+    /// Time spent on preprocess in nanoseconds
+    time_preprocess_ns: u128,
 
     /// Time spent on solve in nanoseconds
     time_solve_ns: u128,
@@ -212,7 +212,7 @@ impl ComplexSolverUMFPACK {
                 determinant_exponent: 0.0,
                 stopwatch: Stopwatch::new(),
                 time_initialize_ns: 0,
-                time_factorize_ns: 0,
+                time_preprocess_ns: 0,
                 time_solve_ns: 0,
             })
         }
@@ -220,7 +220,7 @@ impl ComplexSolverUMFPACK {
 }
 
 impl ComplexLinSolTrait for ComplexSolverUMFPACK {
-    /// Performs the factorization (and analysis/initialization if needed)
+    /// Performs the preprocessing (ordering, scaling, symbolic analysis, and numeric factorization)
     ///
     /// # Input
     ///
@@ -228,7 +228,7 @@ impl ComplexLinSolTrait for ComplexSolverUMFPACK {
     ///   if symmetric, the symmetric flag must be [Sym::YesFull]
     /// * `params` -- configuration parameters; None => use default
     ///
-    /// **Important:** `params` must be set to `None` when calling `factorize` again;
+    /// **Important:** `params` must be set to `None` when calling `preprocess` again;
     /// e.g., when the values of the coefficient matrix change but the structure remains the same.
     /// This limitation is required because the first factorization performs both the *symbolic* and
     /// *numeric* factorizations, whereas the subsequent factorizations are only *numeric*. Thus,
@@ -237,14 +237,14 @@ impl ComplexLinSolTrait for ComplexSolverUMFPACK {
     /// # Notes
     ///
     /// 1. The structure of the matrix (nrow, ncol, nnz, sym) must be
-    ///    exactly the same among multiple calls to `factorize`. The values may differ
+    ///    exactly the same among multiple calls to `preprocess`. The values may differ
     ///    from call to call, nonetheless.
-    /// 2. The first call to `factorize` will define the structure which must be
+    /// 2. The first call to `preprocess` will define the structure which must be
     ///    kept the same for the next calls.
     /// 3. If the structure of the matrix needs to be changed, the solver must
     ///    be "dropped" and a new solver allocated.
     /// 4. For symmetric matrices, `UMFPACK` requires [Sym::YesFull].
-    fn factorize(&mut self, mat: &ComplexCooMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
+    fn preprocess(&mut self, mat: &ComplexCooMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
         // convert from COO to CSC
         if self.initialized {
             if mat.symmetric != self.initialized_sym {
@@ -337,7 +337,7 @@ impl ComplexLinSolTrait for ComplexSolverUMFPACK {
                 return Err(handle_umfpack_error_code(status));
             }
         }
-        self.time_factorize_ns = self.stopwatch.stop();
+        self.time_preprocess_ns = self.stopwatch.stop();
 
         // done
         self.factorized = true;
@@ -363,11 +363,11 @@ impl ComplexLinSolTrait for ComplexSolverUMFPACK {
     /// * `rhs` -- the right-hand side vector with know values an dimension equal to mat.nrow
     /// * `verbose` -- shows messages
     ///
-    /// **Warning:** the matrix must be same one used in `factorize`.
+    /// **Warning:** the matrix must be same one used in `preprocess`.
     fn solve(&mut self, x: &mut ComplexVector, rhs: &ComplexVector, verbose: bool) -> Result<(), StrError> {
         // check
         if !self.factorized {
-            return Err("the function factorize must be called before solve");
+            return Err("the function preprocess must be called before solve");
         }
 
         // access CSC matrix
@@ -433,7 +433,7 @@ impl ComplexLinSolTrait for ComplexSolverUMFPACK {
             _ => "Unknown".to_string(),
         };
         stats.time_nanoseconds.initialize_array.push(self.time_initialize_ns);
-        stats.time_nanoseconds.factorize_array.push(self.time_factorize_ns);
+        stats.time_nanoseconds.preprocess_array.push(self.time_preprocess_ns);
         stats.time_nanoseconds.solve_array.push(self.time_solve_ns);
     }
 
@@ -442,9 +442,9 @@ impl ComplexLinSolTrait for ComplexSolverUMFPACK {
         self.time_initialize_ns
     }
 
-    /// Returns the nanoseconds spent on factorize
-    fn get_ns_fact(&self) -> u128 {
-        self.time_factorize_ns
+    /// Returns the nanoseconds spent on preprocess
+    fn get_ns_preprocess(&self) -> u128 {
+        self.time_preprocess_ns
     }
 
     /// Returns the nanoseconds spent on solve
@@ -469,21 +469,21 @@ mod tests {
     }
 
     #[test]
-    fn factorize_handles_errors() {
+    fn preprocess_handles_errors() {
         let mut solver = ComplexSolverUMFPACK::new().unwrap();
         assert!(!solver.factorized);
 
         // initial validation
         let (coo, _, _, _) = Samples::complex_rectangular_4x3();
-        assert_eq!(solver.factorize(&coo, None).err(), Some("the matrix must be square"));
+        assert_eq!(solver.preprocess(&coo, None).err(), Some("the matrix must be square"));
         let coo = ComplexCooMatrix::new(1, 1, 1, Sym::No).unwrap();
         assert_eq!(
-            solver.factorize(&coo, None).err(),
+            solver.preprocess(&coo, None).err(),
             Some("the COO matrix must have at least one non-zero value")
         );
         let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower();
         assert_eq!(
-            solver.factorize(&coo, None).err(),
+            solver.preprocess(&coo, None).err(),
             Some("UMFPACK requires Sym::YesFull for symmetric matrices")
         );
 
@@ -491,34 +491,34 @@ mod tests {
         let mut coo = ComplexCooMatrix::new(2, 2, 2, Sym::No).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         coo.put(1, 1, cpx!(2.0, 0.0)).unwrap();
-        // ... factorize once => OK
-        solver.factorize(&coo, None).unwrap();
+        // ... preprocess once => OK
+        solver.preprocess(&coo, None).unwrap();
         // ... change matrix (symmetric)
         let mut coo = ComplexCooMatrix::new(2, 2, 2, Sym::YesFull).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         coo.put(1, 1, cpx!(2.0, 0.0)).unwrap();
         assert_eq!(
-            solver.factorize(&coo, None).err(),
+            solver.preprocess(&coo, None).err(),
             Some("subsequent factorizations must use the same matrix (symmetric differs)")
         );
         // ... change matrix (ndim)
         let mut coo = ComplexCooMatrix::new(1, 1, 1, Sym::No).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         assert_eq!(
-            solver.factorize(&coo, None).err(),
+            solver.preprocess(&coo, None).err(),
             Some("subsequent factorizations must use the same matrix (ndim differs)")
         );
         // ... change matrix (nnz)
         let mut coo = ComplexCooMatrix::new(2, 2, 1, Sym::No).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         assert_eq!(
-            solver.factorize(&coo, None).err(),
+            solver.preprocess(&coo, None).err(),
             Some("subsequent factorizations must use the same matrix (nnz differs)")
         );
     }
 
     #[test]
-    fn factorize_works() {
+    fn preprocess_works() {
         let mut solver = ComplexSolverUMFPACK::new().unwrap();
         assert!(!solver.factorized);
         let (coo, _, _, _) = Samples::complex_symmetric_3x3_full();
@@ -528,7 +528,7 @@ mod tests {
         params.ordering = Ordering::Amd;
         params.scaling = Scaling::Sum;
 
-        solver.factorize(&coo, Some(params)).unwrap();
+        solver.preprocess(&coo, Some(params)).unwrap();
         assert!(solver.factorized);
 
         assert_eq!(solver.effective_ordering, UMFPACK_ORDERING_AMD);
@@ -538,32 +538,32 @@ mod tests {
         let det = m * f64::powf(10.0, solver.determinant_exponent);
         complex_approx_eq(det, cpx!(6.0, 10.0), 1e-14);
 
-        // calling factorize again works (no determinant check since compute_determinant is false)
-        solver.factorize(&coo, None).unwrap();
+        // calling preprocess again works (no determinant check since compute_determinant is false)
+        solver.preprocess(&coo, None).unwrap();
     }
 
     #[test]
-    fn factorize_fails_when_params_changed_on_second_call() {
+    fn preprocess_fails_when_params_changed_on_second_call() {
         let mut solver = ComplexSolverUMFPACK::new().unwrap();
         let (coo, _, _, _) = Samples::complex_symmetric_3x3_full();
         let mut params = LinSolParams::new();
         params.ordering = Ordering::Amd;
         params.scaling = Scaling::Sum;
-        solver.factorize(&coo, Some(params)).unwrap();
+        solver.preprocess(&coo, Some(params)).unwrap();
         params.ordering = Ordering::Metis;
         assert_eq!(
-            solver.factorize(&coo, Some(params)),
+            solver.preprocess(&coo, Some(params)),
             Err("subsequent factorizations must not change LinSolParams")
         );
     }
 
     #[test]
-    fn factorize_fails_on_singular_matrix() {
+    fn preprocess_fails_on_singular_matrix() {
         let mut solver = ComplexSolverUMFPACK::new().unwrap();
         let mut coo = ComplexCooMatrix::new(2, 2, 2, Sym::No).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         coo.put(1, 1, cpx!(0.0, 0.0)).unwrap();
-        assert_eq!(solver.factorize(&coo, None), Err("Error(1): Matrix is singular"));
+        assert_eq!(solver.preprocess(&coo, None), Err("Error(1): Matrix is singular"));
     }
 
     #[test]
@@ -577,10 +577,10 @@ mod tests {
         let rhs = ComplexVector::new(2);
         assert_eq!(
             solver.solve(&mut x, &rhs, false),
-            Err("the function factorize must be called before solve")
+            Err("the function preprocess must be called before solve")
         );
         let mut x = ComplexVector::new(1);
-        solver.factorize(&coo, None).unwrap();
+        solver.preprocess(&coo, None).unwrap();
         assert_eq!(
             solver.solve(&mut x, &rhs, false),
             Err("the dimension of the vector of unknown values x is incorrect")
@@ -600,7 +600,7 @@ mod tests {
         let mut x = ComplexVector::new(3);
         let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
         let x_correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
-        solver.factorize(&coo, None).unwrap();
+        solver.preprocess(&coo, None).unwrap();
         solver.solve(&mut x, &rhs, false).unwrap();
         complex_vec_approx_eq(&x, x_correct, 1e-14);
 
@@ -615,10 +615,10 @@ mod tests {
         assert_eq!(stats.output.effective_ordering, "Amd");
         assert_eq!(stats.output.effective_scaling, "Sum");
         assert_eq!(stats.time_nanoseconds.initialize_array.len(), 1);
-        assert_eq!(stats.time_nanoseconds.factorize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.preprocess_array.len(), 1);
         assert_eq!(stats.time_nanoseconds.solve_array.len(), 1);
         assert!(solver.get_ns_init() > 0);
-        assert!(solver.get_ns_fact() > 0);
+        assert!(solver.get_ns_preprocess() > 0);
         assert!(solver.get_ns_solve() > 0);
     }
 }

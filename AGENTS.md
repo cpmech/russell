@@ -60,7 +60,7 @@ Extra features:
 ## WebAssembly
 
 The default features must compile for `wasm32-unknown-unknown` and
-`wasm32-wasip1`: the Native solver is pure Rust, and `russell_lab` uses
+`wasm32-wasip1`: the Direct solver (pure Rust) is used, and `russell_lab` uses
 `web-time` for the browser clock and `getrandom/wasm_js` for `russell_stat`'s
 random numbers. Do not enable `umfpack` or `mumps` in a wasm build. File-based
 helpers (Matrix Market, JSON stats) compile on both targets but return errors in
@@ -352,13 +352,13 @@ the Rust builds are cached with `Swatinem/rust-cache`.
 
 - **Ubuntu** compiles MUMPS and SuiteSparse via `zscripts/debian-compile-*.bash`
   (into `/usr/local`, with `RUSSELL_LOCAL_PREFIX` set), then runs the suite four
-  ways: default (Native), `umfpack`, `mumps`, and both. Nightly enforces the
+  ways: default (Direct), `umfpack`, `mumps`, and both. Nightly enforces the
   coverage threshold shown above. A second job installs the packaged
   `libsuitesparse-dev` and runs `umfpack` with `RUSSELL_LOCAL_PREFIX=/nonexistent`,
   exercising the system fallback; `src/util.rs` asserts which source was linked.
 - **Windows** is a matrix over two toolchains: MSYS2 with the GNU toolchain
-  builds MUMPS from source and runs Native, `umfpack`, `mumps` and both; MSVC
-  takes UMFPACK from vcpkg and runs Native and `umfpack`, because the Windows
+  builds MUMPS from source and runs Direct, `umfpack`, `mumps` and both; MSVC
+  takes UMFPACK from vcpkg and runs Direct and `umfpack`, because the Windows
   MUMPS build is MinGW objects plus gfortran. vcpkg's install tree is cached.
 - **macOS** runs the default suite and `--features umfpack` against Homebrew's
   SuiteSparse, and a second job compiles MUMPS with Homebrew's gfortran (see

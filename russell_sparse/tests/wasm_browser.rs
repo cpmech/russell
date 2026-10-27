@@ -1,10 +1,10 @@
-//! Browser-target smoke test for the Native solver.
+//! Browser-target smoke test for the Direct solver.
 //!
 //! The browser target has neither a clock nor a filesystem: the symbolic
 //! analysis and the numeric factorization must read the time through the
 //! browser clock, and the helpers that take a file path can only return an
 //! error. That is the one code path the WASI suite cannot reach, because WASI
-//! does provide both. This test factorizes and solves a small system there.
+//! does provide both. This test preprocesses and solves a small system there.
 #![cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 
 use russell_lab::Vector;
@@ -12,15 +12,15 @@ use russell_sparse::prelude::*;
 use wasm_bindgen_test::*;
 
 #[wasm_bindgen_test]
-fn native_solver_runs_in_the_browser_target() {
+fn direct_solver_runs_in_the_browser_target() {
     // A = [[4, 1], [1, 3]]
-    let mut solver = SolverNative::new().unwrap();
+    let mut solver = SolverDirect::new().unwrap();
     let mut coo = CooMatrix::new(2, 2, 4, Sym::No).unwrap();
     coo.put(0, 0, 4.0).unwrap();
     coo.put(0, 1, 1.0).unwrap();
     coo.put(1, 0, 1.0).unwrap();
     coo.put(1, 1, 3.0).unwrap();
-    solver.factorize(&coo, None).unwrap();
+    solver.preprocess(&coo, None).unwrap();
     let rhs = Vector::from(&[1.0, 2.0]);
     let mut x = Vector::new(2);
     solver.solve(&mut x, &rhs, false).unwrap();

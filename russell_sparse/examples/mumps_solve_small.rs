@@ -45,8 +45,8 @@ fn main() -> Result<(), StrError> {
     params.compute_condition_numbers = true;
     params.verbose = false;
 
-    // call factorize
-    mumps.factorize(&coo, Some(params))?;
+    // call preprocess
+    mumps.preprocess(&coo, Some(params))?;
 
     // allocate x and rhs
     let mut x = Vector::new(ndim);

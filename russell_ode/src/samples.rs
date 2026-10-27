@@ -1271,7 +1271,7 @@ mod tests {
     #[test]
     fn simple_system_with_mass_matrix_works() {
         let alpha = 2.0;
-        let (system, x0, y0, mut args, y_fn_x) = Samples::simple_system_with_mass_matrix(true, Genie::Native);
+        let (system, x0, y0, mut args, y_fn_x) = Samples::simple_system_with_mass_matrix(true, Genie::Direct);
 
         // check initial values
         let mut y0_correct = Vector::new(y0.dim());

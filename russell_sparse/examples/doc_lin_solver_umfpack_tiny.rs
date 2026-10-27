@@ -27,8 +27,8 @@ fn main() -> Result<(), StrError> {
                    └                   ┘";
     assert_eq!(format!("{}", a), correct);
 
-    // call factorize
-    solver.actual.factorize(&coo, None)?;
+    // call preprocess
+    solver.actual.preprocess(&coo, None)?;
 
     // allocate two right-hand side vectors
     let rhs1 = Vector::from(&[1.0, 1.0, 1.0]);

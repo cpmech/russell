@@ -18,7 +18,7 @@ pub struct StatsLinSolMain {
     pub platform: String,
     /// BLAS library selected at build time (e.g., OpenBLAS or Intel MKL)
     pub blas_lib: String,
-    /// Name of the solver that produced the statistics (e.g., `Native`, `Umfpack`, or `MUMPS`)
+    /// Name of the solver that produced the statistics (e.g., `Direct`, `Umfpack`, or `MUMPS`)
     pub solver: String,
     /// Indicates whether MUMPS support was compiled in
     pub mumps: bool,
@@ -99,17 +99,17 @@ pub struct StatsLinSolTimeHuman {
     pub initialize_array: Vec<String>,
     /// Average initialization time
     pub initialize: String,
-    /// Raw factorization times, one per run (not averaged)
-    pub factorize_array: Vec<String>,
-    /// Average factorization time
-    pub factorize: String,
+    /// Raw preprocessing times, one per run (not averaged)
+    pub preprocess_array: Vec<String>,
+    /// Average preprocessing time
+    pub preprocess: String,
     /// Raw solve times, one per run (not averaged)
     pub solve_array: Vec<String>,
     /// Average solve time
     pub solve: String,
-    /// Raw totals of initialize + factorize + solve, one per run (not averaged)
+    /// Raw totals of initialize + preprocess + solve, one per run (not averaged)
     pub total_ifs_array: Vec<String>,
-    /// Average of initialize + factorize + solve
+    /// Average of initialize + preprocess + solve
     pub total_ifs: String,
     /// Time to verify the solution
     pub verify: String,
@@ -124,17 +124,17 @@ pub struct StatsLinSolTimeNanoseconds {
     pub initialize_array: Vec<u128>,
     /// Average initialization time, in nanoseconds
     pub initialize: u128,
-    /// Raw factorization times, one per run (not averaged), in nanoseconds
-    pub factorize_array: Vec<u128>,
-    /// Average factorization time, in nanoseconds
-    pub factorize: u128,
+    /// Raw preprocessing times, one per run (not averaged), in nanoseconds
+    pub preprocess_array: Vec<u128>,
+    /// Average preprocessing time, in nanoseconds
+    pub preprocess: u128,
     /// Raw solve times, one per run (not averaged), in nanoseconds
     pub solve_array: Vec<u128>,
     /// Average solve time, in nanoseconds
     pub solve: u128,
-    /// Raw totals of initialize + factorize + solve, one per run (not averaged), in nanoseconds
+    /// Raw totals of initialize + preprocess + solve, one per run (not averaged), in nanoseconds
     pub total_ifs_array: Vec<u128>,
-    /// Average of initialize + factorize + solve, in nanoseconds
+    /// Average of initialize + preprocess + solve, in nanoseconds
     pub total_ifs: u128,
     /// Time to verify the solution, in nanoseconds
     pub verify: u128,
@@ -218,8 +218,8 @@ impl StatsLinSol {
                 read_matrix: String::new(),
                 initialize_array: Vec::new(),
                 initialize: String::new(),
-                factorize_array: Vec::new(),
-                factorize: String::new(),
+                preprocess_array: Vec::new(),
+                preprocess: String::new(),
                 solve_array: Vec::new(),
                 solve: String::new(),
                 total_ifs_array: Vec::new(),
@@ -230,8 +230,8 @@ impl StatsLinSol {
                 read_matrix: 0,
                 initialize_array: Vec::new(),
                 initialize: 0,
-                factorize_array: Vec::new(),
-                factorize: 0,
+                preprocess_array: Vec::new(),
+                preprocess: 0,
                 solve_array: Vec::new(),
                 solve: 0,
                 total_ifs_array: Vec::new(),
@@ -324,12 +324,12 @@ impl StatsLinSol {
 
         // average of timings
         let nrun = self.time_nanoseconds.initialize_array.len();
-        assert_eq!(self.time_nanoseconds.factorize_array.len(), nrun);
+        assert_eq!(self.time_nanoseconds.preprocess_array.len(), nrun);
         assert_eq!(self.time_nanoseconds.solve_array.len(), nrun);
         if nrun > 0 {
             self.time_nanoseconds.total_ifs_array = vec![0; nrun];
             self.time_human.initialize_array = vec![String::new(); nrun];
-            self.time_human.factorize_array = vec![String::new(); nrun];
+            self.time_human.preprocess_array = vec![String::new(); nrun];
             self.time_human.solve_array = vec![String::new(); nrun];
             self.time_human.total_ifs_array = vec![String::new(); nrun];
             let mut ave_init = 0.0;
@@ -338,7 +338,7 @@ impl StatsLinSol {
             let mut ave_total = 0.0;
             for i in 0..nrun {
                 let t_init = self.time_nanoseconds.initialize_array[i];
-                let t_fact = self.time_nanoseconds.factorize_array[i];
+                let t_fact = self.time_nanoseconds.preprocess_array[i];
                 let t_solve = self.time_nanoseconds.solve_array[i];
                 let t_total = t_init + t_fact + t_solve;
                 ave_init += t_init as f64;
@@ -347,7 +347,7 @@ impl StatsLinSol {
                 ave_total += t_total as f64;
                 self.time_nanoseconds.total_ifs_array[i] = t_total;
                 self.time_human.initialize_array[i] = format_nanoseconds(t_init);
-                self.time_human.factorize_array[i] = format_nanoseconds(t_fact);
+                self.time_human.preprocess_array[i] = format_nanoseconds(t_fact);
                 self.time_human.solve_array[i] = format_nanoseconds(t_solve);
                 self.time_human.total_ifs_array[i] = format_nanoseconds(t_total);
             }
@@ -357,7 +357,7 @@ impl StatsLinSol {
             ave_solve /= den;
             ave_total /= den;
             self.time_nanoseconds.initialize = ave_init as u128;
-            self.time_nanoseconds.factorize = ave_fact as u128;
+            self.time_nanoseconds.preprocess = ave_fact as u128;
             self.time_nanoseconds.solve = ave_solve as u128;
             self.time_nanoseconds.total_ifs = ave_total as u128;
         }
@@ -365,7 +365,7 @@ impl StatsLinSol {
         // human time strings
         self.time_human.read_matrix = format_nanoseconds(self.time_nanoseconds.read_matrix);
         self.time_human.initialize = format_nanoseconds(self.time_nanoseconds.initialize);
-        self.time_human.factorize = format_nanoseconds(self.time_nanoseconds.factorize);
+        self.time_human.preprocess = format_nanoseconds(self.time_nanoseconds.preprocess);
         self.time_human.solve = format_nanoseconds(self.time_nanoseconds.solve);
         self.time_human.total_ifs = format_nanoseconds(self.time_nanoseconds.total_ifs);
         self.time_human.verify = format_nanoseconds(self.time_nanoseconds.verify);
@@ -441,7 +441,7 @@ mod tests {
         let mut stats = StatsLinSol::new();
         stats.time_nanoseconds.read_matrix = ONE_SEC;
         stats.time_nanoseconds.initialize_array = vec![ONE_SEC, 2 * ONE_SEC, 6 * ONE_SEC]; // 1 + 2 + 6 = 9
-        stats.time_nanoseconds.factorize_array = vec![2 * ONE_SEC, 3 * ONE_SEC, 7 * ONE_SEC]; // 2 + 3 + 7 = 12
+        stats.time_nanoseconds.preprocess_array = vec![2 * ONE_SEC, 3 * ONE_SEC, 7 * ONE_SEC]; // 2 + 3 + 7 = 12
         stats.time_nanoseconds.solve_array = vec![3 * ONE_SEC, 7 * ONE_SEC, 14 * ONE_SEC]; // 3 + 7 + 14 = 24
         stats.time_nanoseconds.verify = ONE_SEC * 4;
         stats
@@ -456,7 +456,7 @@ mod tests {
         assert!(stats.output.openmp_num_threads > 0);
 
         assert_eq!(stats.time_nanoseconds.initialize, 3 * ONE_SEC); // 9/3
-        assert_eq!(stats.time_nanoseconds.factorize, 4 * ONE_SEC); // 12/3
+        assert_eq!(stats.time_nanoseconds.preprocess, 4 * ONE_SEC); // 12/3
         assert_eq!(stats.time_nanoseconds.solve, 8 * ONE_SEC); // 24/3
         assert_eq!(
             stats.time_nanoseconds.total_ifs_array,
@@ -466,13 +466,13 @@ mod tests {
 
         assert_eq!(stats.time_human.read_matrix, "1s");
         assert_eq!(stats.time_human.initialize, "3s");
-        assert_eq!(stats.time_human.factorize, "4s");
+        assert_eq!(stats.time_human.preprocess, "4s");
         assert_eq!(stats.time_human.solve, "8s");
         assert_eq!(stats.time_human.total_ifs, "15s");
         assert_eq!(stats.time_human.verify, "4s");
 
         assert_eq!(stats.time_human.initialize_array, &["1s", "2s", "6s"]);
-        assert_eq!(stats.time_human.factorize_array, &["2s", "3s", "7s"]);
+        assert_eq!(stats.time_human.preprocess_array, &["2s", "3s", "7s"]);
         assert_eq!(stats.time_human.solve_array, &["3s", "7s", "14s"]);
         assert_eq!(stats.time_human.total_ifs_array, &["6s", "12s", "27s"]);
     }
@@ -487,7 +487,7 @@ mod tests {
         assert!(res.output.openmp_num_threads > 0);
 
         assert_eq!(res.time_nanoseconds.initialize, 3 * ONE_SEC); // 9/3
-        assert_eq!(res.time_nanoseconds.factorize, 4 * ONE_SEC); // 12/3
+        assert_eq!(res.time_nanoseconds.preprocess, 4 * ONE_SEC); // 12/3
         assert_eq!(res.time_nanoseconds.solve, 8 * ONE_SEC); // 24/3
         assert_eq!(
             res.time_nanoseconds.total_ifs_array,
@@ -497,13 +497,13 @@ mod tests {
 
         assert_eq!(res.time_human.read_matrix, "1s");
         assert_eq!(res.time_human.initialize, "3s");
-        assert_eq!(res.time_human.factorize, "4s");
+        assert_eq!(res.time_human.preprocess, "4s");
         assert_eq!(res.time_human.solve, "8s");
         assert_eq!(res.time_human.total_ifs, "15s");
         assert_eq!(res.time_human.verify, "4s");
 
         assert_eq!(res.time_human.initialize_array, &["1s", "2s", "6s"]);
-        assert_eq!(res.time_human.factorize_array, &["2s", "3s", "7s"]);
+        assert_eq!(res.time_human.preprocess_array, &["2s", "3s", "7s"]);
         assert_eq!(res.time_human.solve_array, &["3s", "7s", "14s"]);
         assert_eq!(res.time_human.total_ifs_array, &["6s", "12s", "27s"]);
     }
@@ -515,20 +515,20 @@ mod tests {
         assert!(!json.is_empty());
 
         assert_eq!(stats.time_nanoseconds.initialize, 0);
-        assert_eq!(stats.time_nanoseconds.factorize, 0);
+        assert_eq!(stats.time_nanoseconds.preprocess, 0);
         assert_eq!(stats.time_nanoseconds.solve, 0);
         assert_eq!(stats.time_nanoseconds.total_ifs, 0);
         assert!(stats.time_nanoseconds.total_ifs_array.is_empty());
 
         assert_eq!(stats.time_human.read_matrix, "0ns");
         assert_eq!(stats.time_human.initialize, "0ns");
-        assert_eq!(stats.time_human.factorize, "0ns");
+        assert_eq!(stats.time_human.preprocess, "0ns");
         assert_eq!(stats.time_human.solve, "0ns");
         assert_eq!(stats.time_human.total_ifs, "0ns");
         assert_eq!(stats.time_human.verify, "0ns");
 
         assert!(stats.time_human.initialize_array.is_empty());
-        assert!(stats.time_human.factorize_array.is_empty());
+        assert!(stats.time_human.preprocess_array.is_empty());
         assert!(stats.time_human.solve_array.is_empty());
         assert!(stats.time_human.total_ifs_array.is_empty());
     }

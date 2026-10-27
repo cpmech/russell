@@ -4,13 +4,13 @@ use super::SolverMUMPS;
 #[cfg(feature = "umfpack")]
 use super::SolverUMFPACK;
 
-use super::{CooMatrix, Genie, LinSolParams, SolverNative, StatsLinSol};
+use super::{CooMatrix, Genie, LinSolParams, SolverDirect, StatsLinSol};
 use crate::StrError;
 use russell_lab::Vector;
 
 /// Defines a unified interface for linear system solvers
 pub trait LinSolTrait: Send {
-    /// Performs the factorization (and analysis/initialization if needed)
+    /// Performs the preprocessing (ordering, scaling, symbolic analysis, and numeric factorization)
     ///
     /// # Input
     ///
@@ -20,13 +20,13 @@ pub trait LinSolTrait: Send {
     /// # Notes
     ///
     /// 1. The structure of the matrix (nrow, ncol, nnz, sym) must be
-    ///    exactly the same among multiple calls to `factorize`. The values may differ
+    ///    exactly the same among multiple calls to `preprocess`. The values may differ
     ///    from call to call, nonetheless.
-    /// 2. The first call to `factorize` will define the structure which must be
+    /// 2. The first call to `preprocess` will define the structure which must be
     ///    kept the same for the next calls.
     /// 3. If the structure of the matrix needs to be changed, the solver must
     ///    be "dropped" and a new solver allocated.
-    fn factorize(&mut self, mat: &CooMatrix, params: Option<LinSolParams>) -> Result<(), StrError>;
+    fn preprocess(&mut self, mat: &CooMatrix, params: Option<LinSolParams>) -> Result<(), StrError>;
 
     /// Computes the solution of the linear system
     ///
@@ -47,7 +47,7 @@ pub trait LinSolTrait: Send {
     /// * `rhs` -- the right-hand side vector with know values an dimension equal to mat.ncol
     /// * `verbose` -- shows messages
     ///
-    /// **Warning:** the matrix must be same one used in `factorize`.
+    /// **Warning:** the matrix must be same one used in `preprocess`.
     fn solve(&mut self, x: &mut Vector, rhs: &Vector, verbose: bool) -> Result<(), StrError>;
 
     /// Updates the stats structure (should be called after solve)
@@ -56,8 +56,8 @@ pub trait LinSolTrait: Send {
     /// Returns the nanoseconds spent on initialize
     fn get_ns_init(&self) -> u128;
 
-    /// Returns the nanoseconds spent on factorize
-    fn get_ns_fact(&self) -> u128;
+    /// Returns the nanoseconds spent on preprocess
+    fn get_ns_preprocess(&self) -> u128;
 
     /// Returns the nanoseconds spent on solve
     fn get_ns_solve(&self) -> u128;
@@ -76,7 +76,7 @@ pub trait LinSolTrait: Send {
 ///     let ndim = 3;
 ///     let nnz = 5;
 ///
-///     let mut solver = LinSolver::new(Genie::Native)?;
+///     let mut solver = LinSolver::new(Genie::Direct)?;
 ///
 ///     // allocate the coefficient matrix
 ///     // ┌                   ┐
@@ -91,7 +91,7 @@ pub trait LinSolTrait: Send {
 ///     coo.put(1, 1, -0.25)?;
 ///     coo.put(2, 2, 0.25)?;
 ///
-///     solver.actual.factorize(&coo, None)?;
+///     solver.actual.preprocess(&coo, None)?;
 ///
 ///     let rhs = Vector::from(&[1.0, 1.0, 1.0]);
 ///     let mut x = Vector::new(ndim);
@@ -118,7 +118,7 @@ impl<'a> LinSolver<'a> {
         // which feature to enable, instead of needing one whole copy of this match
         // per combination of features.
         let actual: Box<dyn Send + LinSolTrait> = match genie {
-            Genie::Native => Box::new(SolverNative::new()?),
+            Genie::Direct => Box::new(SolverDirect::new()?),
             #[cfg(feature = "mumps")]
             Genie::Mumps => Box::new(SolverMUMPS::new()?),
             #[cfg(not(feature = "mumps"))]
@@ -155,7 +155,7 @@ impl<'a> LinSolver<'a> {
     ///
     /// 1. For symmetric matrices, `MUMPS` requires [crate::Sym::YesLower]
     /// 2. For symmetric matrices, `UMFPACK` requires [crate::Sym::YesFull]
-    /// 4. This function calls the actual implementation (genie) via the functions `factorize`, and `solve`.
+    /// 4. This function calls the actual implementation (genie) via the functions `preprocess`, and `solve`.
     /// 5. This function is best for a **single-use**, whereas the actual
     ///    solver should be considered for a recurrent use (e.g., inside a loop).
     ///
@@ -193,7 +193,7 @@ impl<'a> LinSolver<'a> {
     ///
     ///     // calculate the solution
     ///     let mut x = Vector::new(ndim);
-    ///     LinSolver::compute(Genie::Native, &mut x, &mat, &rhs, None)?;
+    ///     LinSolver::compute(Genie::Direct, &mut x, &mat, &rhs, None)?;
     ///     let correct = vec![3.0, 2.0, 4.0];
     ///     vec_approx_eq(&x, &correct, 1e-14);
     ///     Ok(())
@@ -201,7 +201,7 @@ impl<'a> LinSolver<'a> {
     /// ```
     pub fn compute(genie: Genie, x: &mut Vector, mat: &CooMatrix, rhs: &Vector, params: Option<LinSolParams>) -> Result<Self, StrError> {
         let mut solver = LinSolver::new(genie)?;
-        solver.actual.factorize(mat, params)?;
+        solver.actual.preprocess(mat, params)?;
         let verbose = if let Some(p) = params { p.verbose } else { false };
         solver.actual.solve(x, rhs, verbose)?;
         Ok(solver)
@@ -236,7 +236,7 @@ mod tests {
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_full();
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
-        LinSolver::compute(Genie::Native, &mut x, &coo, &rhs, None).unwrap();
+        LinSolver::compute(Genie::Direct, &mut x, &coo, &rhs, None).unwrap();
         let x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
         vec_approx_eq(&x, &x_correct, 1e-10);
     }

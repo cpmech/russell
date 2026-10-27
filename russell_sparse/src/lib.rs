@@ -2,10 +2,10 @@
 
 //! Russell - Rust Scientific Library
 //!
-//! `russell_sparse`: Solvers for large sparse linear systems, with a pure-Rust Native backend and optional MUMPS and UMFPACK
+//! `russell_sparse`: Solvers for large sparse linear systems, with a pure-Rust Direct backend and optional MUMPS and UMFPACK
 //!
 //! **The default build needs no external library:** the sparse solver is pure Rust
-//! (the Native backend), so the crate builds on every platform, WebAssembly
+//! (the Direct backend), so the crate builds on every platform, WebAssembly
 //! included. The optional `open_blas` and `intel_mkl` features accelerate the dense
 //! kernels, while `umfpack` and `mumps` add the external sparse solvers; see the
 //! [Installation Instructions on the GitHub Repository](https://github.com/cpmech/russell)
@@ -36,7 +36,7 @@
 //!
 //! We call the actual linear system solver implementations [Genie] because they work like "magic" after being "wrapped" via a C-interface. Note that these fantastic solvers are implemented in Fortran and C. You may easily access the linear solvers directly via the following structures:
 //!
-//! * [SolverNative] -- pure-Rust LU factorization from `algebra_linear` (always available)
+//! * [SolverDirect] -- pure-Rust LU factorization from `algebra_linear` (always available)
 //! * **SolverMUMPS** (optional) -- thin wrapper to the MUMPS solver
 //! * `SolverUMFPACK` (optional, behind the `umfpack` feature) -- thin wrapper to the UMFPACK solver
 //!
@@ -44,10 +44,10 @@
 //!
 //! The [LinSolTrait] has two main functions (that should be called in this order):
 //!
-//! * [LinSolTrait::factorize()] -- performs the initialization of the linear solver, if needed, analysis, and symbolic and numerical factorization of the coefficient matrix A from A * x = b
+//! * [LinSolTrait::preprocess()] -- performs the initialization of the linear solver, if needed, analysis, and symbolic and numerical factorization of the coefficient matrix A from A * x = b
 //! * [LinSolTrait::solve()] -- find x from the linear system A * x = b after completing the factorization.
 //!
-//! If the **structure** of the coefficient matrix remains constant, but its values change during a simulation, we can repeatedly call `factorize` again to perform the factorization. However, if the structure changes, the solver must be **dropped** and another solver allocated to force the **initialization** process.
+//! If the **structure** of the coefficient matrix remains constant, but its values change during a simulation, we can repeatedly call `preprocess` again to perform the factorization. However, if the structure changes, the solver must be **dropped** and another solver allocated to force the **initialization** process.
 //!
 //! We call the **structure** of the coefficient matrix A from A * x = b the set with the following characteristics:
 //!
@@ -59,7 +59,7 @@
 //!
 //! If neither the structure nor the values of the coefficient matrix change, we can call `solve` repeatedly if needed (e.g., in a simulation of linear dynamics using the FEM).
 //!
-//! The linear solvers have numerous configuration parameters; however, we can use the default parameters initially. The configuration parameters are collected in the [LinSolParams] structure, which is an input to the [LinSolTrait::factorize()]. The parameters include options such as [Ordering] and [Scaling].
+//! The linear solvers have numerous configuration parameters; however, we can use the default parameters initially. The configuration parameters are collected in the [LinSolParams] structure, which is an input to the [LinSolTrait::preprocess()]. The parameters include options such as [Ordering] and [Scaling].
 //!
 //! This library also provides functions to read and write Matrix Market files containing (huge) sparse matrices that can be used in performance benchmarking or other studies. The [read_matrix_market()] function reads a Matrix Market file and returns a [CooMatrix]. To write a Matrix Market file, we can use [CscMatrix::write_matrix_market()] (and similar), which automatically converts COO to CSC or COO to CSR, also performing the sum of duplicates. The `write_matrix_market` can also write an SMAT file (almost like the Matrix Market format) without the header and with zero-based indices. The SMAT file can be given to the fantastic [Vismatrix](https://github.com/cpmech/vismatrix) tool to visualize the sparse matrix structure and values interactively; see the example below.
 //!
@@ -115,7 +115,7 @@
 //! }
 //! ```
 //!
-//! ## Solving a tiny sparse linear system using LinSolver (Native)
+//! ## Solving a tiny sparse linear system using LinSolver (Direct)
 //!
 //! ```
 //! use russell_lab::{vec_approx_eq, Vector};
@@ -128,7 +128,7 @@
 //!     let nnz = 5; // number of non-zero values
 //!
 //!     // allocate the linear solver
-//!     let mut solver = LinSolver::new(Genie::Native)?;
+//!     let mut solver = LinSolver::new(Genie::Direct)?;
 //!
 //!     // allocate the coefficient matrix
 //!     let mut coo = CooMatrix::new(ndim, ndim, nnz, Sym::No)?;
@@ -147,8 +147,8 @@
 //!                    └                   ┘";
 //!     assert_eq!(format!("{}", a), correct);
 //!
-//!     // call factorize
-//!     solver.actual.factorize(&coo, None)?;
+//!     // call preprocess
+//!     solver.actual.preprocess(&coo, None)?;
 //!
 //!     // allocate two right-hand side vectors
 //!     let rhs1 = Vector::from(&[1.0, 1.0, 1.0]);
@@ -169,7 +169,7 @@
 //! }
 //! ```
 //!
-//! ## Solving a tiny sparse linear system using SolverNative
+//! ## Solving a tiny sparse linear system using SolverDirect
 //!
 //! ```
 //! use russell_lab::{vec_approx_eq, Vector};
@@ -182,7 +182,7 @@
 //!     let nnz = 13; // number of non-zero values, including duplicates
 //!
 //!     // allocate solver
-//!     let mut solver = SolverNative::new()?;
+//!     let mut solver = SolverDirect::new()?;
 //!
 //!     // allocate the coefficient matrix
 //!     // ┌                ┐
@@ -211,8 +211,8 @@
 //!     let mut params = LinSolParams::new();
 //!     params.verbose = false;
 //!
-//!     // call factorize
-//!     solver.factorize(&coo, Some(params))?;
+//!     // call preprocess
+//!     solver.preprocess(&coo, Some(params))?;
 //!
 //!     // allocate x and rhs
 //!     let mut x = Vector::new(ndim);
@@ -233,7 +233,7 @@
 //! }
 //! ```
 //!
-//! ## Solving a tiny complex sparse linear system using ComplexLinSolver (Native)
+//! ## Solving a tiny complex sparse linear system using ComplexLinSolver (Direct)
 //!
 //! ```
 //! use russell_lab::{complex_vec_approx_eq, cpx, ComplexVector};
@@ -244,7 +244,7 @@
 //!     let ndim = 3;
 //!     let nnz = 7;
 //!
-//!     let mut solver = ComplexLinSolver::new(Genie::Native)?;
+//!     let mut solver = ComplexLinSolver::new(Genie::Direct)?;
 //!
 //!     // allocate the coefficient matrix
 //!     //   ┌                      ┐
@@ -261,7 +261,7 @@
 //!     coo.put(2, 1, cpx!(-1.0, 1.0))?;
 //!     coo.put(2, 2, cpx!(2.0, -1.0))?;
 //!
-//!     solver.actual.factorize(&coo, None)?;
+//!     solver.actual.preprocess(&coo, None)?;
 //!
 //!     let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
 //!
@@ -274,7 +274,7 @@
 //! }
 //! ```
 //!
-//! ## Solving a tiny complex sparse linear system using ComplexSolverNative
+//! ## Solving a tiny complex sparse linear system using ComplexSolverDirect
 //!
 //! ```
 //! use russell_lab::{complex_vec_approx_eq, cpx, ComplexVector};
@@ -285,7 +285,7 @@
 //!     let ndim = 5;
 //!     let nnz = 13;
 //!
-//!     let mut solver = ComplexSolverNative::new()?;
+//!     let mut solver = ComplexSolverDirect::new()?;
 //!
 //!     // allocate the coefficient matrix
 //!     // ┌                                              ┐
@@ -313,7 +313,7 @@
 //!     let mut params = LinSolParams::new();
 //!     params.verbose = false;
 //!
-//!     solver.factorize(&coo, Some(params))?;
+//!     solver.preprocess(&coo, Some(params))?;
 //!
 //!     let mut x = ComplexVector::new(ndim);
 //!     let rhs = ComplexVector::from(&[
@@ -347,7 +347,7 @@ pub type StrError = &'static str;
 mod aliases;
 mod complex_coo_matrix;
 mod complex_lin_solver;
-mod complex_solver_native;
+mod complex_solver_direct;
 #[cfg(feature = "umfpack")]
 mod complex_solver_umfpack;
 #[cfg_attr(not(any(feature = "umfpack", feature = "mumps")), allow(dead_code))]
@@ -362,7 +362,7 @@ mod numerical_jacobian;
 pub mod prelude;
 mod read_matrix_market;
 mod samples;
-mod solver_native;
+mod solver_direct;
 #[cfg(feature = "umfpack")]
 mod solver_umfpack;
 mod stats_lin_sol;
@@ -372,7 +372,7 @@ mod write_matrix_market;
 
 pub use aliases::*;
 pub use complex_lin_solver::*;
-pub use complex_solver_native::*;
+pub use complex_solver_direct::*;
 #[cfg(feature = "umfpack")]
 pub use complex_solver_umfpack::*;
 use constants::*;
@@ -385,7 +385,7 @@ pub use lin_solver::*;
 pub use numerical_jacobian::*;
 pub use read_matrix_market::*;
 pub use samples::*;
-pub use solver_native::*;
+pub use solver_direct::*;
 #[cfg(feature = "umfpack")]
 pub use solver_umfpack::*;
 pub use stats_lin_sol::*;

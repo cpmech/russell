@@ -29,7 +29,7 @@ jobs:
           toolchain: stable
       - name: Cache the Rust build
         uses: Swatinem/rust-cache@v2
-      - name: Run tests (Native)
+      - name: Run tests (Direct)
         run: cargo test
       - name: Run tests (UMFPACK)
         run: cargo test --features umfpack

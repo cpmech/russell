@@ -40,7 +40,7 @@ struct Options {
     write_matrix: bool,
 
     /// Solver selection
-    #[structopt(short = "g", long, default_value = "Native")]
+    #[structopt(short = "g", long, default_value = "Direct")]
     genie: String,
 
     /// Ordering strategy
@@ -92,7 +92,7 @@ fn main() -> Result<(), StrError> {
     params.step.h_ini = 1e-4;
     params.radau5.concurrent = !opt.serial;
     params.set_tolerances(tol, tol, None)?;
-    params.newton.genie = Genie::from(&opt.genie);
+    params.newton.genie = Genie::from(&opt.genie)?;
     params.newton.lin_sol_params = Some(ls_params);
     if opt.write_matrix {
         params.newton.write_matrix_after_nstep_and_stop = Some(0);

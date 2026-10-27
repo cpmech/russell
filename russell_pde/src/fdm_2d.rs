@@ -321,7 +321,7 @@ pub struct Fdm2d<'a> {
     /// Sparse linear solver type
     ///
     /// Determines which solver backend to use (e.g., UMFPACK, MUMPS).
-    /// Default: `Genie::Native`
+    /// Default: `Genie::Direct`
     genie: Genie,
 
     /// Use symmetric matrix storage
@@ -380,7 +380,7 @@ impl<'a> Fdm2d<'a> {
             molecule: vec![alpha, beta, beta, gamma, gamma],
             dx,
             dy,
-            genie: Genie::Native,
+            genie: Genie::Direct,
             symmetric: true,
         })
     }
@@ -389,7 +389,7 @@ impl<'a> Fdm2d<'a> {
     ///
     /// # Input
     ///
-    /// * `genie` - Sparse solver type (e.g., `Genie::Native`, `Genie::Mumps`)
+    /// * `genie` - Sparse solver type (e.g., `Genie::Direct`, `Genie::Mumps`)
     /// * `symmetric` - Whether to exploit matrix symmetry
     ///   * `true`: Store only lower/upper triangle (saves memory)
     ///   * `false`: Store full matrix
@@ -448,7 +448,7 @@ impl<'a> Fdm2d<'a> {
 
         // solve the linear system
         let mut solver = LinSolver::new(self.genie)?;
-        solver.actual.factorize(&kk_bar, None)?;
+        solver.actual.preprocess(&kk_bar, None)?;
         solver.actual.solve(&mut a_bar, &f_bar, false)?;
 
         // results
@@ -502,7 +502,7 @@ impl<'a> Fdm2d<'a> {
 
         // solve the linear system
         let mut solver = LinSolver::new(self.genie)?;
-        solver.actual.factorize(&mm, None)?;
+        solver.actual.preprocess(&mm, None)?;
         solver.actual.solve(&mut aa, &ff, false)?;
 
         // results

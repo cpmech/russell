@@ -93,7 +93,7 @@ fn solve_nonlinear_system(genie: Genie) -> Result<(), StrError> {
             break;
         }
         calc_jacobian(&mut jj, &uu)?;
-        solver.actual.factorize(&jj, None)?;
+        solver.actual.preprocess(&jj, None)?;
         solver.actual.solve(&mut mdu, &rr, false)?;
         vec_update(&mut uu, -1.0, &mdu)?;
         it += 1;

@@ -200,7 +200,7 @@ pub struct SpcMap2d<'a> {
     /// Sparse linear solver type
     ///
     /// Determines which solver backend to use (e.g., UMFPACK, MUMPS).
-    /// Default: `Genie::Native`
+    /// Default: `Genie::Direct`
     genie: Genie,
 
     /// Metrics calculator for curvilinear coordinates
@@ -314,7 +314,7 @@ impl<'a> SpcMap2d<'a> {
             equations,
             interp_r,
             interp_s,
-            genie: Genie::Native,
+            genie: Genie::Direct,
             metrics,
             map,
             x: Vector::new(2),
@@ -331,7 +331,7 @@ impl<'a> SpcMap2d<'a> {
     ///
     /// # Input
     ///
-    /// * `genie` - Sparse solver type (e.g., `Genie::Native`, `Genie::Mumps`)
+    /// * `genie` - Sparse solver type (e.g., `Genie::Direct`, `Genie::Mumps`)
     pub fn set_solver_options(&mut self, genie: Genie) {
         self.genie = genie;
     }
@@ -384,7 +384,7 @@ impl<'a> SpcMap2d<'a> {
 
         // solve the linear system
         let mut solver = LinSolver::new(self.genie)?;
-        solver.actual.factorize(&kk_bar, None)?;
+        solver.actual.preprocess(&kk_bar, None)?;
         solver.actual.solve(&mut a_bar, &f_bar, false)?;
 
         // results
@@ -435,7 +435,7 @@ impl<'a> SpcMap2d<'a> {
 
         // solve the linear system
         let mut solver = LinSolver::new(self.genie)?;
-        solver.actual.factorize(&mm, None)?;
+        solver.actual.preprocess(&mm, None)?;
         solver.actual.solve(&mut aa, &ff, false)?;
 
         // results

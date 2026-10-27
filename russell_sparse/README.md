@@ -14,8 +14,8 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Optional features](#optional-features)
 - [Performance](#performance)
 - [🌟 Examples](#-examples)
-  - [Solve a tiny sparse linear system using the Native solver](#solve-a-tiny-sparse-linear-system-using-the-native-solver)
-  - [Solve a complex sparse linear system using the Native solver](#solve-a-complex-sparse-linear-system-using-the-native-solver)
+  - [Solve a tiny sparse linear system using the Direct solver](#solve-a-tiny-sparse-linear-system-using-the-direct-solver)
+  - [Solve a complex sparse linear system using the Direct solver](#solve-a-complex-sparse-linear-system-using-the-direct-solver)
 - [Tools](#tools)
 - [MUMPS + OpenBLAS issue](#mumps--openblas-issue)
   - [References](#references)
@@ -60,7 +60,7 @@ This library also provides functions to read and write Matrix Market files conta
 
 ## Installation
 
-The default build needs no external library: the sparse solver is pure Rust (the Native backend). The optional `umfpack` and `mumps` features link external solvers, and `open_blas`/`intel_mkl` accelerate the dense kernels; [the main README file](https://github.com/cpmech/russell) has the installation steps for each platform.
+The default build needs no external library: the sparse solver is pure Rust (the Direct backend). The optional `umfpack` and `mumps` features link external solvers, and `open_blas`/`intel_mkl` accelerate the dense kernels; [the main README file](https://github.com/cpmech/russell) has the installation steps for each platform.
 
 ### Setting Cargo.toml
 
@@ -82,7 +82,7 @@ The following optional (Rust) features are available:
 * `umfpack`: Add UMFPACK (SuiteSparse) as a sparse direct solver; a local install under `RUSSELL_LOCAL_PREFIX` takes precedence over the package-manager library
 * `mumps`: Add MUMPS as a sparse direct solver; requires a locally compiled MUMPS under `RUSSELL_LOCAL_PREFIX` (Linux, macOS, and Windows with the GNU toolchain)
 
-UMFPACK is optional and off by default. With `umfpack`, the build first checks for a local install at `$RUSSELL_LOCAL_PREFIX/include/umfpack` and `$RUSSELL_LOCAL_PREFIX/lib/umfpack`. If that installation is not there — or `RUSSELL_LOCAL_PREFIX` is unset — it falls back to the system library found with `pkg-config` (or the usual include/library directories), and fails as usual if neither is available. The local installation therefore takes precedence, and a build links only one of the two sources. The default build uses the Native solver; enable `umfpack` to add UMFPACK. On Windows the sources differ by toolchain: the GNU toolchain uses the MSYS2 package (through `MSYS2_PREFIX`), and the MSVC toolchain uses a vcpkg install (`VCPKG_ROOT` or `VCPKG_INSTALLATION_ROOT`). MUMPS needs the GNU toolchain there: its Windows build is MinGW objects plus gfortran, which MSVC cannot link.
+UMFPACK is optional and off by default. With `umfpack`, the build first checks for a local install at `$RUSSELL_LOCAL_PREFIX/include/umfpack` and `$RUSSELL_LOCAL_PREFIX/lib/umfpack`. If that installation is not there — or `RUSSELL_LOCAL_PREFIX` is unset — it falls back to the system library found with `pkg-config` (or the usual include/library directories), and fails as usual if neither is available. The local installation therefore takes precedence, and a build links only one of the two sources. The default build uses the Direct solver; enable `umfpack` to add UMFPACK. On Windows the sources differ by toolchain: the GNU toolchain uses the MSYS2 package (through `MSYS2_PREFIX`), and the MSVC toolchain uses a vcpkg install (`VCPKG_ROOT` or `VCPKG_INSTALLATION_ROOT`). MUMPS needs the GNU toolchain there: its Windows build is MinGW objects plus gfortran, which MSVC cannot link.
 
 MUMPS is independent of UMFPACK and always comes from `RUSSELL_LOCAL_PREFIX`, which must then be set and exported. The layout is fixed:
 
@@ -99,13 +99,13 @@ The [main README file](https://github.com/cpmech/russell) has the installation s
 
 ### WebAssembly
 
-With the default features (Native solver, no external libraries) the crate builds for `wasm32-unknown-unknown` and `wasm32-wasip1`. On the browser target the Matrix Market and JSON file helpers compile but return errors, since there is no filesystem; WASI provides one when the runtime preopens a directory. A smoke test factorizes and solves a small system on the browser target, where there is neither a clock nor a filesystem, so the Native path is exercised there rather than only compiled.
+With the default features (Direct solver, no external libraries) the crate builds for `wasm32-unknown-unknown` and `wasm32-wasip1`. On the browser target the Matrix Market and JSON file helpers compile but return errors, since there is no filesystem; WASI provides one when the runtime preopens a directory. A smoke test preprocesses and solves a small system on the browser target, where there is neither a clock nor a filesystem, so the Direct path is exercised there rather than only compiled.
 
 ## Performance
 
-The `Native` solver (`Genie::Native`) is the pure-Rust sparse solver. The table below compares it with UMFPACK on the benchmark matrices that completed; the data is from [benchmark-russell](https://github.com/cpmech/benchmark-russell).
+The `Direct` solver (`Genie::Direct`) is the pure-Rust sparse solver. The table below compares it with UMFPACK on the benchmark matrices that completed; the data is from [benchmark-russell](https://github.com/cpmech/benchmark-russell).
 
-| Matrix | NROW | NNZ | Native | UMFPACK | UMFPACK / Native |
+| Matrix | NROW | NNZ | Direct | UMFPACK | UMFPACK / Direct |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | bwm2000 | 2,000 | 7,996 | 1.11 ms | 0.750 ms | 1.47× faster |
 | mhd1280b (c) | 1,280 | 22,778 | 0.717 ms | 0.383 ms | 1.87× faster |
@@ -117,13 +117,13 @@ The `Native` solver (`Genie::Native`) is the pure-Rust sparse solver. The table 
 
 `(c)` marks a complex-valued matrix; rows are sorted by NNZ. **NNZ is the matrix-file non-zero count.** Times are five-run averages from the benchmark on the benchmark machine (Arch Linux, Intel Core i9-13900KF).
 
-The Native solver is fast on small systems: up to about 30,000 non-zeros it takes at most a few tens of milliseconds. It becomes very slow for matrices with more than **1 million** non-zeros: the `xenon1` case (NROW=48,600, 1,181,120 non-zeros) takes **55 s**, and the next real case (`twotone`, NROW=120,750, 1,224,224 non-zeros) did not finish within the 3-minute probe. For matrices with more than **1 million** non-zeros, expect **nearly a minute** or more.
+The Direct solver is fast on small systems: up to about 30,000 non-zeros it takes at most a few tens of milliseconds. It becomes very slow for matrices with more than **1 million** non-zeros: the `xenon1` case (NROW=48,600, 1,181,120 non-zeros) takes **55 s**, and the next real case (`twotone`, NROW=120,750, 1,224,224 non-zeros) did not finish within the 3-minute probe. For matrices with more than **1 million** non-zeros, expect **nearly a minute** or more.
 
 The threshold is not a function of NNZ alone. The complex `mplate` (NROW=5,962, 142,190 non-zeros) takes **3.13 s**, and `RFdevice` (NROW=74,104, 365,580 non-zeros) did not finish in **15 minutes**; sparsity structure and numerical type matter as much as the non-zero count.
 
-UMFPACK is faster than the Native solver on every matrix in the table; the gap grows with the fill-in, reaching **92×** on `xenon1`. The figure below shows the same ratios on a log scale (the dashed line is 1×):
+UMFPACK is faster than the Direct solver on every matrix in the table; the gap grows with the fill-in, reaching **92×** on `xenon1`. The figure below shows the same ratios on a log scale (the dashed line is 1×):
 
-![UMFPACK speed-up over the Native solver](https://raw.githubusercontent.com/cpmech/russell/main/russell_sparse/data/figures/plot_speedup_umfpack.png)
+![UMFPACK speed-up over the Direct solver](https://raw.githubusercontent.com/cpmech/russell/main/russell_sparse/data/figures/plot_speedup_umfpack.png)
 
 ## 🌟 Examples
 
@@ -134,7 +134,7 @@ This section illustrates how to use `russell_sparse`. See also:
 
 
 
-### Solve a tiny sparse linear system using the Native solver
+### Solve a tiny sparse linear system using the Direct solver
 
 ```rust
 use russell_lab::{vec_approx_eq, Vector};
@@ -147,7 +147,7 @@ fn main() -> Result<(), StrError> {
     let nnz = 5; // number of non-zero values
 
     // allocate solver
-    let mut solver = SolverNative::new()?;
+    let mut solver = SolverDirect::new()?;
 
     // allocate the coefficient matrix
     let mut coo = CooMatrix::new(ndim, ndim, nnz, Sym::No)?;
@@ -166,8 +166,8 @@ fn main() -> Result<(), StrError> {
                    └                   ┘";
     assert_eq!(format!("{}", a), correct);
 
-    // call factorize
-    solver.factorize(&coo, None)?;
+    // call preprocess
+    solver.preprocess(&coo, None)?;
 
     // allocate two right-hand side vectors
     let b = Vector::from(&[1.0, 1.0, 1.0]);
@@ -181,7 +181,7 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-### Solve a complex sparse linear system using the Native solver
+### Solve a complex sparse linear system using the Direct solver
 
 ```rust
 use russell_lab::{complex_vec_approx_eq, cpx, ComplexVector};
@@ -193,7 +193,7 @@ fn main() -> Result<(), StrError> {
     let nnz = 7;
 
     // allocate solver
-    let mut solver = ComplexSolverNative::new()?;
+    let mut solver = ComplexSolverDirect::new()?;
 
     // allocate the coefficient matrix
     //   ┌                      ┐
@@ -210,8 +210,8 @@ fn main() -> Result<(), StrError> {
     coo.put(2, 1, cpx!(-1.0, 1.0))?;
     coo.put(2, 2, cpx!(2.0, -1.0))?;
 
-    // call factorize
-    solver.factorize(&coo, None)?;
+    // call preprocess
+    solver.preprocess(&coo, None)?;
 
     // right-hand side vector
     let b = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
@@ -235,7 +235,7 @@ See also the folder `examples`.
 
 ## Tools
 
-This crate includes a tool named `solve_matrix_market` to study the performance of the available sparse solvers (Native, MUMPS and UMFPACK).
+This crate includes a tool named `solve_matrix_market` to study the performance of the available sparse solvers (Direct, MUMPS and UMFPACK).
 
 `solve_matrix_market` reads a [Matrix Market file](https://math.nist.gov/MatrixMarket/formats.html) and solves the linear system:
 
@@ -261,7 +261,7 @@ cargo run --release --bin solve_matrix_market -- --help
 
 to see the options.
 
-The default solver of `solve_matrix_market` is Native. To run with MUMPS or UMFPACK, use the `--genie` (-g) flag:
+The default solver of `solve_matrix_market` is Direct. To run with MUMPS or UMFPACK, use the `--genie` (-g) flag:
 
 ```bash
 cargo run --release --bin solve_matrix_market -- -g mumps ~/Downloads/matrix-market/bfwb62.mtx
@@ -312,7 +312,7 @@ The output looks like this:
   "time_human": {
     "read_matrix": "43.107µs",
     "initialize": "266.59µs",
-    "factorize": "196.81µs",
+    "preprocess": "196.81µs",
     "solve": "166.87µs",
     "total_ifs": "630.27µs",
     "verify": "2.234µs"
@@ -320,7 +320,7 @@ The output looks like this:
   "time_nanoseconds": {
     "read_matrix": 43107,
     "initialize": 266590,
-    "factorize": 196810,
+    "preprocess": 196810,
     "solve": 166870,
     "total_ifs": 630270,
     "verify": 2234

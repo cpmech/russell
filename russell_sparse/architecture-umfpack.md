@@ -139,7 +139,7 @@ extern "C" {
 | `determinant_exponent`    | `f64`                   | `det = coefficient * 10^exponent`      |
 | `stopwatch`               | `Stopwatch`             | Cumulative timer                       |
 | `time_initialize_ns`      | `u128`                  | Initialize time in nanoseconds         |
-| `time_factorize_ns`       | `u128`                  | Factorize time in nanoseconds          |
+| `time_preprocess_ns`       | `u128`                  | Preprocess time in nanoseconds          |
 | `time_solve_ns`           | `u128`                  | Solve time in nanoseconds              |
 
 ### `Drop` Implementation
@@ -148,7 +148,7 @@ Calls `solver_umfpack_drop(self.solver)` to free all C-side resources.
 
 ### `LinSolTrait` Implementation
 
-**`factorize(&mut self, mat: &CooMatrix, params: Option<LinSolParams>)`**
+**`preprocess(&mut self, mat: &CooMatrix, params: Option<LinSolParams>)`**
 
 On first call:
 1. Validates matrix (square, nnz > 0, symmetry must be `No` or `YesFull`; rejects `YesLower`/`YesUpper`)
@@ -164,7 +164,7 @@ On subsequent calls:
 1. Validates structure unchanged (sym, ndim, nnz same as first call)
 2. Updates CSC values from new COO matrix
 3. Calls `solver_umfpack_factorize()`
-4. Records `time_factorize_ns` and output values (strategy, ordering, scaling, rcond, determinant)
+4. Records `time_preprocess_ns` and output values (strategy, ordering, scaling, rcond, determinant)
 
 **`solve(&mut self, x: &mut Vector, rhs: &Vector, verbose: bool)`**
 1. Validates factorization is done
@@ -222,11 +222,11 @@ The functions `umfpack_ordering()` and `umfpack_scaling()` translate the generic
 
 2. **Symmetric matrix handling** — UMFPACK requires `Sym::YesFull` (the full matrix, not just one triangle). If a symmetric matrix is provided with only the lower or upper triangle, Rust rejects it.
 
-3. **Structure-once, factorize-many** — Symbolic factorization happens only on the first `factorize()` call. Subsequent calls reuse the same symbolic handle and only re-run numeric factorization with updated values.
+3. **Structure-once, factorize-many** — Symbolic factorization happens only on the first `preprocess()` call. Subsequent calls reuse the same symbolic handle and only re-run numeric factorization with updated values.
 
 4. **No GPU** — All operations are CPU-side. No CUDA streams, device memory, or GPU synchronization.
 
-5. **Control/Info arrays** — UMFPACK uses double-typed control (input) and info (output) arrays. The C layer configures control before each call and reads info after. The Rust layer receives extracted outputs via `factorize` out-parameters.
+5. **Control/Info arrays** — UMFPACK uses double-typed control (input) and info (output) arrays. The C layer configures control before each call and reads info after. The Rust layer receives extracted outputs via `preprocess` out-parameters.
 
 6. **Numeric handle lifecycle** — On repeated factorizations, the previous `numeric` handle is freed before creating a new one, preventing memory leaks. The symbolic handle persists across factorizations.
 

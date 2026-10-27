@@ -155,7 +155,7 @@ extern "C" {
 | `error_analysis_array_len_8` | `Vec<f64>`            | Error analysis results from RINFOG              |
 | `stopwatch`                  | `Stopwatch`           | Cumulative timer                                |
 | `time_initialize_ns`         | `u128`                | Initialize time                                 |
-| `time_factorize_ns`          | `u128`                | Factorize time                                  |
+| `time_preprocess_ns`          | `u128`                | Preprocess time                                  |
 | `time_solve_ns`              | `u128`                | Solve time                                      |
 | `fortran_indices_i`          | `Vec<i32>`            | One-based row indices (converted from COO)      |
 | `fortran_indices_j`          | `Vec<i32>`            | One-based column indices (converted from COO)   |
@@ -168,7 +168,7 @@ Calls `solver_mumps_drop(self.solver)` to free MUMPS resources and the C struct.
 
 ### `LinSolTrait` Implementation
 
-**`factorize(&mut self, mat: &CooMatrix, params: Option<LinSolParams>)`**
+**`preprocess(&mut self, mat: &CooMatrix, params: Option<LinSolParams>)`**
 
 On first call:
 1. Validates matrix (square, nnz > 0, symmetry ≤ `Sym::YesLower`; rejects `YesFull`/`YesUpper`)
@@ -184,7 +184,7 @@ On first call:
 On subsequent calls:
 1. Validates structure unchanged (sym, ndim, nnz)
 2. Calls `solver_mumps_factorize()` (MUMPS receives updated values directly from `data.a`, which points to `mat.values`)
-3. Records `time_factorize_ns` and output values
+3. Records `time_preprocess_ns` and output values
 
 **`solve(&mut self, x: &mut Vector, rhs: &Vector, verbose: bool)`**
 1. Validates factorization is done, vectors match `initialized_ndim`
@@ -260,6 +260,6 @@ The number of OpenMP threads is passed via `ICNTL(16)`. The Rust code defaults t
 
 7. **Error analysis** — MUMPS can optionally compute condition numbers and backward error estimates during solve. Results populate an 8-element array from `RINFOG(4-11)`. Full analysis (option=1) is expensive.
 
-8. **Structure-once, factorize-many** — Analysis (JOB_ANALYZE) runs only on the first `factorize()` call. Subsequent calls with different values run only JOB_FACTORIZE, reusing the established structure and symbolic factorization. MUMPS reads updated values directly from the user-provided `a` array.
+8. **Structure-once, factorize-many** — Analysis (JOB_ANALYZE) runs only on the first `preprocess()` call. Subsequent calls with different values run only JOB_FACTORIZE, reusing the established structure and symbolic factorization. MUMPS reads updated values directly from the user-provided `a` array.
 
 9. **Scaling disabled for determinant** — When `compute_determinant` is true, the C layer sets `ICNTL(8) = 0` (no scaling), per MUMPS recommendation. This means scaling output may show "No" even if a scaling method was requested.

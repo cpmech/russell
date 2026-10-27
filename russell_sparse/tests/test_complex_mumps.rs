@@ -26,7 +26,7 @@ fn test_complex_mumps() -> Result<(), StrError> {
     // println!("b =\n{}", rhs);
     let mut x = ComplexVector::new(n);
     let mut solver = ComplexSolverMUMPS::new()?;
-    solver.factorize(&coo, None)?;
+    solver.preprocess(&coo, None)?;
     solver.solve(&mut x, &rhs, false)?;
     complex_vec_approx_eq(&x, &x_correct, 1e-14);
     Ok(())

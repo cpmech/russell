@@ -335,6 +335,29 @@ mod tests {
     }
 
     #[test]
+    fn preprocess_and_solve_work_supernodal() {
+        let mut coo = CooMatrix::new(2, 2, 4, Sym::No).unwrap();
+        coo.put(0, 0, 4.0).unwrap();
+        coo.put(0, 1, 1.0).unwrap();
+        coo.put(1, 0, 1.0).unwrap();
+        coo.put(1, 1, 3.0).unwrap();
+
+        let params = LinSolParams {
+            direct_supernodal: true,
+            ..LinSolParams::new()
+        };
+        let mut solver = SolverDirect::new().unwrap();
+        solver.preprocess(&coo, Some(params)).unwrap();
+
+        // [4 1; 1 3] x = [1; 2]  =>  x = [1/11; 7/11]
+        let rhs = Vector::from(&[1.0, 2.0]);
+        let x_correct = &[1.0 / 11.0, 7.0 / 11.0];
+        let mut x = Vector::new(2);
+        solver.solve(&mut x, &rhs, false).unwrap();
+        vec_approx_eq(&x, x_correct, 1e-14);
+    }
+
+    #[test]
     fn preprocess_detects_a_reordered_pattern() {
         // Both matrices have the same sym, ndim and nnz, but the first stores
         // (0,0) (0,1) (1,1) and the second (0,1) (1,0) (1,1).

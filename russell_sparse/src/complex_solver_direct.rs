@@ -239,6 +239,27 @@ mod tests {
             Some("determinant evaluation is not available for this Genie")
         );
         solver.preprocess(&coo, None).unwrap();
+
+        // structure changes are refused
+        let mut other = ComplexCooMatrix::new(2, 2, 2, Sym::YesFull).unwrap();
+        other.put(0, 0, cpx!(1.0, 0.0)).unwrap();
+        other.put(1, 1, cpx!(2.0, 0.0)).unwrap();
+        assert_eq!(
+            solver.preprocess(&other, None).err(),
+            Some("subsequent factorizations must use the same matrix (symmetric differs)")
+        );
+        let mut other = ComplexCooMatrix::new(1, 1, 1, Sym::No).unwrap();
+        other.put(0, 0, cpx!(1.0, 0.0)).unwrap();
+        assert_eq!(
+            solver.preprocess(&other, None).err(),
+            Some("subsequent factorizations must use the same matrix (ndim differs)")
+        );
+        let mut other = ComplexCooMatrix::new(2, 2, 1, Sym::No).unwrap();
+        other.put(0, 0, cpx!(1.0, 0.0)).unwrap();
+        assert_eq!(
+            solver.preprocess(&other, None).err(),
+            Some("subsequent factorizations must use the same matrix (nnz differs)")
+        );
     }
 
     #[test]
@@ -262,9 +283,52 @@ mod tests {
         assert!(solver.get_ns_solve() > 0);
         assert!(solver.stats().is_some());
 
-        // second solve works
+        // second preprocess reuses the analysis and second solve works
+        solver.preprocess(&coo, None).unwrap();
         solver.solve(&mut x, &rhs, false).unwrap();
         complex_vec_approx_eq(&x, x_correct, 1e-13);
+    }
+
+    #[test]
+    fn preprocess_and_solve_work_supernodal() {
+        let (coo, _, _, _) = Samples::complex_symmetric_3x3_full();
+        let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
+        let x_correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
+        let params = LinSolParams {
+            direct_supernodal: true,
+            ..LinSolParams::new()
+        };
+        let mut solver = ComplexSolverDirect::new().unwrap();
+        solver.preprocess(&coo, Some(params)).unwrap();
+        let mut x = ComplexVector::new(3);
+        solver.solve(&mut x, &rhs, false).unwrap();
+        complex_vec_approx_eq(&x, x_correct, 1e-13);
+    }
+
+    #[test]
+    fn solve_handles_errors() {
+        let mut coo = ComplexCooMatrix::new(2, 2, 2, Sym::No).unwrap();
+        coo.put(0, 0, cpx!(123.0, 1.0)).unwrap();
+        coo.put(1, 1, cpx!(456.0, 2.0)).unwrap();
+        let mut solver = ComplexSolverDirect::new().unwrap();
+        let mut x = ComplexVector::new(2);
+        let rhs = ComplexVector::new(2);
+        assert_eq!(
+            solver.solve(&mut x, &rhs, false),
+            Err("the function preprocess must be called before solve")
+        );
+        let mut x = ComplexVector::new(1);
+        solver.preprocess(&coo, None).unwrap();
+        assert_eq!(
+            solver.solve(&mut x, &rhs, false),
+            Err("the dimension of the vector of unknown values x is incorrect")
+        );
+        let mut x = ComplexVector::new(2);
+        let rhs = ComplexVector::new(1);
+        assert_eq!(
+            solver.solve(&mut x, &rhs, false),
+            Err("the dimension of the right-hand side vector is incorrect")
+        );
     }
 
     #[test]

@@ -16,6 +16,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 - [🌟 Examples](#-examples)
   - [Solve a tiny sparse linear system using the Direct solver](#solve-a-tiny-sparse-linear-system-using-the-direct-solver)
   - [Solve a complex sparse linear system using the Direct solver](#solve-a-complex-sparse-linear-system-using-the-direct-solver)
+  - [Iterative solvers](#iterative-solvers)
 - [Tools](#tools)
 - [MUMPS + OpenBLAS issue](#mumps--openblas-issue)
   - [References](#references)
@@ -23,9 +24,11 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 ## Introduction
 
-This library implements tools for handling sparse matrices and functions to solve large sparse systems using high-performance **direct** solvers:
-* [MUMPS](https://mumps-solver.org) - For very large systems, supporting parallel execution
+This library implements tools for handling sparse matrices and functions to solve large sparse systems with four backends:
+* **Direct** - pure-Rust sparse LU (always available)
+* **Iterative** - pure-Rust Krylov solvers with algebraic multigrid (always available)
 * [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) - Highly recommended for general sequential use
+* [MUMPS](https://mumps-solver.org) - For very large systems, supporting parallel execution
 
 Some performance benchmarks are available here:
 - [benchmark-russell](https://github.com/cpmech/benchmark-russell) Performance benchmarks for the `Russell` project
@@ -34,7 +37,7 @@ Some performance benchmarks are available here:
 
 This crate fully supports both real (`f64`) and complex (`Complex64`) numbers. You can use the complex variants of the data structures and solvers, such as `ComplexCooMatrix` and `ComplexSolverUMFPACK`, seamlessly.
 
-Iterative solvers are outside the scope of `russell_sparse`. Users looking for Rust-based iterative solvers may refer to the [kryst library](https://github.com/tmathis720/kryst).
+The crate also ships pure-Rust iterative solvers: preconditioned conjugate gradients (CG), BiCGStab, and restarted GMRES, with either algebraic multigrid (AMG) or identity preconditioning. They need no external library and are available in every build.
 
 This library implements three storage formats for sparse matrices:
 
@@ -231,11 +234,59 @@ See [russell_sparse documentation](https://docs.rs/russell_sparse) for more exam
 
 See also the folder `examples`.
 
+### Iterative solvers
+
+Select an iterative method with `Genie::Iterative(IterativeMethod::{Cg, BiCgStab, Gmres})`. All three use algebraic multigrid (AMG) preconditioning by default, or the identity preconditioner. Their parameters live in `LinSolParams::iterative`: tolerance, absolute tolerance, maximum number of iterations, GMRES restart, number of threads, AMG coarsening, smoother, coarse-enough size, and maximum number of levels.
+
+```rust
+use russell_lab::{vec_approx_eq, Vector};
+use russell_sparse::prelude::*;
+use russell_sparse::StrError;
+
+fn main() -> Result<(), StrError> {
+    // ┌             ┐
+    // │  4 -1    0  │
+    // │ -1  4   -1  │
+    // │  0 -1    4  │
+    // └             ┘
+    let ndim = 3;
+    let mut coo = CooMatrix::new(ndim, ndim, 7, Sym::YesFull)?;
+    coo.put(0, 0, 4.0)?;
+    coo.put(0, 1, -1.0)?;
+    coo.put(1, 0, -1.0)?;
+    coo.put(1, 1, 4.0)?;
+    coo.put(1, 2, -1.0)?;
+    coo.put(2, 1, -1.0)?;
+    coo.put(2, 2, 4.0)?;
+
+    // solve with conjugate gradients
+    let mut solver = SolverIterative::new(IterativeMethod::Cg)?;
+    solver.preprocess(&coo, None)?;
+    let rhs = Vector::from(&[3.0, 2.0, 3.0]);
+    let mut x = Vector::new(ndim);
+    solver.solve(&mut x, &rhs, false)?;
+    vec_approx_eq(&x, &[1.0, 1.0, 1.0], 1e-10);
+
+    // print the iterative statistics
+    let mut stats = StatsLinSol::new();
+    solver.update_stats(&mut stats);
+    let iterative = stats.iterative.as_ref().expect("iterative statistics");
+    println!("method = {}", iterative.method);
+    println!("preconditioner = {}", iterative.preconditioner);
+    println!("iterations = {:?}", iterative.iterations_array);
+    println!("relative residual = {:?}", iterative.relative_residual_array);
+    println!("AMG levels = {}", iterative.amg_levels);
+    Ok(())
+}
+```
+
+If the method does not converge within the iteration limit, `solve` returns `"the iterative solver did not converge"` after storing the report in the statistics. The identity preconditioner (`params.iterative.preconditioner = Preconditioner::Identity`) is the escape hatch for nonsymmetric systems when the AMG setup is unsuitable.
+
 
 
 ## Tools
 
-This crate includes a tool named `solve_matrix_market` to study the performance of the available sparse solvers (Direct, MUMPS and UMFPACK).
+This crate includes a tool named `solve_matrix_market` to study the performance of the available sparse solvers (Direct, the iterative solvers, MUMPS, and UMFPACK).
 
 `solve_matrix_market` reads a [Matrix Market file](https://math.nist.gov/MatrixMarket/formats.html) and solves the linear system:
 
@@ -261,11 +312,27 @@ cargo run --release --bin solve_matrix_market -- --help
 
 to see the options.
 
-The default solver of `solve_matrix_market` is Direct. To run with MUMPS or UMFPACK, use the `--genie` (-g) flag:
+The default solver of `solve_matrix_market` is Direct. Use the `--genie` (`-g`) flag to select another backend: `direct`, `cg`, `bicgstab`, `gmres`, `mumps`, or `umfpack`:
 
 ```bash
 cargo run --release --bin solve_matrix_market -- -g mumps ~/Downloads/matrix-market/bfwb62.mtx
 ```
+
+The iterative solvers are configured with the following options, which `direct`, `mumps`, and `umfpack` ignore (`--help` prints the defaults, which live in the binary):
+
+| Option | Meaning |
+| --- | --- |
+| `--iter-tol` | Relative residual tolerance |
+| `--iter-abs-tol` | Absolute residual tolerance |
+| `--iter-max` | Maximum number of Krylov iterations |
+| `--iter-precond` | Preconditioner: `amg` or `identity` |
+| `--iter-restart` | GMRES restart dimension (GMRES only) |
+| `--iter-threads` | Number of threads for the Krylov and AMG kernels |
+| `--iter-min-parallel-len` | Minimum vector length before threads are used |
+| `--amg-coarsening` | `ruge-stuben`, `aggregation`, or `smoothed-aggregation` |
+| `--amg-smoother` | `gauss-seidel`, `damped-jacobi`, `ilu0`, `chebyshev`, `spai0`, or `spai1` |
+| `--amg-coarse-enough` | AMG size at which the coarsest level is solved directly |
+| `--amg-max-levels` | Maximum number of AMG levels |
 
 The output looks like this:
 

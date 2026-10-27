@@ -16,7 +16,7 @@ use std::path::Path;
 pub struct StatsLinSolMain {
     /// Name of the platform that produced the statistics
     pub platform: String,
-    /// BLAS library selected at build time (e.g., OpenBLAS or Intel MKL)
+    /// BLAS library selected at build time (e.g., Native, OpenBLAS, or Intel MKL)
     pub blas_lib: String,
     /// Name of the solver that produced the statistics (e.g., `Direct`, `Umfpack`, or `MUMPS`)
     pub solver: String,
@@ -140,6 +140,33 @@ pub struct StatsLinSolTimeNanoseconds {
     pub verify: u128,
 }
 
+/// Holds the statistics of an iterative solve
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct StatsLinSolIterative {
+    /// Krylov method that ran (`CG`, `BiCGStab`, `GMRES`)
+    pub method: String,
+    /// Preconditioner that ran (`AMG` or `Identity`)
+    pub preconditioner: String,
+    /// Relative residual tolerance requested
+    pub tolerance: f64,
+    /// Maximum number of iterations requested
+    pub max_iterations: usize,
+    /// GMRES restart dimension; 0 for methods that do not restart
+    pub restart: usize,
+    /// Number of threads requested for the Krylov and AMG kernels
+    pub num_threads: usize,
+    /// AMG coarsening that ran
+    pub amg_coarsening: String,
+    /// AMG smoother that ran
+    pub amg_smoother: String,
+    /// Number of levels in the hierarchy; 1 for the identity preconditioner
+    pub amg_levels: usize,
+    /// Iterations of each run, in order
+    pub iterations_array: Vec<usize>,
+    /// Achieved relative residual of each run, in order
+    pub relative_residual_array: Vec<f64>,
+}
+
 /// Holds information about the solution of a linear system
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct StatsLinSol {
@@ -161,6 +188,9 @@ pub struct StatsLinSol {
     pub time_nanoseconds: StatsLinSolTimeNanoseconds,
     /// MUMPS-specific statistics
     pub mumps_stats: StatsLinSolMUMPS,
+    /// Iterative-solver statistics, when the solver was iterative
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub iterative: Option<StatsLinSolIterative>,
 }
 
 impl StatsLinSol {
@@ -172,8 +202,10 @@ impl StatsLinSol {
                 platform: "Russell".to_string(),
                 blas_lib: if using_intel_mkl() {
                     "Intel MKL".to_string()
-                } else {
+                } else if cfg!(feature = "open_blas") {
                     "OpenBLAS".to_string()
+                } else {
+                    "Native".to_string()
                 },
                 solver: unknown.clone(),
                 mumps: cfg!(feature = "mumps"),
@@ -248,6 +280,7 @@ impl StatsLinSol {
                 condition_number1: 0.0,
                 condition_number2: 0.0,
             },
+            iterative: None,
         }
     }
 
@@ -388,7 +421,8 @@ pub fn is_memory_error(e: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::StatsLinSol;
-    use crate::{MMsym, read_matrix_market};
+    use crate::{CooMatrix, IterativeMethod, LinSolTrait, MMsym, Samples, SolverDirect, SolverIterative, read_matrix_market};
+    use russell_lab::Vector;
 
     #[test]
     fn derive_works() {
@@ -506,6 +540,122 @@ mod tests {
         assert_eq!(res.time_human.preprocess_array, &["2s", "3s", "7s"]);
         assert_eq!(res.time_human.solve_array, &["3s", "7s", "14s"]);
         assert_eq!(res.time_human.total_ifs_array, &["6s", "12s", "27s"]);
+    }
+
+    /// Returns a small symmetric positive-definite system
+    fn positive_definite_system() -> (CooMatrix, Vector) {
+        let (coo, _, _, _) = Samples::positive_definite_3x3_full();
+        (coo, Vector::filled(3, 1.0))
+    }
+
+    /// Runs one Direct solve and updates the statistics
+    fn run_direct() -> StatsLinSol {
+        let (coo, rhs) = positive_definite_system();
+        let mut solver = SolverDirect::new().unwrap();
+        solver.preprocess(&coo, None).unwrap();
+        let mut x = Vector::new(3);
+        solver.solve(&mut x, &rhs, false).unwrap();
+        let mut stats = StatsLinSol::new();
+        solver.update_stats(&mut stats);
+        stats
+    }
+
+    /// Runs one CG solve and updates the statistics
+    fn run_iterative() -> StatsLinSol {
+        let (coo, rhs) = positive_definite_system();
+        let mut solver = SolverIterative::new(IterativeMethod::Cg).unwrap();
+        solver.preprocess(&coo, None).unwrap();
+        let mut x = Vector::new(3);
+        solver.solve(&mut x, &rhs, false).unwrap();
+        let mut stats = StatsLinSol::new();
+        solver.update_stats(&mut stats);
+        stats
+    }
+
+    #[test]
+    fn iterative_json_has_the_block() {
+        let mut stats = run_iterative();
+        let json = stats.get_json();
+        let value: serde_json::Value = serde_json::from_str(&json).unwrap();
+        let block = value.get("iterative").expect("the iterative block is missing");
+        assert_eq!(block["method"], "CG");
+        assert_eq!(block["preconditioner"], "AMG");
+        assert!(block["amg_levels"].as_u64().unwrap() > 0);
+        assert_eq!(block["iterations_array"].as_array().unwrap().len(), 1);
+        assert_eq!(block["relative_residual_array"].as_array().unwrap().len(), 1);
+        assert!(!json.contains("factorize"));
+    }
+
+    #[test]
+    fn direct_json_has_no_iterative_block() {
+        let mut stats = run_direct();
+        let json = stats.get_json();
+        assert!(!json.contains("\"iterative\""));
+        let value: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert!(value.get("iterative").is_none());
+    }
+
+    #[test]
+    fn json_without_the_iterative_block_still_deserializes() {
+        let mut stats = run_iterative();
+        let json = stats.get_json();
+        let mut value: serde_json::Value = serde_json::from_str(&json).unwrap();
+        value.as_object_mut().unwrap().remove("iterative");
+        let old = serde_json::to_string(&value).unwrap();
+        let parsed: StatsLinSol = serde_json::from_str(&old).unwrap();
+        assert!(parsed.iterative.is_none());
+    }
+
+    #[test]
+    fn old_factorize_time_keys_are_rejected() {
+        let mut stats = run_direct();
+        let json = stats.get_json();
+        let old = json
+            .replace("\"preprocess_array\"", "\"factorize_array\"")
+            .replace("\"preprocess\"", "\"factorize\"");
+        assert_ne!(old, json);
+        assert!(serde_json::from_str::<StatsLinSol>(&old).is_err());
+    }
+
+    #[test]
+    fn blas_lib_reports_the_build() {
+        let stats = StatsLinSol::new();
+        let expected = if russell_lab::using_intel_mkl() {
+            "Intel MKL"
+        } else if cfg!(feature = "open_blas") {
+            "OpenBLAS"
+        } else {
+            "Native"
+        };
+        assert_eq!(stats.main.blas_lib, expected);
+        #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+        assert_eq!(stats.main.blas_lib, "Native");
+    }
+
+    #[test]
+    fn update_stats_pushes_one_entry_per_run() {
+        let (coo, rhs) = positive_definite_system();
+        let mut solver = SolverIterative::new(IterativeMethod::Cg).unwrap();
+        let mut stats = StatsLinSol::new();
+
+        for _ in 0..2 {
+            solver.preprocess(&coo, None).unwrap();
+            let mut x = Vector::new(3);
+            solver.solve(&mut x, &rhs, false).unwrap();
+            solver.update_stats(&mut stats);
+        }
+        let block = stats.iterative.as_ref().unwrap();
+        assert_eq!(block.iterations_array.len(), 2);
+        assert_eq!(block.relative_residual_array.len(), 2);
+        assert_eq!(stats.time_nanoseconds.solve_array.len(), 2);
+
+        // No solve since the last preprocess: nothing is pushed.
+        solver.preprocess(&coo, None).unwrap();
+        solver.update_stats(&mut stats);
+        let block = stats.iterative.as_ref().unwrap();
+        assert_eq!(block.iterations_array.len(), 2);
+        assert_eq!(block.relative_residual_array.len(), 2);
+        assert_eq!(stats.time_nanoseconds.solve_array.len(), 2);
     }
 
     #[test]

@@ -1,5 +1,6 @@
 use super::{
-    AmgCoarsening, AmgSmoother, CooMatrix, CsrMatrix, IterativeMethod, IterativeParams, LinSolParams, LinSolTrait, Preconditioner, StatsLinSol, Sym,
+    AmgCoarsening, AmgSmoother, CooMatrix, CsrMatrix, IterativeMethod, IterativeParams, LinSolParams, LinSolTrait, Preconditioner, StatsLinSol,
+    StatsLinSolIterative, Sym,
 };
 use crate::StrError;
 use algebra_linear::sparse::amgcl::{
@@ -23,6 +24,44 @@ pub(crate) fn iterative_error(method: KrylovMethod, error: Error) -> StrError {
             KrylovMethod::BiCgStab | KrylovMethod::Gmres => "the iterative solver broke down",
         },
         Error::NonFinite => "the iterative solver encountered a non-finite value",
+    }
+}
+
+/// Returns the Krylov method name used in the statistics
+fn method_name(method: KrylovMethod) -> &'static str {
+    match method {
+        KrylovMethod::Cg => "CG",
+        KrylovMethod::BiCgStab => "BiCGStab",
+        KrylovMethod::Gmres => "GMRES",
+    }
+}
+
+/// Returns the preconditioner name used in the statistics
+fn preconditioner_name(preconditioner: Preconditioner) -> &'static str {
+    match preconditioner {
+        Preconditioner::Amg => "AMG",
+        Preconditioner::Identity => "Identity",
+    }
+}
+
+/// Returns the AMG coarsening name used in the statistics
+fn coarsening_name(coarsening: AmgCoarsening) -> &'static str {
+    match coarsening {
+        AmgCoarsening::RugeStuben => "RugeStuben",
+        AmgCoarsening::Aggregation => "Aggregation",
+        AmgCoarsening::SmoothedAggregation => "SmoothedAggregation",
+    }
+}
+
+/// Returns the AMG smoother name used in the statistics
+fn smoother_name(smoother: AmgSmoother) -> &'static str {
+    match smoother {
+        AmgSmoother::GaussSeidel => "GaussSeidel",
+        AmgSmoother::DampedJacobi => "DampedJacobi",
+        AmgSmoother::Ilu0 => "Ilu0",
+        AmgSmoother::Chebyshev => "Chebyshev",
+        AmgSmoother::Spai0 => "Spai0",
+        AmgSmoother::Spai1 => "Spai1",
     }
 }
 
@@ -95,9 +134,32 @@ pub struct SolverIterative {
     /// Indicates whether the sparse matrix has been preprocessed or not
     preprocessed: bool,
 
-    /// Holds the report of the last solve (internal copy; the public statistics block is Phase 3)
-    #[allow(dead_code)]
+    /// Holds the report of the last solve
     last_report: Option<SolveReport>,
+
+    /// Holds the preconditioner name of the last preprocess
+    preconditioner_name: &'static str,
+
+    /// Holds the relative residual tolerance of the last preprocess
+    tolerance: f64,
+
+    /// Holds the maximum number of iterations of the last preprocess
+    max_iterations: usize,
+
+    /// Holds the GMRES restart of the last preprocess (0 for CG and BiCGStab)
+    restart: usize,
+
+    /// Holds the number of threads of the last preprocess
+    num_threads: usize,
+
+    /// Holds the AMG coarsening name of the last preprocess
+    amg_coarsening_name: &'static str,
+
+    /// Holds the AMG smoother name of the last preprocess
+    amg_smoother_name: &'static str,
+
+    /// Holds the number of AMG levels of the last preprocess
+    amg_levels: usize,
 
     /// Stopwatch to measure computation times
     stopwatch: Stopwatch,
@@ -130,6 +192,14 @@ impl SolverIterative {
             params: SolverParams::default(),
             preprocessed: false,
             last_report: None,
+            preconditioner_name: "",
+            tolerance: 0.0,
+            max_iterations: 0,
+            restart: 0,
+            num_threads: 0,
+            amg_coarsening_name: "",
+            amg_smoother_name: "",
+            amg_levels: 0,
             stopwatch: Stopwatch::new(),
             time_initialize_ns: 0,
             time_preprocess_ns: 0,
@@ -275,6 +345,19 @@ impl LinSolTrait for SolverIterative {
         let amg = amg_setup(&row_ptr, &col_idx, csr.get_values(), setup_params).map_err(|e| iterative_error(self.method, e))?;
         self.time_preprocess_ns = self.stopwatch.stop();
 
+        // Keep the values that describe this run, so update_stats does not have to guess.
+        self.preconditioner_name = preconditioner_name(iterative.preconditioner);
+        self.tolerance = iterative.tolerance;
+        self.max_iterations = iterative.max_iterations;
+        self.restart = match self.method {
+            KrylovMethod::Gmres => iterative.gmres_restart,
+            KrylovMethod::Cg | KrylovMethod::BiCgStab => 0,
+        };
+        self.num_threads = iterative.num_threads;
+        self.amg_coarsening_name = coarsening_name(iterative.amg_coarsening);
+        self.amg_smoother_name = smoother_name(iterative.amg_smoother);
+        self.amg_levels = amg.levels().count();
+
         self.amg = Some(amg);
         self.params = solver_params;
         self.preprocessed = true;
@@ -305,16 +388,34 @@ impl LinSolTrait for SolverIterative {
     }
 
     fn update_stats(&self, stats: &mut StatsLinSol) {
-        stats.main.solver = match self.method {
-            KrylovMethod::Cg => "CG".to_string(),
-            KrylovMethod::BiCgStab => "BiCGStab".to_string(),
-            KrylovMethod::Gmres => "GMRES".to_string(),
-        };
+        stats.main.solver = method_name(self.method).to_string();
         stats.output.effective_ordering = "None".to_string();
         stats.output.effective_scaling = "None".to_string();
-        stats.time_nanoseconds.initialize_array.push(self.time_initialize_ns);
-        stats.time_nanoseconds.preprocess_array.push(self.time_preprocess_ns);
-        stats.time_nanoseconds.solve_array.push(self.time_solve_ns);
+
+        // One update_stats call corresponds to one run, so the time arrays and the
+        // iterative arrays advance together. Without a solve since the last
+        // preprocess there is no run to record.
+        if self.last_report.is_some() {
+            stats.time_nanoseconds.initialize_array.push(self.time_initialize_ns);
+            stats.time_nanoseconds.preprocess_array.push(self.time_preprocess_ns);
+            stats.time_nanoseconds.solve_array.push(self.time_solve_ns);
+        }
+
+        let iterative = stats.iterative.get_or_insert_with(StatsLinSolIterative::default);
+        iterative.method = method_name(self.method).to_string();
+        iterative.preconditioner = self.preconditioner_name.to_string();
+        iterative.tolerance = self.tolerance;
+        iterative.max_iterations = self.max_iterations;
+        iterative.restart = self.restart;
+        iterative.num_threads = self.num_threads;
+        iterative.amg_coarsening = self.amg_coarsening_name.to_string();
+        iterative.amg_smoother = self.amg_smoother_name.to_string();
+        iterative.amg_levels = self.amg_levels;
+
+        if let Some(report) = self.last_report {
+            iterative.iterations_array.push(report.iterations);
+            iterative.relative_residual_array.push(report.relative_residual);
+        }
     }
 
     fn get_ns_init(&self) -> u128 {

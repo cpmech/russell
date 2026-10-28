@@ -22,3 +22,4 @@ session*.json
 AGENTS-WIP.md
 commands.tex
 paper.md
+lcov*.info

@@ -1,6 +1,6 @@
 [package]
 name = "russell_lab"
-version = "4.0.1"
+version = "5.0.0"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"
@@ -25,7 +25,7 @@ intel_mkl = []
 
 [dependencies]
 # The BLAS/LAPACK kernels: pure Rust, no external library.
-algebra_linear = "1.1"
+algebra_linear = "2"
 # Optional, feature-gated: only the benches use it. It lives here rather than in
 # [dev-dependencies] because cargo forbids optional dev-dependencies, and an
 # unconditional dev-dependency drags rayon into every wasm test build.

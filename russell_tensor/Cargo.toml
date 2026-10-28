@@ -1,6 +1,6 @@
 [package]
 name = "russell_tensor"
-version = "4.0.1"
+version = "5.0.0"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"
@@ -27,7 +27,7 @@ bench = ["dep:criterion"]
 # Opt out of `russell_lab`'s defaults. Today its default is empty, so this
 # changes nothing in the build; it is here so this crate cannot silently inherit
 # a default feature if `russell_lab` ever gains one.
-russell_lab = { path = "../russell_lab", version = "4", default-features = false }
+russell_lab = { path = "../russell_lab", version = "5", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 criterion = { version = "0.8", optional = true }

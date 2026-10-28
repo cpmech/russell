@@ -57,6 +57,38 @@ Extra features:
   `RUSSELL_VCPKG_TRIPLET`/`VCPKG_DEFAULT_TRIPLET`), then in MSYS2
   (`MSYS2_PREFIX`).
 
+## Solvers
+
+`russell_sparse` selects a backend with `Genie`:
+
+- `Genie::Direct` — the pure-Rust sparse LU from `algebra_linear`; always available.
+- `Genie::Iterative(IterativeMethod::{Cg, BiCgStab, Gmres})` — the pure-Rust Krylov and
+  AMGCL solvers from `algebra_linear`; always available.
+- `Genie::Mumps` — MUMPS, behind the `mumps` feature.
+- `Genie::Umfpack` — UMFPACK, behind the `umfpack` feature.
+
+Every solver runs in three phases: `initialize` (COO → CSC/CSR, index widening),
+`preprocess` (symbolic analysis and numeric factorization, or the AMG hierarchy and
+preconditioner), and `solve`.
+
+**`SolverDirect` wraps one `algebra_linear::SparseLu`.** The CSC arrays are widened on
+**every** `preprocess` and handed to `SparseLu::factorize`, which compares them with the
+analysed pattern. That comparison is what rejects a reordered matrix with
+`StructureMismatch`; passing cached arrays would make it a no-op. Do not cache them.
+
+**`SolverIterative` wraps `amg_setup` + `krylov_solve`.** The finest matrix lives inside
+`Amg`, so new values need a new `amg_setup`; every `preprocess` rebuilds the hierarchy.
+That is why a structure change is accepted there, and why the "same structure" rule in
+`LinSolTrait::preprocess` is a direct-solver rule.
+
+Non-convergence is an error: `solve` stores the report and then returns `"the iterative
+solver did not converge"`; it is never silently accepted.
+
+On `wasm32` the AMGCL kernels run serially and `num_threads` is ignored.
+
+`StatsLinSol::blas_lib` reports the compiled accelerator (`OpenBLAS` or `Intel MKL`) or
+`Native`; it no longer claims OpenBLAS for a pure-Rust build.
+
 ## WebAssembly
 
 The default features must compile for `wasm32-unknown-unknown` and

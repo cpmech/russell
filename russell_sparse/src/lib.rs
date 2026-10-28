@@ -234,6 +234,43 @@
 //! }
 //! ```
 //!
+//! ## Solving a tiny sparse linear system using the iterative solver
+//!
+//! ```
+//! use russell_lab::{vec_approx_eq, Vector};
+//! use russell_sparse::prelude::*;
+//! use russell_sparse::StrError;
+//!
+//! fn main() -> Result<(), StrError> {
+//!     // ┌             ┐
+//!     // │  4 -1    0  │
+//!     // │ -1  4   -1  │
+//!     // │  0 -1    4  │
+//!     // └             ┘
+//!     let ndim = 3;
+//!     let mut coo = CooMatrix::new(ndim, ndim, 7, Sym::YesFull)?;
+//!     coo.put(0, 0, 4.0)?;
+//!     coo.put(0, 1, -1.0)?;
+//!     coo.put(1, 0, -1.0)?;
+//!     coo.put(1, 1, 4.0)?;
+//!     coo.put(1, 2, -1.0)?;
+//!     coo.put(2, 1, -1.0)?;
+//!     coo.put(2, 2, 4.0)?;
+//!
+//!     // solve with conjugate gradients
+//!     let mut solver = SolverIterative::new(IterativeMethod::Cg)?;
+//!     solver.preprocess(&coo, None)?;
+//!
+//!     let rhs = Vector::from(&[3.0, 2.0, 3.0]);
+//!     let mut x = Vector::new(ndim);
+//!     solver.solve(&mut x, &rhs, false)?;
+//!
+//!     let correct = vec![1.0, 1.0, 1.0];
+//!     vec_approx_eq(&x, &correct, 1e-10);
+//!     Ok(())
+//! }
+//! ```
+//!
 //! ## Solving a tiny complex sparse linear system using ComplexLinSolver (Direct)
 //!
 //! ```

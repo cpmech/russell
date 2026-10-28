@@ -5,6 +5,39 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- `Genie::Native` is now `Genie::Direct`, and `SolverNative` is now `SolverDirect`.
+- The `LinSolTrait` methods `factorize` and `get_ns_fact` are now `preprocess` and
+  `get_ns_preprocess`.
+- The statistics phases `factorize_array` and `factorize` are now `preprocess_array`
+  and `preprocess`.
+- `LinSolParams.native_supernodal` is now `direct_supernodal`.
+- `Genie::from` returns a `Result` and rejects unknown names.
+- `russell_sparse` depends on `algebra_linear` 2.
+
+### Added
+
+- `Genie::Iterative(IterativeMethod)` with CG, BiCGStab, and restarted GMRES,
+  using algebraic multigrid or identity preconditioning.
+- `LinSolParams::iterative` with the tolerance, iteration limit, restart, thread,
+  and AMG settings.
+- The `solve_matrix_market` options `--iter-*` and `--amg-*`, and the `cg`,
+  `bicgstab`, and `gmres` values for `--genie` (`-g`).
+- The `StatsLinSolIterative` block in the JSON statistics.
+
+### Removed
+
+- The old names and their compatibility shims: there are no aliases, by design.
+
+### Fixed
+
+- `StatsLinSol.blas_lib` reports `Native` for a pure-Rust build instead of claiming
+  OpenBLAS.
+- The Direct adapter's pattern check now sees a reordered matrix.
+
 ## [4.0.1] - 2026-10-27
 
 ### Changed

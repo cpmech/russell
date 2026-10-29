@@ -5,6 +5,25 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.1.0] - 2026-10-29
+
+### `russell_nonlin`
+
+#### Fixed
+
+- `Stop::MinLambda` and `Stop::MaxLambda` now land exactly on the target under
+  `Method::Arclength`. The lambda-imposed mode is entered when the remaining
+  distance lies inside the step rather than only on a predictor overshoot, the
+  step is capped so it cannot overshoot the target, and a polish step closes the
+  drift left by a listed Δλ; previously a segment ended up to 1e-6 short (and
+  3.4e-3 short on a curved path with a listed Δλ).
+- The θ parameter is reset at the start of every arclength step, so the
+  lambda-imposed mode is a per-step decision instead of a leftover from the
+  previous step.
+- The step length of a lambda-imposed step is computed once per target, so a
+  rejected step retries with the halved length instead of repeating the same
+  failing step until `Status::ContinuedFailure`.
+
 ## [5.0.0] - 2026-10-28
 
 ### Changed

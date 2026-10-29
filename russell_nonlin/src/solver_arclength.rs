@@ -162,6 +162,9 @@ pub struct SolverArclength<'a, A> {
     /// * `θ = 0.0`: targeting lambda
     theta: f64,
 
+    /// Forces the next step to land exactly on a lambda target (used by `polish`)
+    force_target: bool,
+
     /// Indicates that the Jacobian matrix (Gu or A) has been computed at least once in the iteration
     ///
     /// This check is necessary because the predictor may be so good that the iteration
@@ -260,6 +263,7 @@ impl<'a, A> SolverArclength<'a, A> {
             config,
             system,
             theta: 1.0,
+            force_target: false,
             iter_jac_computed: false,
             ggl: Vector::new(ndim),
             duds_prev: Vector::new(ndim),
@@ -645,6 +649,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     fn initialize(&mut self, work: &mut Workspace, ddl_ini: f64, u: &Vector, l: f64, dir: IniDir, args: &mut A) -> Result<(), StrError> {
         // set flags
         self.theta = 1.0; // normal operation
+        self.force_target = false;
         self.iter_jac_computed = false;
 
         // set initial values
@@ -666,6 +671,9 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     }
 
     /// Calculates (u,λ) such that G(u(s), λ(s)) = 0 and N = 0
+    ///
+    /// When `self.force_target` is set (by `polish`) and a Min/MaxLambda stop is given, the step is
+    /// taken in the λ-imposed mode (θ = 0) so that it lands exactly on the target.
     fn step(&mut self, work: &mut Workspace, u: &Vector, l: f64, stop: Stop, args: &mut A) -> Result<Status, StrError> {
         // external: create a copy of external state variables
         if work.auto {
@@ -685,15 +693,25 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         // start the recording of iteration errors
         work.stats.record_iterations_residuals_start();
 
+        // θ is a per-step decision: reset it to normal operation before the predictor
+        self.theta = 1.0;
+
         // predictor: λ₁ = λ₀ + (2 - θ) σ · dλds₀
         work.l = l + (2.0 - self.theta) * work.h * work.dlds;
 
-        // handle "targeting lambda" mode if needed
-        if let Some((l1, is_min)) = stop.lambda() {
-            if (work.l <= l1 && is_min) || (work.l >= l1 && !is_min) {
-                self.theta = 0.0; // set θ to targeting lambda mode
-                work.h = 2.0 * (l1 - l) * work.dlds; // the sign of dlds will correct the difference
-                work.l = l + 2.0 * work.h * work.dlds; // λ₁ = λ₀ + 2 σ · dλds₀
+        // Impose the lambda target when it lies inside the reach of this step, not only when the
+        // predictor overshoots: a listed Δλ is converted to a step in s through the PREVIOUS |dλ/ds|
+        // and lands just short of the target, so an overshoot test never fires and the segment ends
+        // about 1e-6 away. With θ = 0 the constraint N = 2(λ-λ₀)dλ/ds - h is an equation in λ alone,
+        // and h = 2(l1-l)dλ/ds pins λ = l1 exactly.
+        if let Some((l1, _)) = stop.lambda() {
+            let dl = f64::abs(l1 - l);
+            let ahead = (l1 - l) * work.dlds > 0.0;
+            let reach = f64::abs(work.h * work.dlds);
+            if ahead && (self.force_target || reach >= dl) {
+                self.theta = 0.0;
+                work.h = 2.0 * (l1 - l) * work.dlds;
+                work.l = l + 2.0 * work.h * work.dlds;
             }
         }
 
@@ -782,6 +800,22 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
 
         // done
         Ok(status)
+    }
+
+    /// Performs a final step that lands exactly on a lambda target
+    ///
+    /// A listed Δλ is converted to a step in s through the previous |dλ/ds|, so a segment can end
+    /// short of the target by O(h·Δ(dλ/ds)); this step closes that drift by imposing λ = l1.
+    fn polish(&mut self, work: &mut Workspace, u: &Vector, l: f64, stop: Stop, args: &mut A) -> Result<Option<Status>, StrError> {
+        match stop.lambda() {
+            Some((l1, _)) if f64::abs(l1 - l) > CONFIG_H_MIN => {
+                self.force_target = true;
+                let status = self.step(work, u, l, stop, args)?;
+                self.force_target = false;
+                Ok(Some(status))
+            }
+            _ => Ok(None),
+        }
     }
 
     /// Handles the accept case by updating (u, l) and calculating a new stepsize

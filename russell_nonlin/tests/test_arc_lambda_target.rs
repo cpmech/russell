@@ -91,5 +91,34 @@ fn test_arc_lambda_target_circle_list() {
     assert_eq!(status, Status::Success);
     assert!(f64::abs(l - 1.2) <= 1e-13, "lambda = {:.17}, short by {:.3e}", l, f64::abs(l - 1.2));
     let radius = f64::sqrt(u[0] * u[0] + l * l);
-    assert!(f64::abs(radius - RADIUS) <= 1e-9, "radius = {:.17}", radius);
+    // the point stays on the path to the solver's own convergence tolerance
+    assert!(f64::abs(radius - RADIUS) <= 1e-8, "radius = {:.17}", radius);
+}
+
+/// With automatic Δλ the step grows and can overshoot the target; the cap and the reach-based
+/// trigger must make the last step land exactly, from either side.
+#[test]
+fn test_arc_lambda_target_circle_auto() {
+    let (system, mut u, mut l, mut args) = Samples::circle_ul(RADIUS);
+
+    let mut config = Config::new();
+    config.set_method(Method::Arclength);
+
+    let mut solver = Solver::new(&config, system).unwrap();
+    let status = solver
+        .solve(
+            &mut args,
+            &mut u,
+            &mut l,
+            IniDir::Pos,
+            Stop::MaxLambda(1.2),
+            &DeltaLambda::auto(0.05),
+            None,
+        )
+        .unwrap();
+    assert_eq!(status, Status::Success);
+    assert!(f64::abs(l - 1.2) <= 1e-13, "lambda = {:.17}, short by {:.3e}", l, f64::abs(l - 1.2));
+    let radius = f64::sqrt(u[0] * u[0] + l * l);
+    // the point stays on the path to the solver's own convergence tolerance
+    assert!(f64::abs(radius - RADIUS) <= 1e-8, "radius = {:.17}", radius);
 }

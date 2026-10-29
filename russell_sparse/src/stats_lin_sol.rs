@@ -409,11 +409,7 @@ impl StatsLinSol {
 ///
 /// Covers both solvers: UMFPACK and MUMPS.
 pub fn is_memory_error(e: &str) -> bool {
-    e.contains("MALLOC")
-        || e.contains("Not enough memory")
-        || e.contains("ALLOC_FAILED")
-        || e.contains("cudaMalloc")
-        || e.contains("memory is too small")
+    e.contains("MALLOC") || e.contains("Not enough memory") || e.contains("ALLOC_FAILED") || e.contains("memory is too small")
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -690,7 +686,6 @@ mod tests {
         assert!(is_memory_error("MALLOC failed"));
         assert!(is_memory_error("Not enough memory on device"));
         assert!(is_memory_error("ALLOC_FAILED in some routine"));
-        assert!(is_memory_error("cudaMalloc returned error"));
         assert!(is_memory_error("memory is too small for operation"));
 
         assert!(!is_memory_error(""));

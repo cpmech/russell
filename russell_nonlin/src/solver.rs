@@ -310,6 +310,31 @@ impl<'a, A> Solver<'a, A> {
             }
         }
 
+        // Close the drift of an arclength run that ended short of a lambda target: a listed Δλ is
+        // converted to a step in s through the previous |dλ/ds|, so the last step can land just
+        // short. The polish step is a no-op for the natural method and for any stop that is not a
+        // lambda target.
+        if status.success() {
+            if let Some((l1, _)) = stop.lambda() {
+                if f64::abs(*l - l1) > CONFIG_H_MIN {
+                    if let Some(polish_status) = self.actual.polish(&mut self.work, u, *l, stop, args)? {
+                        if polish_status.success() {
+                            self.work.stats.n_steps += 1;
+                            self.work.stats.n_accepted += 1;
+                            let _ = self.actual.accept(&mut self.work, u, l, args)?;
+                            self.work.stats.h_accepted = self.work.h;
+                            vec_all_finite(u, self.config.verbose)?;
+                            if let Some(out) = output {
+                                let _ = out.execute(&self.work, u, *l, args)?;
+                            }
+                        } else {
+                            status = polish_status;
+                        }
+                    }
+                }
+            }
+        }
+
         // stop total stopwatch
         self.work.stats.stop_sw_total();
 

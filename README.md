@@ -786,7 +786,7 @@ std_dev = 312.7131690782321
 
 ## For developers
 
-This section summarizes the `build.rs` files, which compile and link the non-Rust C (and CUDA) dependencies at build time.
+This section summarizes the `build.rs` files, which compile and link the non-Rust C dependencies at build time.
 
 ### Naming conventions
 

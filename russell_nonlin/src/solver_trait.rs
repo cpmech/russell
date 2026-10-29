@@ -13,6 +13,17 @@ pub(crate) trait SolverTrait<A>: Send {
     /// Performs one continuation step to advance the solution (u, λ)
     fn step(&mut self, work: &mut Workspace, u: &Vector, l: f64, stop: Stop, args: &mut A) -> Result<Status, StrError>;
 
+    /// Performs a final step that lands exactly on a lambda target, when the method supports it
+    ///
+    /// The default implementation does nothing, because the natural method already clamps the
+    /// step to the target. The arclength method uses it to close the drift left by a listed Δλ,
+    /// which is converted to a step in s through the previous |dλ/ds|.
+    ///
+    /// Returns `None` when no step was taken, or the status of the extra step.
+    fn polish(&mut self, _work: &mut Workspace, _u: &Vector, _l: f64, _stop: Stop, _args: &mut A) -> Result<Option<Status>, StrError> {
+        Ok(None)
+    }
+
     /// Handles the accept case by updating (u, l) and calculating a new stepsize
     ///
     /// Returns `rdiff` the relative difference used in stepsize adaptation

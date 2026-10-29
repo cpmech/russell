@@ -219,17 +219,9 @@ The functions `umfpack_ordering()` and `umfpack_scaling()` translate the generic
 ## Key Design Points
 
 1. **CSC format** — UMFPACK uses Compressed Sparse Column. The Rust layer converts COO → CSC, not CSR.
-
 2. **Symmetric matrix handling** — UMFPACK requires `Sym::YesFull` (the full matrix, not just one triangle). If a symmetric matrix is provided with only the lower or upper triangle, Rust rejects it.
-
 3. **Structure-once, factorize-many** — Symbolic factorization happens only on the first `preprocess()` call. Subsequent calls reuse the same symbolic handle and only re-run numeric factorization with updated values.
-
-4. **No GPU** — All operations are CPU-side. No CUDA streams, device memory, or GPU synchronization.
-
-5. **Control/Info arrays** — UMFPACK uses double-typed control (input) and info (output) arrays. The C layer configures control before each call and reads info after. The Rust layer receives extracted outputs via `preprocess` out-parameters.
-
-6. **Numeric handle lifecycle** — On repeated factorizations, the previous `numeric` handle is freed before creating a new one, preventing memory leaks. The symbolic handle persists across factorizations.
-
-7. **Determinant** — Optionally computed during factorization. Result stored as `coefficient * 10^exponent` (scientific notation). Available in stats output.
-
-8. **Reciprocal condition number** — `rcond_estimate` ≈ 1/(condition number), automatically computed during numeric factorization.
+4. **Control/Info arrays** — UMFPACK uses double-typed control (input) and info (output) arrays. The C layer configures control before each call and reads info after. The Rust layer receives extracted outputs via `preprocess` out-parameters.
+5. **Numeric handle lifecycle** — On repeated factorizations, the previous `numeric` handle is freed before creating a new one, preventing memory leaks. The symbolic handle persists across factorizations.
+6. **Determinant** — Optionally computed during factorization. Result stored as `coefficient * 10^exponent` (scientific notation). Available in stats output.
+7. **Reciprocal condition number** — `rcond_estimate` ≈ 1/(condition number), automatically computed during numeric factorization.

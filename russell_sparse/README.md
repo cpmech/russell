@@ -24,11 +24,19 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 ## Introduction
 
-This library implements tools for handling sparse matrices and functions to solve large sparse systems with four backends:
+This library implements tools for handling sparse matrices and functions to solve sparse linear systems with four backends:
 * **Direct** - pure-Rust sparse LU (always available)
-* **Iterative** - pure-Rust Krylov solvers with algebraic multigrid (always available)
+* **Iterative** - pure-Rust Krylov solvers with algebraic multigrid (limited; see below)
 * [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) - Highly recommended for general sequential use
 * [MUMPS](https://mumps-solver.org) - For very large systems, supporting parallel execution
+
+> **The native iterative solvers are limited.** With the default algebraic-multigrid settings they
+> reach a relative error of 1e-6 on a minority of the real SuiteSparse matrices measured in
+> [benchmark-russell](https://github.com/cpmech/benchmark-russell): BiCGStab on 12 of 33, GMRES on 7,
+> and CG on 1, since CG requires a symmetric positive definite matrix. The setup and the kernels are
+> tested -- what is limited is how often the preconditioner makes the iteration converge. For
+> production work use **Direct**, **UMFPACK** or **MUMPS**, and use the iterative path where it has
+> been measured to converge on your own matrix.
 
 Some performance benchmarks are available here:
 - [benchmark-russell](https://github.com/cpmech/benchmark-russell) Performance benchmarks for the `Russell` project
@@ -37,7 +45,7 @@ Some performance benchmarks are available here:
 
 This crate fully supports both real (`f64`) and complex (`Complex64`) numbers. You can use the complex variants of the data structures and solvers, such as `ComplexCooMatrix` and `ComplexSolverUMFPACK`, seamlessly.
 
-The crate also ships pure-Rust iterative solvers: preconditioned conjugate gradients (CG), BiCGStab, and restarted GMRES, with either algebraic multigrid (AMG) or identity preconditioning. They need no external library and are available in every build.
+The crate also ships pure-Rust iterative solvers: preconditioned conjugate gradients (CG), BiCGStab, and restarted GMRES, with either algebraic multigrid (AMG) or identity preconditioning. They need no external library and are available in every build, but their convergence is matrix-dependent -- see the limitation above.
 
 This library implements three storage formats for sparse matrices:
 

@@ -1,4 +1,4 @@
-use super::{ComplexCooMatrix, ComplexCscMatrix, ComplexLinSolTrait, LinSolParams, StatsLinSol, Sym};
+use super::{ComplexCooMatrix, ComplexCscMatrix, ComplexLinSolTrait, DirectMethod, LinSolParams, StatsLinSol, Sym};
 use crate::StrError;
 use crate::solver_direct::direct_error;
 use algebra_linear::sparse::{LuMethod, SparseLu, SparseLuStats};
@@ -112,8 +112,14 @@ impl ComplexLinSolTrait for ComplexSolverDirect {
 
         // Pick the factorization before the first analysis; later calls reuse it.
         let method = match params {
-            Some(par) if par.direct_supernodal => LuMethod::Supernodal,
-            _ => LuMethod::Simplicial,
+            Some(par) => match par.direct_method {
+                DirectMethod::Auto { flop_ratio_threshold } => LuMethod::Auto { flop_ratio_threshold },
+                DirectMethod::Simplicial => LuMethod::Simplicial,
+                DirectMethod::Supernodal => LuMethod::Supernodal,
+            },
+            None => LuMethod::Auto {
+                flop_ratio_threshold: DirectMethod::DEFAULT_FLOP_RATIO_THRESHOLD,
+            },
         };
 
         if !self.initialized {
@@ -295,7 +301,7 @@ mod tests {
         let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
         let x_correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
         let params = LinSolParams {
-            direct_supernodal: true,
+            direct_method: DirectMethod::Supernodal,
             ..LinSolParams::new()
         };
         let mut solver = ComplexSolverDirect::new().unwrap();

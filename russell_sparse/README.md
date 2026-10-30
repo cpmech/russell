@@ -28,7 +28,7 @@ This library implements tools for handling sparse matrices and functions to solv
 * **Direct** - pure-Rust sparse LU (always available)
 * **Iterative** - pure-Rust Krylov solvers with algebraic multigrid (limited; see below)
 * [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) - Highly recommended for general sequential use
-* [MUMPS](https://mumps-solver.org) - For very large systems, supporting parallel execution
+* [MUMPS](https://mumps-solver.org) - For very large systems, supporting multithreaded execution
 
 > **The native iterative solvers are limited.** With the default algebraic-multigrid settings they
 > reach a relative error of 1e-6 on a minority of the real SuiteSparse matrices measured in

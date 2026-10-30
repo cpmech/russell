@@ -171,7 +171,9 @@ fn main() -> Result<(), StrError> {
     params.compute_determinant = opt.determinant;
     params.mumps_num_threads = opt.mumps_nt as usize;
     params.umfpack_enforce_unsymmetric_strategy = opt.enforce_unsymmetric_strategy;
-    params.direct_supernodal = opt.direct_supernodal;
+    if opt.direct_supernodal {
+        params.direct_method = DirectMethod::Supernodal;
+    }
     params.compute_error_estimates = opt.error_estimates;
     params.compute_condition_numbers = opt.condition_numbers;
     params.mumps_override_prevent_nt_issue_with_openblas = opt.override_prevent_issue;

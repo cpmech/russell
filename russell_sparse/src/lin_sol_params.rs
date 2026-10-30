@@ -102,6 +102,42 @@ impl Default for IterativeParams {
     }
 }
 
+/// Chooses the LU factorization used by the Direct solver
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum DirectMethod {
+    /// Picks from the fill's flop proxy: supernodal above `flop_ratio_threshold`
+    ///
+    /// The proxy is `Σ col_counts² / nnz(A)` over the supernode column counts of the
+    /// analysis, so it costs nothing beyond the symbolic analysis the solver runs anyway.
+    Auto {
+        /// Threshold on the proxy: supernodal is chosen above it, simplicial at or below
+        flop_ratio_threshold: f64,
+    },
+
+    /// The simplicial factorization
+    Simplicial,
+
+    /// The supernodal factorization
+    Supernodal,
+}
+
+impl DirectMethod {
+    /// The threshold below which the automatic choice stays simplicial
+    ///
+    /// Measured on the matrices of this workspace and of pmsim's driver: the supernodal
+    /// factorization wins from a proxy of about one upward, because the front elimination is
+    /// contiguous down the columns while the simplicial one gathers per entry.
+    pub const DEFAULT_FLOP_RATIO_THRESHOLD: f64 = 1.0;
+}
+
+impl Default for DirectMethod {
+    fn default() -> Self {
+        Self::Auto {
+            flop_ratio_threshold: Self::DEFAULT_FLOP_RATIO_THRESHOLD,
+        }
+    }
+}
+
 /// Defines the configuration parameters for the linear system solver
 #[derive(Clone, Copy, Debug)]
 pub struct LinSolParams {
@@ -150,13 +186,13 @@ pub struct LinSolParams {
     /// Enforces the unsymmetric strategy, even for symmetric matrices (not recommended; UMFPACK only)
     pub umfpack_enforce_unsymmetric_strategy: bool,
 
-    /// Selects the supernodal LU in the Direct solver (Direct only)
+    /// Chooses the LU factorization in the Direct solver (Direct only)
     ///
-    /// The simplicial path is the default. The supernodal path is still
-    /// experimental: it uses the relaxed partition and compressed fronts, but
-    /// it has no BLAS-3 kernels and has been slower than simplicial on the
-    /// benchmark matrices so far.
-    pub direct_supernodal: bool,
+    /// `Auto` is the default: it picks from the fill's flop proxy
+    /// (`Σ col_counts² / nnz(A)`), which is what tells the two apart on a given
+    /// matrix far better than its order does. Lower the threshold to prefer the
+    /// supernodal path on smaller problems.
+    pub direct_method: DirectMethod,
 
     /// Show additional messages
     pub verbose: bool,
@@ -180,7 +216,7 @@ impl LinSolParams {
             mumps_num_threads: 0,
             mumps_override_prevent_nt_issue_with_openblas: false,
             umfpack_enforce_unsymmetric_strategy: false,
-            direct_supernodal: false,
+            direct_method: DirectMethod::default(),
             verbose: false,
             iterative: IterativeParams::default(),
         }
@@ -191,7 +227,7 @@ impl LinSolParams {
 
 #[cfg(test)]
 mod tests {
-    use super::{AmgCoarsening, AmgSmoother, IterativeParams, LinSolParams, Preconditioner};
+    use super::{AmgCoarsening, AmgSmoother, DirectMethod, IterativeParams, LinSolParams, Preconditioner};
     use crate::{Ordering, Scaling};
 
     #[test]
@@ -214,7 +250,7 @@ mod tests {
         assert_eq!(params.mumps_max_work_memory, 0);
         assert_eq!(params.mumps_num_threads, 0);
         assert!(!params.umfpack_enforce_unsymmetric_strategy);
-        assert!(!params.direct_supernodal);
+        assert!(matches!(params.direct_method, DirectMethod::Auto { .. }));
         assert_eq!(params.iterative, IterativeParams::default());
     }
 

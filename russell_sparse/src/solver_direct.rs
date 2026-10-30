@@ -1,4 +1,4 @@
-use super::{CooMatrix, CscMatrix, LinSolParams, LinSolTrait, StatsLinSol, Sym};
+use super::{CooMatrix, CscMatrix, DirectMethod, LinSolParams, LinSolTrait, StatsLinSol, Sym};
 use crate::StrError;
 use algebra_linear::sparse::{LuMethod, SparseError, SparseLu, SparseLuStats};
 use russell_lab::{Stopwatch, Vector};
@@ -30,7 +30,8 @@ pub(crate) fn direct_error(error: SparseError) -> StrError {
 ///   as `Auto`; this backend has no natural-ordering option.
 /// * `scaling`: no scaling is applied, for either `Auto` or `No`. Other values
 ///   are treated as `Auto`.
-/// * `direct_supernodal`: selects the experimental supernodal factorization;
+/// * `direct_method`: `Auto` (the default) picks simplicial or supernodal from the fill's flop
+///   proxy, `Simplicial` and `Supernodal` force one of them;
 ///   the simplicial path is the default.
 /// * `compute_determinant`: not available; `preprocess` returns an error.
 /// * `compute_error_estimates` and `compute_condition_numbers`: not available;
@@ -152,8 +153,14 @@ impl LinSolTrait for SolverDirect {
 
         // Pick the factorization before the first analysis; later calls reuse it.
         let method = match params {
-            Some(par) if par.direct_supernodal => LuMethod::Supernodal,
-            _ => LuMethod::Simplicial,
+            Some(par) => match par.direct_method {
+                DirectMethod::Auto { flop_ratio_threshold } => LuMethod::Auto { flop_ratio_threshold },
+                DirectMethod::Simplicial => LuMethod::Simplicial,
+                DirectMethod::Supernodal => LuMethod::Supernodal,
+            },
+            None => LuMethod::Auto {
+                flop_ratio_threshold: DirectMethod::DEFAULT_FLOP_RATIO_THRESHOLD,
+            },
         };
 
         if !self.initialized {
@@ -343,7 +350,7 @@ mod tests {
         coo.put(1, 1, 3.0).unwrap();
 
         let params = LinSolParams {
-            direct_supernodal: true,
+            direct_method: DirectMethod::Supernodal,
             ..LinSolParams::new()
         };
         let mut solver = SolverDirect::new().unwrap();

@@ -12,7 +12,7 @@ pub use crate::coo_matrix::NumCooMatrix;
 pub use crate::csc_matrix::NumCscMatrix;
 pub use crate::csr_matrix::NumCsrMatrix;
 pub use crate::enums::*;
-pub use crate::lin_sol_params::{AmgCoarsening, AmgSmoother, IterativeParams, LinSolParams, Preconditioner};
+pub use crate::lin_sol_params::{AmgCoarsening, AmgSmoother, DirectMethod, IterativeParams, LinSolParams, Preconditioner};
 pub use crate::lin_solver::*;
 pub use crate::numerical_jacobian::numerical_jacobian;
 pub use crate::read_matrix_market;

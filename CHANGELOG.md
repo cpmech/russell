@@ -24,6 +24,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rejected step retries with the halved length instead of repeating the same
   failing step until `Status::ContinuedFailure`.
 
+### `russell_sparse`
+
+#### Added
+
+- `DirectMethod { Auto { flop_ratio_threshold }, Simplicial, Supernodal }` and
+  `LinSolParams::direct_method`, so the caller picks the LU factorization and the threshold is
+  visible as `DirectMethod::DEFAULT_FLOP_RATIO_THRESHOLD`. The proxy it compares is the sum of the
+  squared supernode column counts over `nnz(A)`, taken from the symbolic analysis the solver runs
+  anyway. Re-exported from the prelude.
+
+#### Changed
+
+- The default is `DirectMethod::Auto { 1.0 }`: supernodal above the proxy, simplicial at or below
+  it. It used to be simplicial. Measured on a 192-dof lattice with three dofs per node (fill 2.96),
+  the supernodal factorization takes 0.604 ms against 1.248 ms, because the front elimination is
+  contiguous down the columns of a column-major panel while the simplicial path gathers per entry.
+  A small, sparse pattern can still prefer `DirectMethod::Simplicial`.
+
+#### Changed (breaking)
+
+- `LinSolParams::direct_supernodal` is removed; `direct_method` replaces it, with no alias. A caller
+  that set the field must now choose `DirectMethod::Supernodal` (same result),
+  `DirectMethod::Simplicial`, or `DirectMethod::Auto`. A `russell_sparse = "5"` requirement picks
+  this up on `cargo update`; pin `=5.0` to stay on the old field.
+
+#### Documentation
+
+- The README says what the native iterative solvers can do and where they do not: with the default
+  algebraic multigrid they reach a relative error of 1e-6 on BiCGStab 12 of 33 real SuiteSparse
+  matrices, GMRES 7 and CG 1, so production work belongs on Direct, UMFPACK or MUMPS and the
+  iterative path is used where it has been measured to converge. The introduction no longer calls
+  the library a solver of "large sparse systems" for all four backends.
+- MUMPS is described as supporting multithreaded execution, which is what it does; "parallel"
+  also reads as distributed or multi-process.
+- The CUDA references left over in the umfpack architecture note and in the statistics docs are
+  gone.
+
 ## [5.0.0] - 2026-10-28
 
 ### Changed

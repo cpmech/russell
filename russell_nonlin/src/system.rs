@@ -1,4 +1,4 @@
-use crate::StrError;
+use crate::{StrError, SupStatus};
 use russell_lab::{Vector, algo::num_jacobian, mat_approx_eq};
 use russell_sparse::{CooMatrix, Sym};
 use std::sync::Arc;
@@ -101,9 +101,11 @@ pub struct System<'a, A> {
 
     /// Updates secondary variables (e.g., FEM stresses and starred variables)
     ///
-    /// The function is `fn (do_backup, u0, u1, l0, l1, args) -> stop_gracefully` with `(u0, l0)` being the
-    /// value at the beginning of the step and `(u1, l1)` the value at the updated step.
-    pub(crate) update_secondary_state: Option<Arc<dyn Fn(bool, &Vector, &Vector, f64, f64, &mut A) -> Result<bool, StrError> + Send + Sync + 'a>>,
+    /// The function is `fn (do_backup, u0, u1, l0, l1, args) -> SupStatus` with `(u0, l0)` being the
+    /// value at the beginning of the step and `(u1, l1)` the value at the updated step. The returned
+    /// [`SupStatus`] either continues the step, requests a retry with a smaller step, or stops gracefully.
+    pub(crate) update_secondary_state:
+        Option<Arc<dyn Fn(bool, &Vector, &Vector, f64, f64, &mut A) -> Result<SupStatus, StrError> + Send + Sync + 'a>>,
 }
 
 impl<'a, A> System<'a, A> {
@@ -207,11 +209,13 @@ impl<'a, A> System<'a, A> {
 
     /// Sets a function to update secondary variables (e.g., FEM stresses and starred variables)
     ///
-    /// The function is `fn (do_backup, u0, u1, l0, l1, args) -> stop_gracefully` with `(u0, l0)` being the
-    /// value at the beginning of the step and `(u1, l1)` the value at the updated step.
+    /// The function is `fn (do_backup, u0, u1, l0, l1, args) -> SupStatus` with `(u0, l0)` being the
+    /// value at the beginning of the step and `(u1, l1)` the value at the updated step. Return
+    /// [`SupStatus::Continue`] to proceed, [`SupStatus::Retry`] to reject the step and retry with a
+    /// smaller stepsize, or [`SupStatus::Stop`] to terminate gracefully.
     pub fn set_update_secondary_state(
         &mut self,
-        callback: impl Fn(bool, &Vector, &Vector, f64, f64, &mut A) -> Result<bool, StrError> + Send + Sync + 'a,
+        callback: impl Fn(bool, &Vector, &Vector, f64, f64, &mut A) -> Result<SupStatus, StrError> + Send + Sync + 'a,
     ) -> &mut Self {
         self.update_secondary_state = Some(Arc::new(callback));
         self
@@ -275,7 +279,7 @@ impl<'a, A> Clone for System<'a, A> {
 
 #[cfg(test)]
 mod tests {
-    use super::System;
+    use super::{SupStatus, System};
     use russell_lab::Vector;
     use russell_sparse::{CooMatrix, Sym};
 
@@ -364,7 +368,9 @@ mod tests {
         assert!(system.prepare_to_iterate.is_some());
 
         system.set_update_secondary_state(
-            |_do_backup: bool, _u0: &Vector, _u1: &Vector, _l0: f64, _l1: f64, _args: &mut u8| -> Result<bool, &'static str> { Ok(false) },
+            |_do_backup: bool, _u0: &Vector, _u1: &Vector, _l0: f64, _l1: f64, _args: &mut u8| -> Result<SupStatus, &'static str> {
+                Ok(SupStatus::Continue)
+            },
         );
         assert!(system.update_secondary_state.is_some());
 

@@ -237,6 +237,26 @@ impl Method {
     }
 }
 
+/// Defines the status returned by a secondary update (SUP) callback
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SupStatus {
+    /// Continue normally
+    ///
+    /// Corresponds to the former `Ok(false)`.
+    Continue,
+
+    /// Reject the step and retry with a smaller step
+    ///
+    /// The solver treats this as a failure that may be retried, restoring the
+    /// secondary state before reducing the stepsize.
+    Retry,
+
+    /// Terminate gracefully
+    ///
+    /// Corresponds to the former `Ok(true)`.
+    Stop,
+}
+
 /// Specifies the problem classes in Soderlind (2003) that can be used to define the stepsize control parameters
 ///
 /// Reference:
@@ -412,15 +432,18 @@ impl Status {
     }
 
     /// Allocates a new instance from the result of a secondary update (SUP)
-    pub(crate) fn from_sup(res: Result<bool, StrError>) -> Self {
+    ///
+    /// Maps the callback result as follows:
+    ///
+    /// * `Ok(SupStatus::Continue)` -> [`Status::Success`]
+    /// * `Ok(SupStatus::Retry)` -> [`Status::SecondaryUpdateError`] requesting a step retry
+    /// * `Ok(SupStatus::Stop)` -> [`Status::SecondaryUpdateTerminate`]
+    /// * `Err(e)` -> [`Status::SecondaryUpdateError`]
+    pub(crate) fn from_sup(res: Result<SupStatus, StrError>) -> Self {
         match res {
-            Ok(terminate) => {
-                if terminate {
-                    Status::SecondaryUpdateTerminate
-                } else {
-                    Status::Success
-                }
-            }
+            Ok(SupStatus::Continue) => Status::Success,
+            Ok(SupStatus::Retry) => Status::SecondaryUpdateError("the secondary update requested a step retry"),
+            Ok(SupStatus::Stop) => Status::SecondaryUpdateTerminate,
             Err(e) => Status::SecondaryUpdateError(e),
         }
     }
@@ -651,11 +674,17 @@ mod tests {
 
     #[test]
     fn test_status_from_sup_works() {
-        // Ok(false) -> Success
-        assert_eq!(Status::from_sup(Ok(false)), Status::Success);
+        // Ok(SupStatus::Continue) -> Success
+        assert_eq!(Status::from_sup(Ok(SupStatus::Continue)), Status::Success);
 
-        // Ok(true) -> SecondaryUpdateTerminate
-        assert_eq!(Status::from_sup(Ok(true)), Status::SecondaryUpdateTerminate);
+        // Ok(SupStatus::Retry) -> SecondaryUpdateError with the retry message
+        assert_eq!(
+            Status::from_sup(Ok(SupStatus::Retry)),
+            Status::SecondaryUpdateError("the secondary update requested a step retry")
+        );
+
+        // Ok(SupStatus::Stop) -> SecondaryUpdateTerminate
+        assert_eq!(Status::from_sup(Ok(SupStatus::Stop)), Status::SecondaryUpdateTerminate);
 
         // Err -> SecondaryUpdateError
         assert_eq!(Status::from_sup(Err("some error")), Status::SecondaryUpdateError("some error"));

@@ -378,3 +378,34 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         }
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use crate::{Config, DeltaLambda, IniDir, Samples, Solver, Status, Stop, SupStatus};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    #[test]
+    fn secondary_update_retry_rejects_the_step_and_retries() {
+        let (mut system, mut u, _u_ref, mut args) = Samples::two_eq_ref();
+        let calls = AtomicUsize::new(0);
+        system.set_update_secondary_state(|_, _, _, _, _, _| {
+            let n = calls.fetch_add(1, Ordering::SeqCst);
+            if n == 0 { Ok(SupStatus::Retry) } else { Ok(SupStatus::Continue) }
+        });
+
+        let config = Config::new();
+        let mut solver = Solver::new(&config, system).unwrap();
+        let mut l = 0.0;
+        let status = solver
+            .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(2), &DeltaLambda::auto(1e-4), None)
+            .unwrap();
+
+        assert_eq!(status, Status::Success);
+        let stats = solver.get_stats();
+        assert_eq!(stats.n_rejected, 1);
+        assert_eq!(stats.n_accepted, 1);
+        assert_eq!(stats.n_steps, 2);
+    }
+}

@@ -939,7 +939,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::SolverArclength;
-    use crate::{Config, Method, Samples};
+    use crate::{Config, Method, Samples, SupStatus};
     use russell_sparse::Sym;
 
     #[test]
@@ -947,7 +947,7 @@ mod tests {
         let mut config = Config::new();
         config.set_method(Method::Arclength).set_bordering(false);
         let (mut system, _, _, _) = Samples::simple_linear_problem(Sym::YesFull);
-        system.set_update_secondary_state(|_, _, _, _, _, _| Ok(false));
+        system.set_update_secondary_state(|_, _, _, _, _, _| Ok(SupStatus::Continue));
         assert_eq!(
             SolverArclength::new(&config, system).err(),
             Some(

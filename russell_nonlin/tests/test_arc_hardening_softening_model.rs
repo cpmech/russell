@@ -4,7 +4,7 @@ use ctm_demo::{Model, ModelType};
 use plotpy::{Curve, Plot, linspace};
 use russell_lab::{InterpChebyshev, Vector, approx_eq};
 use russell_nonlin::{Config, DeltaLambda, IniDir, Method, Output, SoderlindClass, Solver};
-use russell_nonlin::{Stats, Status, Stop, StrError, System};
+use russell_nonlin::{Stats, Status, Stop, StrError, SupStatus, System};
 use russell_ode::Method as OdeMethod;
 use russell_sparse::Sym;
 use std::collections::HashMap;
@@ -298,8 +298,7 @@ fn new_hs_model_problem<'a>(use_continuous_modulus: bool) -> Result<(System<'a, 
                 args.xx_predictor.push(*x);
                 args.yy_predictor.push(*y);
             }
-            let stop_gracefully = false;
-            Ok(stop_gracefully)
+            Ok(SupStatus::Continue)
         });
 
     // Allocate the arguments

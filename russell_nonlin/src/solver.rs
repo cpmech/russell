@@ -129,6 +129,9 @@ impl<'a, A> Solver<'a, A> {
 
         // perform initialization (compute the actual initial stepsize and tangent vector)
         self.actual.initialize(&mut self.work, ddl_ini, u, *l, dir, args)?;
+        if self.work.h > self.config.h_max {
+            self.work.h = self.config.h_max;
+        }
 
         // first output
         if let Some(out) = output.as_deref_mut() {
@@ -277,8 +280,8 @@ impl<'a, A> Solver<'a, A> {
                         // avoid stepsize growth on failure/rejection
                         h_estimate = f64::min(h_estimate, self.work.h);
                     }
-                    self.work.h = h_estimate;
-                    self.work.stats.h_accepted = h_estimate;
+                    self.work.h = f64::min(h_estimate, self.config.h_max);
+                    self.work.stats.h_accepted = self.work.h;
 
                     // reset flags
                     self.work.n_continued_failure = 0;
@@ -396,7 +399,11 @@ impl<'a, A> Solver<'a, A> {
                 let mut p = 1.0;
                 let mut d = 1.0;
                 let i = 1.0 / rdiff;
-                if self.work.stats.n_accepted > 1 {
+                // The previous error may have been clamped to zero by tg_control_rdiff_min. Dividing
+                // by it would make p = 0 and turn the first error above the floor into the maximal
+                // shrink, which keeps the stepsize in a limit cycle. With p = 1 the first real error
+                // is judged on its own.
+                if self.work.stats.n_accepted > 1 && self.rerr_prev > 0.0 {
                     p = self.rerr_prev / rdiff;
                 }
                 if self.work.stats.n_accepted > 2 && self.rerr_anc > 0.0 {

@@ -87,9 +87,10 @@ fn test_linear_auto() {
         )
         .unwrap();
 
-    // check stats
+    // check stats (7 steps since the stepsize control stopped shrinking on a clamped tangent error;
+    // it was 17 when every clamped error forced the maximal shrink)
     let stats = solver.get_stats();
-    assert_eq!(stats.n_accepted, 17);
+    assert_eq!(stats.n_accepted, 7);
     assert_eq!(stats.n_rejected, 0);
 }
 

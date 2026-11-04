@@ -15,7 +15,14 @@ const SAVE_FIGURE: bool = false;
 #[test]
 fn test_hardening_softening_model_full() -> Result<(), StrError> {
     // Settings
-    let settings = HashMap::from([("tg_control_tol", 0.5), ("nr_control_n_opt", 3.0), ("nr_control_beta", 0.5)]);
+    // h_max bounds the step: the tangent signal alone lets the step grow until a rejection, which
+    // resolves this reference path to ~0.07 in lambda; 0.02 brings it back to 0.026
+    let settings = HashMap::from([
+        ("tg_control_tol", 0.5),
+        ("nr_control_n_opt", 3.0),
+        ("nr_control_beta", 0.5),
+        ("h_max", 0.02),
+    ]);
 
     // Input data
     let use_continuous_modulus = false;
@@ -114,8 +121,9 @@ fn test_hardening_softening_model_from_peak_backward() -> Result<(), StrError> {
         fig_width,
     )?;
 
-    // Check the solver statistics
-    assert_eq!(stats.n_accepted, 29);
+    // Check the solver statistics (19 steps since the stepsize control stopped shrinking on a
+    // clamped tangent error; it was 29 when every clamped error forced the maximal shrink)
+    assert_eq!(stats.n_accepted, 19);
     assert_eq!(stats.n_rejected, 0);
     Ok(())
 }
@@ -404,6 +412,7 @@ fn run_hs_model(
             "tg_control_beta3" => config.set_tg_control_beta3(*value),
             "tg_control_alpha2" => config.set_tg_control_alpha2(*value),
             "tg_control_alpha3" => config.set_tg_control_alpha3(*value),
+            "h_max" => config.set_h_max(*value),
             _ => return Err("invalid setting"),
         };
     }

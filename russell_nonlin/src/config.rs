@@ -51,6 +51,14 @@ pub struct Config {
     /// Max number of steps
     pub(crate) n_step_max: usize,
 
+    /// Maximum stepsize that the automatic stepsize control may reach (infinite when unset)
+    ///
+    /// The control adapts the step from its own signals (the change of the tangent vector), which do
+    /// not know how fine the user wants the path to be resolved: on a nearly straight path the
+    /// signals are ~0 and the step grows without bound. `h_max` is that accuracy bound, expressed in
+    /// the same unit as the stepsize (Δs for pseudo-arclength, Δλ for natural parameter).
+    pub(crate) h_max: f64,
+
     /// Maximum allowed number of continued iteration failures
     pub(crate) n_cont_failure_max: usize,
 
@@ -235,6 +243,7 @@ impl Config {
             // automatic stepsize
             m_failure: 0.5,
             n_step_max: 100_000,
+            h_max: f64::INFINITY,
             n_cont_failure_max: 5,
             n_cont_rejection_max: 5,
             // linear solver
@@ -467,6 +476,27 @@ impl Config {
     /// Default value: 100_000
     pub fn set_n_step_max(&mut self, value: usize) -> &mut Self {
         self.n_step_max = value;
+        self
+    }
+
+    /// Returns the maximum stepsize that the automatic stepsize control may reach
+    pub fn get_h_max(&self) -> f64 {
+        self.h_max
+    }
+
+    /// Sets the maximum stepsize that the automatic stepsize control may reach
+    ///
+    /// An accuracy bound: the control does not grow the step above it. It is expressed in the unit of
+    /// the stepsize (Δs for pseudo-arclength, Δλ for natural parameter). The default is infinite
+    /// (unbounded), which is right when the tangent signal alone sets a sensible step.
+    ///
+    /// ```text
+    /// h_max > 0
+    /// ```
+    ///
+    /// Default value: f64::INFINITY
+    pub fn set_h_max(&mut self, value: f64) -> &mut Self {
+        self.h_max = value;
         self
     }
 
@@ -1019,6 +1049,9 @@ impl Config {
         if self.n_step_max < 1 {
             return Err("requirement: n_step_max ≥ 1");
         }
+        if self.h_max <= 0.0 {
+            return Err("requirement: h_max > 0");
+        }
         if self.n_cont_failure_max < 1 {
             return Err("requirement: n_cont_failure_max ≥ 1");
         }
@@ -1102,6 +1135,7 @@ mod tests {
         // automatic stepsize
         assert_eq!(config.get_m_failure(), 0.5);
         assert_eq!(config.get_n_step_max(), 100_000);
+        assert_eq!(config.get_h_max(), f64::INFINITY);
         assert_eq!(config.get_n_cont_failure_max(), 5);
         assert_eq!(config.get_n_cont_rejection_max(), 5);
 
@@ -1201,6 +1235,9 @@ mod tests {
 
         config.set_n_step_max(500);
         assert_eq!(config.get_n_step_max(), 500);
+
+        config.set_h_max(0.02);
+        assert_eq!(config.get_h_max(), 0.02);
 
         config.set_n_cont_failure_max(10);
         assert_eq!(config.get_n_cont_failure_max(), 10);
@@ -1396,6 +1433,9 @@ mod tests {
         config.n_step_max = 0;
         assert_eq!(config.validate().err(), Some("requirement: n_step_max ≥ 1"));
         config.n_step_max = 10;
+        config.h_max = 0.0;
+        assert_eq!(config.validate().err(), Some("requirement: h_max > 0"));
+        config.h_max = f64::INFINITY;
         config.n_cont_failure_max = 0;
         assert_eq!(config.validate().err(), Some("requirement: n_cont_failure_max ≥ 1"));
         config.n_cont_failure_max = 5;

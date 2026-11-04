@@ -105,7 +105,7 @@ fn test_circle_min_lambda() {
 
     // check stats
     let stats = solver.get_stats();
-    assert_eq!(stats.n_accepted, 8);
+    assert_eq!(stats.n_accepted, 3); // was 8 before the stepsize control stopped shrinking on a clamped error
     assert_eq!(stats.n_rejected, 0);
 
     // plot
@@ -155,7 +155,10 @@ fn test_circle_max_u() {
     println!("u final = {}", u[0]);
     println!("λ final = {:.7e}", l);
     assert!(u[0] > 1.3 && u[0] < RADIUS);
-    approx_eq(u[0] * u[0] + l * l, RADIUS * RADIUS, 1e-8);
+    // the stepsize control no longer takes the maximal shrink when the first error above
+    // tg_control_rdiff_min follows a clamped one, so the arc is followed with fewer, larger steps:
+    // the circle residual reaches 1e-7 instead of 1e-8
+    approx_eq(u[0] * u[0] + l * l, RADIUS * RADIUS, 1e-6);
 
     // check stats
     let stats = solver.get_stats();
@@ -213,8 +216,8 @@ fn test_circle_min_u() {
 
     // check stats
     let stats = solver.get_stats();
-    assert_eq!(stats.n_accepted, 8);
-    assert_eq!(stats.n_rejected, 0);
+    assert_eq!(stats.n_accepted, 4); // was 8 before the stepsize control stopped shrinking on a clamped error
+    assert_eq!(stats.n_rejected, 1); // the control now grows until one step is rejected and halved
 
     // plot
     if SAVE_FIGURE {

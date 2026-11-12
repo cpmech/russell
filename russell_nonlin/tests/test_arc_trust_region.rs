@@ -25,8 +25,8 @@ fn quadratic_path(a: f64, b: f64) -> System<'static, NoArgs> {
     .unwrap()
 }
 
-/// Pins SPEC item 4.1: a single wild Newton update is rejected, automatic stepping retries with
-/// m_failure·h, and disabling the relative bound removes the rejection on the same fixture.
+/// A single wild Newton update is rejected, automatic stepping retries with `m_failure * h`, and
+/// disabling the relative bound removes the rejection on the same fixture.
 #[test]
 fn single_wild_update_is_rejected_and_retried_with_half_step() {
     let h = 0.015;
@@ -76,8 +76,8 @@ fn single_wild_update_is_rejected_and_retried_with_half_step() {
     assert_eq!(solver.get_stats().n_accepted, 1);
 }
 
-/// Pins SPEC item 4.3: in θ = 0 target mode Δs_eff = |h| / (2 (dλ/ds)²), so a tiny |dλ/ds| does
-/// not produce a false LargeDelta on the initial target attempt or on the halved retry.
+/// In `θ = 0` target mode `Δs_eff = |h| / (2 (dλ/ds)²)`, so a tiny `|dλ/ds|` does not produce a
+/// false `LargeDelta` on the initial target attempt or on the halved retry.
 #[test]
 fn target_mode_uses_the_scaled_arclength_bound_on_the_retry() {
     let scale = 1.0e4;
@@ -136,8 +136,8 @@ fn target_mode_uses_the_scaled_arclength_bound_on_the_retry() {
     approx_eq(u[0], scale, 1e-8);
 }
 
-/// Pins SPEC item 4.4: with disable_rel_delta_analysis = true the absolute ceiling and the
-/// non-finite delta check still fire, while only delta_rms and delta_converged are disabled.
+/// With `disable_rel_delta_analysis = true` the absolute ceiling and the non-finite delta check
+/// still fire, while only `delta_rms` and `delta_converged` are disabled.
 #[test]
 fn trust_region_checks_work_when_relative_delta_analysis_is_disabled() {
     // LargeDelta from the absolute / Euclidean bounds.

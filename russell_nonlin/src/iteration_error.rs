@@ -126,6 +126,8 @@ impl IterationError {
         self.n_large_delta = 0;
         self.n_continued_residual_divergence = 0;
         self.n_continued_delta_divergence = 0;
+        self.delta_l2 = 0.0;
+        self.chord_l2 = 0.0;
         self.allowed_step_l2 = f64::INFINITY;
         let ndim = self.scaling.dim() - 1; // -1 due to λ
         for i in 0..ndim {

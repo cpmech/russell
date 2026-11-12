@@ -774,7 +774,12 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
                 f64::INFINITY
             }
         };
-        work.err.set_allowed_step_l2(self.config.delta_max_allowed_h * ds_eff);
+        let allowed_l2 = if self.config.delta_max_allowed_h.is_infinite() {
+            f64::INFINITY
+        } else {
+            self.config.delta_max_allowed_h * ds_eff
+        };
+        work.err.set_allowed_step_l2(allowed_l2);
 
         // predictor: update secondary variables (e.g., local state)
         if let Some(f) = self.system.update_secondary_state.as_ref() {
@@ -979,9 +984,9 @@ mod tests {
         );
     }
 
-    /// Pins SPEC item 4.2: cumulative multi-iteration chord drift is rejected even though every
-    /// single update stays inside the single-update bound, and the trust-region check runs before
-    /// `converged()` so a delta-converged tiny update cannot hide an exhausted chord.
+    /// Cumulative multi-iteration chord drift is rejected even though every single update stays
+    /// inside the single-update bound, and the trust-region check runs before `converged()` so a
+    /// delta-converged tiny update cannot hide an exhausted chord.
     #[test]
     fn cumulative_chord_drift_is_rejected() {
         let h = 0.01;

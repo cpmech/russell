@@ -610,10 +610,17 @@ impl<'a, A> SolverArclength<'a, A> {
 
         // check convergence on x = (δu, δλ)
         let nan_or_inf = work.err.analyze_delta(work.n_iteration, &self.x);
-        if nan_or_inf {
+        let nan_or_inf_chord = work.err.analyze_chord(u, l, &work.u, work.l, &self.x);
+        if nan_or_inf || nan_or_inf_chord {
             return Ok(Status::NanOrInfDelta);
         }
         work.log.iteration(work.n_iteration, &work.err);
+
+        // Check the trust region before accepting a converged delta: a correction can have
+        // crept outside the ball while delta_rms still reports convergence.
+        if let Some(status) = work.err.check_large_delta() {
+            return Ok(status);
+        }
         if work.err.converged() {
             return Ok(Status::Success);
         }
@@ -753,6 +760,21 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
                 }
             }
         }
+
+        // Set the arclength trust-region bound. In the normal mode (θ = 1) the step in s is |h|.
+        // In the target/polish mode (θ = 0) the predictor changes only λ, and N = 2 (λ - λ₀) dλ/ds - h
+        // is an equation in λ alone, so the chord in (u,λ) grows like |Δλ| / |dλ/ds| = |h| / (2 (dλ/ds)²).
+        let ds_eff = if self.theta > 0.0 {
+            f64::abs(work.h)
+        } else {
+            let adv = f64::abs(work.dlds);
+            if adv > CONFIG_H_MIN {
+                f64::abs(work.h) / (2.0 * adv * adv)
+            } else {
+                f64::INFINITY
+            }
+        };
+        work.err.set_allowed_step_l2(self.config.delta_max_allowed_h * ds_eff);
 
         // predictor: update secondary variables (e.g., local state)
         if let Some(f) = self.system.update_secondary_state.as_ref() {
@@ -939,7 +961,8 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::SolverArclength;
-    use crate::{Config, Method, Samples, SupStatus};
+    use crate::{Config, DeltaLambda, IniDir, IterationError, Method, NoArgs, Samples, Solver, Status, Stop, SupStatus, System};
+    use russell_lab::Vector;
     use russell_sparse::Sym;
 
     #[test]
@@ -954,5 +977,72 @@ mod tests {
                 "The Arclength method requires `sym_ggu = Sym::No` when not using bordering (even if Gu is symmetric) because the augmented matrix A is not symmetric in general."
             )
         );
+    }
+
+    /// Pins SPEC item 4.2: cumulative multi-iteration chord drift is rejected even though every
+    /// single update stays inside the single-update bound, and the trust-region check runs before
+    /// `converged()` so a delta-converged tiny update cannot hide an exhausted chord.
+    #[test]
+    fn cumulative_chord_drift_is_rejected() {
+        let h = 0.01;
+        let update = 3.0 * h; // single update = 0.3 κ Δs, below the 10 Δs bound
+        let b = 1.0e-6; // keeps the initial du/ds nonzero
+        let system = System::new(
+            1,
+            Some(1),
+            Sym::No,
+            move |gg, l, u, _args: &mut NoArgs| {
+                gg[0] = if u[0] < 3.5 * update { -update - b * l } else { 0.0 };
+                Ok(())
+            },
+            move |ggu, ggl, _l, _u, _args: &mut NoArgs| {
+                ggu.put(0, 0, 1.0).unwrap();
+                ggl[0] = -b;
+                Ok(())
+            },
+        )
+        .unwrap();
+
+        // Four 0.03 updates walk the chord to 0.12 > 0.1, while each single update is 0.03 < 0.1.
+        let mut config = Config::new();
+        config.set_method(Method::Arclength);
+        let mut solver = Solver::new(&config, system.clone()).unwrap();
+        let mut u = Vector::from(&[0.0]);
+        let mut l = 0.0;
+        let mut args = 0;
+        let status = solver
+            .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::constant(h), None)
+            .unwrap();
+        assert_eq!(status, Status::LargeDelta);
+        assert_eq!(solver.get_stats().n_accepted, 0);
+
+        // With the relative bound disabled, the same drift is accepted and the step converges,
+        // proving the rejection came from the chord and not from a single update or the ceiling.
+        let mut config_inf = config.clone();
+        config_inf.set_delta_max_allowed_h(f64::INFINITY);
+        let mut solver = Solver::new(&config_inf, system).unwrap();
+        let mut u = Vector::from(&[0.0]);
+        let mut l = 0.0;
+        let status = solver
+            .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::constant(h), None)
+            .unwrap();
+        assert_eq!(status, Status::Success);
+        assert_eq!(solver.get_stats().n_accepted, 1);
+        assert_eq!(solver.get_stats().n_iteration_total, 5);
+
+        // Ordering: the tiny update is delta-converged, but the cumulative chord is outside the
+        // ball, so check_large_delta must win over converged().
+        let config = Config::new();
+        let mut err = IterationError::new(&config, 1);
+        let u0 = Vector::from(&[1.0e6]);
+        err.reset(&u0, 0.0);
+        err.set_allowed_step_l2(1.5e-9);
+        let x = Vector::from(&[1.0e-9, 0.0]);
+        assert_eq!(err.analyze_delta(0, &x), false);
+        assert!(err.delta_converged);
+        let u_cur = Vector::from(&[1.0e6 + 1.0e-9]);
+        assert_eq!(err.analyze_chord(&u0, 0.0, &u_cur, 0.0, &x), false);
+        assert!(err.chord_l2 > err.delta_l2);
+        assert_eq!(err.check_large_delta(), Some(Status::LargeDelta));
     }
 }

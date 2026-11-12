@@ -90,6 +90,18 @@ pub struct Config {
     /// Maximum allowed ‖δu,δλ‖∞ max
     pub(crate) delta_max_allowed: f64,
 
+    /// Maximum allowed relative step size in the arclength method
+    ///
+    /// In [Method::Arclength], both the single Newton update `‖(δu, δλ)‖₂` and the cumulative
+    /// step chord `‖(u − u₀, λ − λ₀)‖₂` are bounded by `delta_max_allowed_h * Δs_eff`, where
+    /// `Δs_eff = |h|` in the normal `θ = 1` mode and
+    /// `Δs_eff = |h| / (2 (dλ/ds)²) = |Δλ_step| / |dλ/ds|` in the `θ = 0` target/polish
+    /// mode. Exceeding the bound returns [`Status::LargeDelta`](crate::Status::LargeDelta),
+    /// which automatic stepping retries with `m_failure * h`. The value `f64::INFINITY` is
+    /// valid and disables the relative arclength bound, leaving `delta_max_allowed` as the
+    /// absolute ℓ∞ ceiling.
+    pub(crate) delta_max_allowed_h: f64,
+
     /// Disables the relative delta analysis
     pub(crate) disable_rel_delta_analysis: bool,
 
@@ -255,6 +267,7 @@ impl Config {
             tol_abs_delta: 1e-10,
             tol_rel_delta: 1e-7,
             delta_max_allowed: 1e8,
+            delta_max_allowed_h: 10.0,
             disable_rel_delta_analysis: false,
             n_iteration_max: 20,
             n_cont_residual_divergence_max: 3,
@@ -671,6 +684,29 @@ impl Config {
         self
     }
 
+    /// Returns the maximum allowed relative step size in the arclength method
+    ///
+    /// In [Method::Arclength], both the single Newton update `‖(δu, δλ)‖₂` and the cumulative
+    /// step chord `‖(u − u₀, λ − λ₀)‖₂` are bounded by `delta_max_allowed_h * Δs_eff`, where
+    /// `Δs_eff = |h|` in the normal `θ = 1` mode and
+    /// `Δs_eff = |h| / (2 (dλ/ds)²) = |Δλ_step| / |dλ/ds|` in the `θ = 0` target/polish
+    /// mode, because the constraint `N = 0` then pins `Δλ_step = h / (2 dλ/ds)`. Exceeding
+    /// the bound returns [`Status::LargeDelta`](crate::Status::LargeDelta), which automatic
+    /// stepping retries with `m_failure * h`. The value `f64::INFINITY` is valid and
+    /// disables the relative arclength bound, leaving the absolute ℓ∞ ceiling in
+    /// [`Config::get_delta_max_allowed()`] active.
+    pub fn get_delta_max_allowed_h(&self) -> f64 {
+        self.delta_max_allowed_h
+    }
+
+    /// Sets the maximum allowed relative step size in the arclength method
+    ///
+    /// Default value: 10.0
+    pub fn set_delta_max_allowed_h(&mut self, value: f64) -> &mut Self {
+        self.delta_max_allowed_h = value;
+        self
+    }
+
     /// Returns the disable_rel_delta_analysis flag
     pub fn get_disable_rel_delta_analysis(&self) -> bool {
         self.disable_rel_delta_analysis
@@ -1040,6 +1076,13 @@ impl Config {
     }
 
     /// Validates all data
+    ///
+    /// The arclength bound requires `delta_max_allowed_h > 1.0`: on the arclength hyperplane
+    /// `N = 0` with `θ = 1`, Pythagoras gives `‖x − x₀‖₂ = √(Δs² + d_⊥²) ≥ Δs` for every
+    /// point, so a factor less than or equal to 1.0 would reject every step. The negated
+    /// comparison `!(x > 1.0)` also rejects NaN while accepting `f64::INFINITY`, which
+    /// disables the relative bound.
+    #[allow(clippy::neg_cmp_op_on_partial_ord)] // intentional: this also rejects NaN
     pub(crate) fn validate(&self) -> Result<(), StrError> {
         // automatic stepsize
 
@@ -1072,6 +1115,9 @@ impl Config {
         }
         if self.delta_max_allowed <= 0.0 {
             return Err("requirement: allowed_delta_max > 0.0");
+        }
+        if !(self.delta_max_allowed_h > 1.0) {
+            return Err("requirement: delta_max_allowed_h > 1.0");
         }
         if self.n_iteration_max < 1 {
             return Err("requirement: allowed_iterations ≥ 1");
@@ -1149,6 +1195,7 @@ mod tests {
         assert_eq!(config.get_tol_abs_delta(), 1e-10);
         assert_eq!(config.get_tol_rel_delta(), 1e-7);
         assert_eq!(config.get_delta_max_allowed(), 1e8);
+        assert_eq!(config.get_delta_max_allowed_h(), 10.0);
         assert_eq!(config.get_disable_rel_delta_analysis(), false);
         assert_eq!(config.get_n_iteration_max(), 20);
         assert_eq!(config.get_n_cont_residual_divergence_max(), 3);
@@ -1270,6 +1317,13 @@ mod tests {
 
         config.set_delta_max_allowed(1e6);
         assert_eq!(config.get_delta_max_allowed(), 1e6);
+
+        config.set_delta_max_allowed_h(5.0);
+        assert_eq!(config.get_delta_max_allowed_h(), 5.0);
+        config.set_delta_max_allowed_h(f64::INFINITY);
+        assert_eq!(config.get_delta_max_allowed_h(), f64::INFINITY);
+        config.set_delta_max_allowed_h(10.0);
+        assert_eq!(config.get_delta_max_allowed_h(), 10.0);
 
         config.set_disable_rel_delta_analysis(true);
         assert_eq!(config.get_disable_rel_delta_analysis(), true);
@@ -1460,6 +1514,15 @@ mod tests {
         config.delta_max_allowed = 0.0;
         assert_eq!(config.validate().err(), Some("requirement: allowed_delta_max > 0.0"));
         config.delta_max_allowed = 1e10;
+        config.delta_max_allowed_h = 0.5;
+        assert_eq!(config.validate().err(), Some("requirement: delta_max_allowed_h > 1.0"));
+        config.delta_max_allowed_h = 1.0;
+        assert_eq!(config.validate().err(), Some("requirement: delta_max_allowed_h > 1.0"));
+        config.delta_max_allowed_h = f64::NAN;
+        assert_eq!(config.validate().err(), Some("requirement: delta_max_allowed_h > 1.0"));
+        config.delta_max_allowed_h = f64::INFINITY;
+        assert_eq!(config.validate().is_err(), false);
+        config.delta_max_allowed_h = 10.0;
         config.n_cont_residual_divergence_max = 0;
         assert_eq!(config.validate().err(), Some("requirement: n_cont_residual_div_max ≥ 1"));
         config.n_cont_residual_divergence_max = 2;

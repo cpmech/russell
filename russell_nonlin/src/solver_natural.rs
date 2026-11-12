@@ -139,6 +139,12 @@ impl<'a, A> SolverNatural<'a, A> {
             return Ok(Status::NanOrInfDelta);
         }
         work.log.iteration(work.n_iteration, &work.err);
+
+        // Check the absolute ceiling before accepting a converged delta. The arclength bounds
+        // are inactive here because reset sets allowed_step_l2 to f64::INFINITY.
+        if let Some(status) = work.err.check_large_delta() {
+            return Ok(status);
+        }
         if work.err.converged() {
             return Ok(Status::Success);
         }

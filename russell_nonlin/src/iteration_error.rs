@@ -193,14 +193,17 @@ impl IterationError {
     pub fn analyze_delta(&mut self, iteration: usize, x: &Vector) -> bool {
         // One pass accumulates everything the three measures need: the max-abs value for the
         // ℓ∞ norm, the sum of squares for the ℓ₂ norm, and the scaled sum for the RMS. The
-        // norms are unconditional because the absolute ceiling and the arclength trust region
-        // need them even when the relative analysis is disabled.
+        // 2-norm uses the same Blue scaling as `dnrm2` (which `Norm::Euc` calls), accumulated
+        // in units of the running maximum with no second pass and no allocation. The norms are
+        // unconditional because the absolute ceiling and the arclength trust region need them
+        // even when the relative analysis is disabled.
         //
         // A NaN never satisfies `abs > delta_max`, so `delta_max` stays finite and it is the
         // sum of squares -- hence `delta_l2` -- that carries the NaN to the check below.
         let dim = x.dim();
         let mut delta_max = 0.0;
-        let mut sum_l2 = 0.0;
+        let mut scale = 0.0;
+        let mut ssq = 0.0;
         let mut sum_scaled = 0.0;
         for i in 0..dim {
             let xi = x[i];
@@ -208,12 +211,22 @@ impl IterationError {
             if abs > delta_max {
                 delta_max = abs;
             }
-            sum_l2 += xi * xi;
             let yi = xi / self.scaling[i];
             sum_scaled += yi * yi;
+
+            // Accumulate in units of the running maximum so the squares neither overflow nor
+            // underflow. The `abs != 0.0` guard only drops exact zeros, whose ratio would be
+            // 0/0; a NaN fails it too, so `NaN/scale` still lands in `ssq` and is not lost.
+            if abs > scale {
+                ssq = 1.0 + ssq * (scale / abs) * (scale / abs);
+                scale = abs;
+            } else if abs != 0.0 {
+                let ratio = abs / scale;
+                ssq += ratio * ratio;
+            }
         }
         self.delta_max = delta_max;
-        self.delta_l2 = f64::sqrt(sum_l2);
+        self.delta_l2 = scale * f64::sqrt(ssq);
 
         // check for NaN or Inf
         if !self.delta_max.is_finite() || !self.delta_l2.is_finite() {
@@ -253,9 +266,12 @@ impl IterationError {
     /// Analyzes the cumulative chord of the current step
     ///
     /// The chord is `‖(u_cand − u₀, λ_cand − λ₀)‖₂`, with `u_cand = u_cur + x[0..ndim]` and
-    /// `λ_cand = l_cur + x[ndim]`, where `x = (δu, δλ)`. It measures how far the corrected
-    /// point has drifted from the step origin, not just the size of the last update, and it is
-    /// what catches a run of individually small corrections that walk out of the trust region.
+    /// `λ_cand = l_cur + x[ndim]`, where `x = (δu, δλ)`. `u_cand` is the corrected iterate after
+    /// the current Newton update — the point the iteration would land on if the step were
+    /// accepted — not the predictor of the step, which is a different point that the chord does
+    /// not measure. It measures how far the corrected point has drifted from the step origin,
+    /// not just the size of the last update, and it is what catches a run of individually small
+    /// corrections that walk out of the trust region.
     ///
     /// The loop writes only scalars: no heap allocation is performed.
     ///
@@ -323,5 +339,72 @@ impl IterationError {
 
         // no failure
         Status::Success
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::IterationError;
+    use crate::Config;
+    use russell_lab::{Norm, Vector, vec_norm};
+
+    /// The 2-norm the loop computes must agree with `Norm::Euc` for vectors in the normal range.
+    #[test]
+    fn delta_l2_matches_vec_norm_euc_in_range() {
+        let config = Config::new();
+        let vectors = [
+            &[2.0, -2.0, 2.0, -2.0, -3.0][..],
+            &[-3.0, 2.0, 1.0, 1.0, 1.0][..],
+            &[1.0e-9, 0.0][..],
+            &[0.1, -0.2, 0.3, 0.4][..],
+            &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0][..],
+            &[1.0e6, 3.0, -7.0, 1.0e-3][..],
+            &[5.0e-12, -2.5e-12, 7.0e-12, 1.0e-13][..],
+        ];
+        for data in vectors {
+            let x = Vector::from(&data);
+            let mut err = IterationError::new(&config, x.dim());
+            let u = Vector::new(x.dim());
+            err.reset(&u, 0.0);
+            let nan_or_inf = err.analyze_delta(0, &x);
+            assert!(!nan_or_inf);
+            let reference = vec_norm(&x, Norm::Euc);
+            let rel = f64::abs(err.delta_l2 - reference) / reference;
+            assert!(
+                rel < 1.0e-15,
+                "delta_l2={:?} vec_norm={:?} rel={:e} for {:?}",
+                err.delta_l2,
+                reference,
+                rel,
+                data
+            );
+        }
+    }
+
+    /// Out-of-range entries must not overflow or underflow: `[1e200, 1e200]` keeps a finite norm
+    /// (the is_finite guard must not fire) and `[1e-200, 1e-200]` must not underflow to zero.
+    #[test]
+    fn delta_l2_is_scaled_for_huge_and_tiny_entries() {
+        let config = Config::new();
+
+        let expected = f64::sqrt(2.0) * 1.0e200;
+        let x = Vector::from(&[1.0e200, 1.0e200]);
+        let mut err = IterationError::new(&config, x.dim());
+        let u = Vector::new(x.dim());
+        err.reset(&u, 0.0);
+        let nan_or_inf = err.analyze_delta(0, &x);
+        assert!(!nan_or_inf);
+        assert_eq!(err.delta_max, 1.0e200);
+        assert!(err.delta_l2.is_finite());
+        assert_eq!(err.delta_l2, expected);
+
+        let expected = f64::sqrt(2.0) * 1.0e-200;
+        let x = Vector::from(&[1.0e-200, 1.0e-200]);
+        let mut err = IterationError::new(&config, x.dim());
+        let u = Vector::new(x.dim());
+        err.reset(&u, 0.0);
+        let nan_or_inf = err.analyze_delta(0, &x);
+        assert!(!nan_or_inf);
+        assert_eq!(err.delta_l2, expected);
     }
 }

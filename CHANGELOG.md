@@ -5,6 +5,26 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.0.0] - 2026-11-14
+
+### `russell_nonlin`
+
+#### Changed (breaking)
+
+- The secondary-update (SUP) callback returns [`SupStatus`] instead of `Result<bool, StrError>`:
+  `SupStatus::Continue` replaces `Ok(false)`, `SupStatus::Stop` replaces `Ok(true)`, and
+  `SupStatus::Retry` is new — the solver restores the secondary state and retries the step with a
+  smaller stepsize. A callback written against 5.1.0 must be rewritten; the two former behaviours map
+  one to one.
+- `IterationError::from_sup` takes `SupStatus`; it remains crate-private.
+
+#### Added
+
+- `Config::h_max` and `Config::delta_max_allowed_h` (`get`/`set`): the arclength step is bounded by a
+  Euclidean trust region, so a large multiplier cannot demand a displacement jump no Newton iteration
+  can follow. A new test, `test_arc_trust_region`, covers the bound.
+- The step-size controller ignores a clamped error history instead of deriving a step from it.
+
 ## [5.1.0] - 2026-10-29
 
 ### `russell_nonlin`

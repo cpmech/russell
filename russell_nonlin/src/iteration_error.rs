@@ -265,8 +265,8 @@ impl IterationError {
 
     /// Analyzes the cumulative chord of the current step
     ///
-    /// The chord is `‖(u_cand − u₀, λ_cand − λ₀)‖₂`, with `u_cand = u_cur + x[0..ndim]` and
-    /// `λ_cand = l_cur + x[ndim]`, where `x = (δu, δλ)`. `u_cand` is the corrected iterate after
+    /// The chord is `‖(u_candidate − u₀, λ_candidate − λ₀)‖₂`, with `u_candidate = u_cur + x[0..ndim]` and
+    /// `λ_candidate = l_cur + x[ndim]`, where `x = (δu, δλ)`. `u_candidate` is the corrected iterate after
     /// the current Newton update — the point the iteration would land on if the step were
     /// accepted — not the predictor of the step, which is a different point that the chord does
     /// not measure. It measures how far the corrected point has drifted from the step origin,

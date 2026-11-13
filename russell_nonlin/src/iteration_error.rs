@@ -191,10 +191,29 @@ impl IterationError {
     ///
     /// Returns true if NaN or Inf is found, false otherwise (success)
     pub fn analyze_delta(&mut self, iteration: usize, x: &Vector) -> bool {
-        // Compute both norms unconditionally: the absolute ceiling and the arclength trust
-        // region need them even when the relative analysis is disabled.
-        self.delta_max = vec_norm(x, Norm::Max);
-        self.delta_l2 = vec_norm(x, Norm::Euc);
+        // One pass accumulates everything the three measures need: the max-abs value for the
+        // ℓ∞ norm, the sum of squares for the ℓ₂ norm, and the scaled sum for the RMS. The
+        // norms are unconditional because the absolute ceiling and the arclength trust region
+        // need them even when the relative analysis is disabled.
+        //
+        // A NaN never satisfies `abs > delta_max`, so `delta_max` stays finite and it is the
+        // sum of squares -- hence `delta_l2` -- that carries the NaN to the check below.
+        let dim = x.dim();
+        let mut delta_max = 0.0;
+        let mut sum_l2 = 0.0;
+        let mut sum_scaled = 0.0;
+        for i in 0..dim {
+            let xi = x[i];
+            let abs = f64::abs(xi);
+            if abs > delta_max {
+                delta_max = abs;
+            }
+            sum_l2 += xi * xi;
+            let yi = xi / self.scaling[i];
+            sum_scaled += yi * yi;
+        }
+        self.delta_max = delta_max;
+        self.delta_l2 = f64::sqrt(sum_l2);
 
         // check for NaN or Inf
         if !self.delta_max.is_finite() || !self.delta_l2.is_finite() {
@@ -213,19 +232,16 @@ impl IterationError {
         // for subsequent iterations
         self.delta_max_prev = self.delta_max;
 
-        // Gate only the relative analysis; the trust region still works when it is disabled.
+        // Gate only the relative analysis; the trust region still works when it is disabled. The
+        // scaled sum above is simply ignored here instead of being skipped.
         if self.disable_rel_delta_analysis {
             self.delta_rms = 0.0;
             self.delta_converged = false;
             return false; // ok
         }
 
-        // compute RMS(δu,δλ)
-        let mut sum = 0.0;
-        for i in 0..x.dim() {
-            sum += (x[i] / self.scaling[i]) * (x[i] / self.scaling[i]);
-        }
-        self.delta_rms = f64::sqrt(sum / (x.dim() as f64));
+        // compute RMS(δu,δλ) from the scaled sum accumulated in the loop above
+        self.delta_rms = f64::sqrt(sum_scaled / (dim as f64));
 
         // check convergence
         self.delta_converged = self.delta_rms <= 1.0;

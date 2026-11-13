@@ -5,17 +5,18 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [6.0.0] - 2026-11-14
+## [5.1.1] - 2026-11-14
 
 ### `russell_nonlin`
 
-#### Changed (breaking)
+#### Changed
 
-- The secondary-update (SUP) callback returns [`SupStatus`] instead of `Result<bool, StrError>`:
+- The secondary-update (SUP) callback returns `SupStatus` instead of `Result<bool, StrError>`:
   `SupStatus::Continue` replaces `Ok(false)`, `SupStatus::Stop` replaces `Ok(true)`, and
   `SupStatus::Retry` is new — the solver restores the secondary state and retries the step with a
-  smaller stepsize. A callback written against 5.1.0 must be rewritten; the two former behaviours map
-  one to one.
+  smaller stepsize. The two former behaviours map one to one, but a callback written against 5.1.0
+  must be rewritten. This is a source-breaking change released as a patch, because the SUP callback is
+  consumed only inside this workspace and by pmsim, which are updated together.
 - `IterationError::from_sup` takes `SupStatus`; it remains crate-private.
 
 #### Added

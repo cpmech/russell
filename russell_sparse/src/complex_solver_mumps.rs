@@ -87,6 +87,9 @@ pub struct ComplexSolverMUMPS {
     /// Indicates whether the solver has been initialized or not (just once)
     initialized: bool,
 
+    /// Parameters used by the first `preprocess`, which a refactorization may repeat
+    initialized_params: LinSolParams,
+
     /// Indicates whether the sparse matrix has been factorized or not
     factorized: bool,
 
@@ -170,6 +173,7 @@ impl ComplexSolverMUMPS {
             Ok(ComplexSolverMUMPS {
                 solver,
                 initialized: false,
+                initialized_params: LinSolParams::new(),
                 factorized: false,
                 initialized_sym: Sym::No,
                 initialized_ndim: 0,
@@ -202,11 +206,11 @@ impl ComplexLinSolTrait for ComplexSolverMUMPS {
     ///   (`nrow = ncol`) and, if symmetric, the symmetric flag must be [Sym::YesLower]
     /// * `params` -- configuration parameters; None => use default
     ///
-    /// **Important:** `params` must be set to `None` when calling `preprocess` again;
-    /// e.g., when the values of the coefficient matrix change but the structure remains the same.
-    /// This limitation is required because the first factorization performs both the *symbolic* and
-    /// *numeric* factorizations, whereas the subsequent factorizations are only *numeric*. Thus,
-    /// options such as *ordering* and *scaling* have no further impact after the symbolic factorization.
+    /// **Important:** the first call takes the parameters that drive the symbolic factorization.
+    /// A later call — e.g., when the values of the coefficient matrix change but the structure
+    /// remains the same — may pass `None` or the **same** `Some(params)`. A `Some(params)` that
+    /// differs in any field is an error (`"subsequent factorizations must not change LinSolParams"`),
+    /// because ordering, scaling and the MUMPS initialization options act only in the symbolic phase.
     ///
     /// # Notes
     ///
@@ -231,8 +235,10 @@ impl ComplexLinSolTrait for ComplexSolverMUMPS {
             if mat.nnz != self.initialized_nnz {
                 return Err("subsequent factorizations must use the same matrix (nnz differs)");
             }
-            if params.is_some() {
-                return Err("subsequent factorizations must not change LinSolParams");
+            if let Some(p) = params {
+                if p != self.initialized_params {
+                    return Err("subsequent factorizations must not change LinSolParams");
+                }
             }
         } else {
             if mat.nrow != mat.ncol {
@@ -314,6 +320,7 @@ impl ComplexLinSolTrait for ComplexSolverMUMPS {
             }
             self.time_initialize_ns = self.stopwatch.stop();
             self.initialized = true;
+            self.initialized_params = par;
         }
 
         // call factorize
@@ -653,6 +660,38 @@ mod tests {
         params.scaling = Scaling::RowCol;
         solver.preprocess(&coo, Some(params)).unwrap();
         params.ordering = Ordering::Amd;
+        assert_eq!(
+            solver.preprocess(&coo, Some(params)),
+            Err("subsequent factorizations must not change LinSolParams")
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn preprocess_accepts_unchanged_params_on_second_call() {
+        let mut solver = ComplexSolverMUMPS::new().unwrap();
+        let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower();
+        let mut params = LinSolParams::new();
+        params.ordering = Ordering::Pord;
+        params.scaling = Scaling::RowCol;
+        solver.preprocess(&coo, Some(params)).unwrap();
+        solver.preprocess(&coo, Some(params)).unwrap(); // unchanged: allowed
+        let mut x = ComplexVector::new(coo.nrow);
+        let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
+        solver.solve(&mut x, &rhs, false).unwrap();
+        // the same solver, solved after the refactorization, still matches the first solution
+        let x_correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
+        complex_vec_approx_eq(&x, x_correct, 1e-14);
+    }
+
+    #[test]
+    #[serial]
+    fn preprocess_rejects_params_first_given_after_a_none_call() {
+        let mut solver = ComplexSolverMUMPS::new().unwrap();
+        let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower();
+        solver.preprocess(&coo, None).unwrap();
+        let mut params = LinSolParams::new();
+        params.ordering = Ordering::Pord;
         assert_eq!(
             solver.preprocess(&coo, Some(params)),
             Err("subsequent factorizations must not change LinSolParams")

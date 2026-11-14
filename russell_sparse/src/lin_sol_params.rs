@@ -139,7 +139,11 @@ impl Default for DirectMethod {
 }
 
 /// Defines the configuration parameters for the linear system solver
-#[derive(Clone, Copy, Debug)]
+///
+/// The solvers compare these parameters with `==` to decide whether a refactorization may be
+/// given parameters again: the first `preprocess` stores them, and a later call must pass
+/// `None` or the same `Some(params)`.
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LinSolParams {
     /// Defines the symmetric permutation (ordering)
     pub ordering: Ordering,

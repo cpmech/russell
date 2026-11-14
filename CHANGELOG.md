@@ -5,9 +5,9 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [5.1.1] - 2026-11-14
+## [5.2.0] - 2026-11-14
 
-This release ships `russell_nonlin` 5.1.1, `russell_lab` 5.0.1 and `russell_sparse` 5.1.1.
+This release ships `russell_nonlin` 5.2.0, `russell_sparse` 5.1.1, and `russell_lab` 5.0.1.
 
 ### `russell_lab`
 
@@ -27,7 +27,7 @@ This release ships `russell_nonlin` 5.1.1, `russell_lab` 5.0.1 and `russell_spar
 - The secondary-update (SUP) callback returns `SupStatus` instead of `Result<bool, StrError>`:
   `SupStatus::Continue` replaces `Ok(false)`, `SupStatus::Stop` replaces `Ok(true)`, and
   `SupStatus::Retry` is new — the solver restores the secondary state and retries the step with a
-  smaller stepsize. A callback written against 5.1.0 must be rewritten; the two former behaviours map
+  smaller stepsize. A callback written against 5.1.0 must be rewritten; the two former behaviors map
   one to one.
 - `IterationError::from_sup` takes `SupStatus`; it remains crate-private.
 

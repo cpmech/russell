@@ -290,7 +290,9 @@ mod tests {
             assert!(source.starts_with("local"), "expected a local UMFPACK, got: {source}");
         } else if source.starts_with("vcpkg") {
             // Windows, where vcpkg sits between the local prefix and MSYS2.
-            assert!(cfg!(target_os = "windows"), "a vcpkg UMFPACK outside Windows: {source}");
+            if !cfg!(target_os = "windows") {
+                panic!("a vcpkg UMFPACK outside Windows: {source}");
+            }
         } else {
             assert!(source.starts_with("system"), "expected a system UMFPACK, got: {source}");
         }

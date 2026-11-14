@@ -121,6 +121,14 @@ use crate::internal::{C_FALSE, C_TRUE, NORM_EUC, NORM_INF, NORM_MAX, NORM_ONE};
 #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::to_i32;
 
+/// Largest `m·n·k` still computed by the native kernel instead of the linked library
+///
+/// Below this size the C call and the library's thread-team dispatch cost more than the
+/// multiply-adds. The products this exists for are the FEM scratchpad ones — `8x2 · 2x2` is
+/// 32 flops — which a coupled element makes tens of thousands of times per assembly.
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+const SMALL_DGEMM_MAX_OPS: usize = 256;
+
 #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // All of these are the shim's own entry points; each is a two-line wrapper
@@ -228,6 +236,11 @@ pub fn dgemm(alpha: f64, a: &[f64], b: &[f64], beta: f64, c: &mut [f64], m: usiz
     }
     #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
+        // Below this size the C call and the library's thread-team dispatch cost more than the multiply-adds.
+        if m.saturating_mul(n).saturating_mul(k) <= SMALL_DGEMM_MAX_OPS {
+            algebra_linear::blas::dgemm(alpha, a, b, beta, c, m, n, k);
+            return;
+        }
         let m_i32 = to_i32(m);
         let n_i32 = to_i32(n);
         let k_i32 = to_i32(k);
@@ -257,6 +270,11 @@ pub fn dgemm_tn(alpha: f64, a: &[f64], b: &[f64], beta: f64, c: &mut [f64], m: u
     }
     #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
+        // Below this size the C call and the library's thread-team dispatch cost more than the multiply-adds.
+        if m.saturating_mul(n).saturating_mul(k) <= SMALL_DGEMM_MAX_OPS {
+            algebra_linear::blas::dgemm_tn(alpha, a, b, beta, c, m, n, k);
+            return;
+        }
         let m_i32 = to_i32(m);
         let n_i32 = to_i32(n);
         let k_i32 = to_i32(k);
@@ -290,6 +308,11 @@ pub fn dgemm_nt(alpha: f64, a: &[f64], b: &[f64], beta: f64, c: &mut [f64], m: u
     }
     #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
+        // Below this size the C call and the library's thread-team dispatch cost more than the multiply-adds.
+        if m.saturating_mul(n).saturating_mul(k) <= SMALL_DGEMM_MAX_OPS {
+            algebra_linear::blas::dgemm_nt(alpha, a, b, beta, c, m, n, k);
+            return;
+        }
         let m_i32 = to_i32(m);
         let n_i32 = to_i32(n);
         let k_i32 = to_i32(k);
@@ -1044,6 +1067,86 @@ mod tests {
             dgemm(alpha, &a, &b, beta, &mut got, m, n, k);
             for i in 0..m * n {
                 assert_close(got[i], want[i], &format!("dgemm m={m} n={n} k={k} alpha={alpha} beta={beta} [{i}]"));
+            }
+        }
+    }
+
+    /// `C := alpha * A * B + beta * C` with a naive loop, column-major.
+    fn naive_dgemm(alpha: f64, a: &[f64], b: &[f64], beta: f64, c0: &[f64], m: usize, n: usize, k: usize) -> Vec<f64> {
+        let mut c = c0.to_vec();
+        for j in 0..n {
+            for i in 0..m {
+                let mut s = 0.0;
+                for p in 0..k {
+                    s += a[i + m * p] * b[p + k * j];
+                }
+                let idx = i + m * j;
+                c[idx] = alpha * s + beta * c[idx];
+            }
+        }
+        c
+    }
+
+    /// The `dgemm` fast path against a naive loop, on both sides of the cutoff.
+    ///
+    /// 32, 180 and 256 ops take the native branch, 257 and 512 the library one, so
+    /// both branches are compared against the same reference.
+    #[test]
+    fn small_dgemm_matches_a_naive_loop() {
+        // m, n, k, and m*n*k
+        let shapes = [(2, 8, 2), (20, 3, 3), (8, 8, 4), (257, 1, 1), (8, 8, 8)];
+        let (alpha, beta) = (2.5, -0.75);
+        for (m, n, k) in shapes {
+            let a = data(m * k);
+            let b = data(k * n);
+            let c0 = data(m * n);
+            let want = naive_dgemm(alpha, &a, &b, beta, &c0, m, n, k);
+            let mut got = c0.clone();
+            dgemm(alpha, &a, &b, beta, &mut got, m, n, k);
+            for i in 0..m * n {
+                assert_close(got[i], want[i], &format!("dgemm m={m} n={n} k={k} [{i}]"));
+            }
+        }
+    }
+
+    /// The `dgemm_tn` fast path, with `A` stored `k x m` as that variant expects.
+    #[test]
+    fn small_dgemm_tn_matches_a_naive_loop() {
+        // m, n, k, and m*n*k
+        let shapes = [(2, 8, 2), (20, 3, 3), (8, 8, 4), (257, 1, 1), (8, 8, 8)];
+        let (alpha, beta) = (2.5, -0.75);
+        for (m, n, k) in shapes {
+            let a = data(k * m);
+            let b = data(k * n);
+            let c0 = data(m * n);
+            // The naive loop takes A as m x k, so transpose the stored k x m array.
+            let at: Vec<f64> = (0..m * k).map(|idx| a[idx / m + k * (idx % m)]).collect();
+            let want = naive_dgemm(alpha, &at, &b, beta, &c0, m, n, k);
+            let mut got = c0.clone();
+            dgemm_tn(alpha, &a, &b, beta, &mut got, m, n, k);
+            for i in 0..m * n {
+                assert_close(got[i], want[i], &format!("dgemm_tn m={m} n={n} k={k} [{i}]"));
+            }
+        }
+    }
+
+    /// The `dgemm_nt` fast path, with `B` stored `n x k` as that variant expects.
+    #[test]
+    fn small_dgemm_nt_matches_a_naive_loop() {
+        // m, n, k, and m*n*k
+        let shapes = [(2, 8, 2), (20, 3, 3), (8, 8, 4), (257, 1, 1), (8, 8, 8)];
+        let (alpha, beta) = (2.5, -0.75);
+        for (m, n, k) in shapes {
+            let a = data(m * k);
+            let b = data(n * k);
+            let c0 = data(m * n);
+            // The naive loop takes B as k x n, so transpose the stored n x k array.
+            let bt: Vec<f64> = (0..k * n).map(|idx| b[idx / k + n * (idx % k)]).collect();
+            let want = naive_dgemm(alpha, &a, &bt, beta, &c0, m, n, k);
+            let mut got = c0.clone();
+            dgemm_nt(alpha, &a, &b, beta, &mut got, m, n, k);
+            for i in 0..m * n {
+                assert_close(got[i], want[i], &format!("dgemm_nt m={m} n={n} k={k} [{i}]"));
             }
         }
     }

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.1.1] - 2026-11-14
 
+This release ships `russell_nonlin` 5.1.1, `russell_lab` 5.0.1 and `russell_sparse` 5.1.1.
+
+### `russell_lab`
+
+#### Changed
+
+- `dgemm`, `dgemm_tn` and `dgemm_nt` take the native kernel when `m * n * k <= 256` and cross into
+  the external library (`open_blas` or `intel_mkl`) only above that cutoff. The library's
+  thread-team dispatch costs more than the multiply-adds on the products a finite element is made
+  of: an 8x2 by 2x2 product is 32 flops, and a coupled element makes 64 800 of them per Newton
+  iteration. A 1200-element Jacobian went from 14.55 ms to 8.91 ms, and a 60-step run from 8.524 s
+  to 6.012 s. The default build is unchanged, since it calls the native kernel already.
+
 ### `russell_nonlin`
 
 #### Changed
@@ -24,6 +37,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Euclidean trust region, so a large multiplier cannot demand a displacement jump no Newton iteration
   can follow. A new test, `test_arc_trust_region`, covers the bound.
 - The step-size controller ignores a clamped error history instead of deriving a step from it.
+
+### `russell_sparse`
+
+#### Added
+
+- `LinSolParams` derives `PartialEq`, so a caller can tell whether two configurations are the same.
+
+#### Fixed
+
+- MUMPS and UMFPACK accept an unchanged `Some(params)` on a later numeric factorization instead of
+  rejecting every `Some` after the first. Each of `SolverMUMPS`, `ComplexSolverMUMPS`,
+  `SolverUMFPACK` and `ComplexSolverUMFPACK` keeps the parameters its first symbolic phase used, so
+  `None` and the same `Some(params)` are both accepted, while a `Some` that differs in any field
+  still returns "subsequent factorizations must not change LinSolParams" — ordering, scaling and
+  the MUMPS initialization options act only in the symbolic phase. A nonlinear solver that
+  re-factorizes the same matrix on every Newton iteration can now pass its configuration down each
+  time instead of special-casing `Genie::Direct`.
 
 ## [5.1.0] - 2026-10-29
 

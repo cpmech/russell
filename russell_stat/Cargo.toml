@@ -1,6 +1,6 @@
 [package]
 name = "russell_stat"
-version = "5.0.0"
+version = "5.2.0"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"

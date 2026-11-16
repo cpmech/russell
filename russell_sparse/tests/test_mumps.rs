@@ -68,22 +68,15 @@ fn make_complex_system() -> Result<(ComplexCooMatrix, ComplexVector, ComplexVect
     Ok((coo, x_correct, rhs))
 }
 
-/// Exercises `dmumps_c` from several threads at once
+/// Exercises `dmumps_c` and `zmumps_c` from several threads at once
 ///
-/// MUMPS keeps process-global state and tears down its OpenMP worker teams on
-/// `JOB = -2`, so concurrent solve/preprocess/drop needs the process-wide mutex
-/// to be safe. This test pins that synchronization.
+/// Ten caller threads hammer `new`/`preprocess`/`solve`/`drop` while every FFI call is
+/// dispatched to the single process-wide MUMPS worker thread. MUMPS therefore keeps one
+/// OpenMP master thread and its full team (the default `mumps_num_threads = 0` lets MUMPS
+/// choose), even though the callers run concurrently. This test pins that protocol.
 #[test]
 fn test_mumps_concurrent_stress() {
     const N: usize = 150;
-
-    // MUMPS's own OpenMP layer is a separate matter from the concurrency this test targets: with
-    // OMP_NUM_THREADS at the machine default, several caller threads that each hold a wide MUMPS
-    // OpenMP team fault inside libiomp5 (__kmp_reap_worker) even with every FFI call serialized.
-    // Running each MUMPS call single-threaded keeps this test measuring the call-level race, which
-    // is what russell_sparse owns, and makes it independent of OMP_NUM_THREADS.
-    let mut par = LinSolParams::new();
-    par.mumps_num_threads = 1;
 
     std::thread::scope(|scope| {
         let mut handles = Vec::with_capacity(10);
@@ -95,7 +88,7 @@ fn test_mumps_concurrent_stress() {
                 let mut solver = SolverMUMPS::new()?;
                 for _ in 0..N {
                     let mut x = Vector::new(rhs.dim());
-                    solver.preprocess(&coo, Some(par))?;
+                    solver.preprocess(&coo, None)?;
                     solver.solve(&mut x, &rhs, false)?;
                     vec_approx_eq(&x, &x_correct, 1e-14);
                 }
@@ -113,7 +106,7 @@ fn test_mumps_concurrent_stress() {
                 for _ in 0..N {
                     let mut x = Vector::new(rhs.dim());
                     let mut solver = SolverMUMPS::new()?;
-                    solver.preprocess(&coo, Some(par))?;
+                    solver.preprocess(&coo, None)?;
                     solver.solve(&mut x, &rhs, false)?;
                     vec_approx_eq(&x, &x_correct, 1e-14);
                     drop(solver);
@@ -129,7 +122,7 @@ fn test_mumps_concurrent_stress() {
                 for _ in 0..N {
                     let mut x = ComplexVector::new(rhs.dim());
                     let mut solver = ComplexSolverMUMPS::new()?;
-                    solver.preprocess(&coo, Some(par))?;
+                    solver.preprocess(&coo, None)?;
                     solver.solve(&mut x, &rhs, false)?;
                     complex_vec_approx_eq(&x, &x_correct, 1e-14);
                     drop(solver);

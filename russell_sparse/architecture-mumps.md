@@ -4,7 +4,7 @@
 
 The MUMPS wrapper uses a two-layer C/Rust FFI pattern. The C layer (`interface_mumps.c`) manages the MUMPS `DMUMPS_STRUC_C` struct and the job-based analysis→factorization→solve pipeline, while the Rust layer (`solver_mumps.rs`) provides a safe interface via `LinSolTrait`, handling COO one-based index conversion, parameter mapping, error analysis, and timing.
 
-Unlike the other solvers, MUMPS accepts raw COO format directly (one-based Fortran-style indices) and is **not thread-safe** — `russell_sparse` serializes every call that enters the library (`preprocess`, `solve`, `Drop`) with one process-wide mutex shared by the real and complex solvers, so solvers may be used from several threads, one MUMPS call at a time.
+Unlike the other solvers, MUMPS accepts raw COO format directly (one-based Fortran-style indices) and is **not thread-safe** — `russell_sparse` dispatches every FFI call (`preprocess`, `solve`, `Drop`) synchronously onto one dedicated process-wide MUMPS worker thread (`mumps_lock.rs`). The worker both serializes the calls and keeps MUMPS's OpenMP teams bound to a single OS master thread that never exits mid-run, so solvers may be used from many threads.
 
 ---
 
@@ -164,7 +164,7 @@ extern "C" {
 
 ### `Drop` Implementation
 
-Calls `solver_mumps_drop(self.solver)` to free MUMPS resources and the C struct.
+Dispatches `solver_mumps_drop(self.solver)` onto the process-wide MUMPS worker thread, which frees the MUMPS resources and the C struct.
 
 ### `LinSolTrait` Implementation
 
@@ -235,7 +235,7 @@ Unsupported generic `Ordering`/`Scaling` values fall back to `MUMPS_ORDERING_AUT
 
 ### Thread Safety and OpenMP
 
-MUMPS is **not thread-safe**. `russell_sparse` therefore serializes every call that enters the library — `preprocess`, `solve` and `Drop` — with one process-wide mutex (`MUMPS_LOCK` in `mumps_lock.rs`) shared by the real and the complex solver, so solvers may be used from several threads, one MUMPS call at a time.
+MUMPS is **not thread-safe**. `russell_sparse` therefore dispatches every FFI call — `preprocess`, `solve` and `Drop` — synchronously onto one dedicated process-wide MUMPS worker thread (`mumps_lock.rs`): the worker runs one job at a time, which serializes the calls, and keeping every call on that one thread also keeps MUMPS's OpenMP teams bound to a single OS master thread that never exits mid-run. Solvers may therefore be used from several threads.
 
 The number of OpenMP threads is passed via `ICNTL(16)`. The Rust code defaults to 1 thread to avoid a known issue with OpenBLAS, unless:
 - Intel MKL is detected (via `using_intel_mkl()`)

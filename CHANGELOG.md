@@ -7,7 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.2.1] - 2026-11-16
 
-This release ships `russell_nonlin` 5.2.1.
+This release ships `russell_nonlin` 5.2.1 and `russell_sparse` 5.2.1 (2026-11-17).
+
+### `russell_sparse`
+
+#### Fixed
+
+- `SolverMUMPS` and `ComplexSolverMUMPS` now dispatch every MUMPS FFI call (`preprocess`, `solve`,
+  and `Drop`) synchronously onto a single dedicated process-wide worker thread (`mumps-worker`).
+  This serializes all `dmumps_c` and `zmumps_c` calls across threads and keeps MUMPS's OpenMP
+  teams bound to one OS master thread, eliminating `SIGSEGV` faults in `libdmumps` and `libiomp5`
+  under multi-threaded callers and parallel test runners while preserving multi-threaded MUMPS
+  execution (`mumps_num_threads = 0`).
+
+#### Changed
+
+- Updated the MUMPS build scripts (`zscripts/*-compile-mumps.bash`) and `MUMPS_SCRIPT_VERSION`
+  to MUMPS `5.9.2` (fetched from `https://mumps-solver.org`).
+- Removed obsolete `#[serial]` test attributes and unused `serial_test` dev-dependencies across
+  `russell_sparse`, `russell_ode`, `russell_nonlin`, and `russell_pde`.
 
 ### `russell_nonlin`
 

@@ -1,6 +1,6 @@
 [package]
 name = "russell_sparse"
-version = "5.2.0"
+version = "5.2.1"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"

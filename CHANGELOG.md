@@ -5,6 +5,30 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.2.1] - 2026-11-16
+
+This release ships `russell_nonlin` 5.2.1.
+
+### `russell_nonlin`
+
+#### Changed
+
+- `System::set_update_secondary_state` now passes `TrialPhase` (`TrialPhase::Predictor` or
+  `TrialPhase::Corrector`) as the first callback argument instead of `do_backup: bool`. Callers
+  written against 5.2.0 must update that parameter (`true` maps to `TrialPhase::Predictor`, `false`
+  to `TrialPhase::Corrector`).
+- `backup_secondary_state` and `restore_secondary_state` are no longer gated by `work.auto`:
+  `backup_secondary_state` runs once per fresh step before `prepare_to_iterate` (including fixed and
+  list-step runs) and is skipped on a retry where `reject` already restored the snapshot.
+- `Solver::solve` tracks `step_in_flight` and calls `restore_secondary_state` when a run exits with an
+  error or failing `Status` while a step is still in flight, leaving accepted steps untouched on
+  post-accept exits (`requirement: ddl > 1e-10`, `dλ/ds` too small, `Status::SmallStepsize`).
+
+#### Fixed
+
+- `SolverArclength::polish` clears `force_target` and `target_mode` before propagating an error, so
+  a reused `Solver` does not stay stuck in target mode after a failed polish step.
+
 ## [5.2.0] - 2026-11-14
 
 This release ships `russell_nonlin` 5.2.0, `russell_sparse` 5.1.1, and `russell_lab` 5.0.1.

@@ -1,12 +1,12 @@
 #!/bin/bash
 # Compiles and installs the sequential MUMPS solver on macOS.
 #
-# The libraries come from the Debian source tarball, are built with Homebrew's
-# gfortran against Apple's Accelerate framework, and carry the project's
-# `_cpmech` suffix (`PLAT` in the makefile) so they cannot be confused with a
-# system MUMPS. Install names are rewritten to `@rpath/...`, which is what macOS
-# needs for the run path that the crate's build script adds to resolve the whole
-# library family.
+# The libraries come from the upstream tarball at mumps-solver.org and are built
+# with Homebrew's gfortran against Apple's Accelerate framework; they carry the
+# project's `_cpmech` suffix (`PLAT` in the makefile) so they cannot be confused
+# with a system MUMPS. Install names are rewritten to `@rpath/...`, which is what
+# macOS needs for the run path that the crate's build script adds to resolve the
+# whole library family.
 #
 # Usage: macos-compile-mumps.bash [PREFIX]      (default: /usr/local)
 #
@@ -18,7 +18,7 @@ INCDIR="$PREFIX/include/mumps"
 LIBDIR="$PREFIX/lib/mumps"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PDIR="$HERE/makefiles-mumps"
-VERSION="5.9.0"
+VERSION="5.9.2"
 
 if ! command -v gfortran >/dev/null 2>&1; then
     echo "macos-compile-mumps: gfortran is required (brew install gcc)" >&2
@@ -34,7 +34,7 @@ as_root() {
     fi
 }
 
-MUMPS_GZ="mumps_${VERSION}.orig.tar.gz"
+MUMPS_GZ="MUMPS_${VERSION}.tar.gz"
 MUMPS_DIR="MUMPS_${VERSION}"
 cd /tmp
 if [ -d "$MUMPS_DIR" ]; then
@@ -44,7 +44,7 @@ fi
 if [ -f "$MUMPS_GZ" ]; then
     echo "... using existing $MUMPS_GZ file"
 else
-    curl -fL "http://deb.debian.org/debian/pool/main/m/mumps/${MUMPS_GZ}" -o "$MUMPS_GZ"
+    curl -fL "https://mumps-solver.org/MUMPS_${VERSION}.tar.gz" -o "$MUMPS_GZ"
 fi
 
 tar xzf "$MUMPS_GZ"

@@ -156,7 +156,7 @@ pub fn get_system_info() -> String {
 }
 
 // Versions of external sparse solver libraries installed via the project's bash scripts
-const MUMPS_SCRIPT_VERSION: &str = "5.9.0";
+const MUMPS_SCRIPT_VERSION: &str = "5.9.2";
 const SUITESPARSE_VERSION: &str = "latest (from GitHub)";
 
 /// Returns version information for the external sparse solver libraries.

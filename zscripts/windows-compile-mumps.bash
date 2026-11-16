@@ -5,7 +5,7 @@
 set -euo pipefail
 
 # Configuration
-VERSION="5.9.0"
+VERSION="5.9.2"
 PREFIX="/ucrt64"
 INCDIR="$PREFIX/include/mumps"
 LIBDIR="$PREFIX/lib/mumps"
@@ -19,8 +19,8 @@ pacman -S --noconfirm base-devel curl \
     mingw-w64-ucrt-x86_64-clang \
     mingw-w64-ucrt-x86_64-metis
 
-# Download the source tarball from Debian (reuse it if already present)
-MUMPS_GZ="mumps_${VERSION}.orig.tar.gz"
+# Download the source tarball from mumps-solver.org (reuse it if already present)
+MUMPS_GZ="MUMPS_${VERSION}.tar.gz"
 MUMPS_DIR="MUMPS_${VERSION}"
 cd /tmp
 if [ -d "$MUMPS_DIR" ]; then
@@ -30,7 +30,7 @@ fi
 if [ -f "$MUMPS_GZ" ]; then
     echo "... using existing $MUMPS_GZ file"
 else
-    curl -fL "http://deb.debian.org/debian/pool/main/m/mumps/${MUMPS_GZ}" -o "$MUMPS_GZ"
+    curl -fL "https://mumps-solver.org/MUMPS_${VERSION}.tar.gz" -o "$MUMPS_GZ"
 fi
 
 tar xzf "$MUMPS_GZ"

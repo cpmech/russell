@@ -1,6 +1,7 @@
 use super::{CooMatrix, LinSolParams, LinSolTrait, Ordering, Scaling, StatsLinSol, Sym};
 use crate::StrError;
 use crate::constants::*;
+use crate::mumps_lock::lock_mumps;
 use russell_lab::{Stopwatch, Vector, using_intel_mkl, vec_copy};
 
 /// Opaque struct holding a C-pointer to InterfaceMUMPS
@@ -67,7 +68,9 @@ unsafe extern "C" {
 ///
 /// **Reference:** <https://mumps-solver.org>
 ///
-/// **Warning:** This solver is **not** thread-safe, thus use only use in single-thread applications.
+/// MUMPS itself is not thread-safe, so `russell_sparse` serializes every call that enters the
+/// library — `preprocess`, `solve` and `Drop` — with a process-wide mutex; it is therefore safe to
+/// use solvers from several threads, one MUMPS call at a time.
 ///
 /// **Note:** We use `calloc` in `interface_mumps.c` which correctly zero-initializes our struct but
 /// Valgrind yields some warnings persist — they come from deep inside MUMPS's functions in an OpenMP
@@ -144,6 +147,7 @@ pub struct SolverMUMPS {
 impl Drop for SolverMUMPS {
     /// Tells the c-code to release memory
     fn drop(&mut self) {
+        let _mumps_guard = lock_mumps();
         unsafe {
             solver_mumps_drop(self.solver);
         }
@@ -282,6 +286,7 @@ impl LinSolTrait for SolverMUMPS {
         let nnz = to_i32(mat.nnz);
 
         // call initialize just once
+        let _mumps_guard = lock_mumps();
         if !self.initialized {
             self.stopwatch.reset();
             unsafe {
@@ -370,6 +375,7 @@ impl LinSolTrait for SolverMUMPS {
         // call MUMPS solve
         vec_copy(x, rhs).unwrap();
         let verb = if verbose { 1 } else { 0 };
+        let _mumps_guard = lock_mumps();
         self.stopwatch.reset();
         unsafe {
             let status = solver_mumps_solve(

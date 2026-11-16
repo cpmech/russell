@@ -437,6 +437,9 @@ pub use util::*;
 // ----- MUMPS
 
 #[cfg(feature = "mumps")]
+mod mumps_lock;
+
+#[cfg(feature = "mumps")]
 mod complex_solver_mumps;
 
 #[cfg(feature = "mumps")]

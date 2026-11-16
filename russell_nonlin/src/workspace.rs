@@ -54,6 +54,20 @@ pub(crate) struct Workspace {
     /// Indicates that the solver should stop gracefully (e.g., requested by the secondary update function)
     pub(crate) stop_gracefully: bool,
 
+    /// Indicates that a fresh step must copy the external state variables before it starts
+    ///
+    /// Set by `reset_stats_and_flags` and by every accepted step; cleared when the copy is made.
+    /// A step retried after a rejection keeps it false because the restore already put the external
+    /// state back at the step-start snapshot.
+    pub(crate) backup_needed: bool,
+
+    /// Indicates that a step has started and has not been accepted or rejected yet
+    ///
+    /// Set at the beginning of a step attempt (before any fallible operation) and cleared by
+    /// `accept` and `reject`. `Solver::solve` uses it to restore the external state variables when
+    /// the step is still in flight at a terminal failure.
+    pub(crate) step_in_flight: bool,
+
     // state variables -----------------------------------------------------------
     //
     /// Stepsize: either σ (pseudo-arclength) or Δλ (natural parameter)
@@ -105,6 +119,8 @@ impl Workspace {
             follows_rejection: false,
             target_reached: false,
             stop_gracefully: false,
+            backup_needed: true,
+            step_in_flight: false,
 
             // state variables
             h: 0.0,
@@ -130,5 +146,7 @@ impl Workspace {
         self.follows_rejection = false;
         self.target_reached = false;
         self.stop_gracefully = false;
+        self.backup_needed = true;
+        self.step_in_flight = false;
     }
 }

@@ -4,7 +4,7 @@ use ctm_demo::{Model, ModelType};
 use plotpy::{Curve, Plot, linspace};
 use russell_lab::{InterpChebyshev, Vector, approx_eq};
 use russell_nonlin::{Config, DeltaLambda, IniDir, Method, Output, SoderlindClass, Solver};
-use russell_nonlin::{Stats, Status, Stop, StrError, SupStatus, System};
+use russell_nonlin::{Stats, Status, Stop, StrError, SupStatus, System, TrialPhase};
 use russell_ode::Method as OdeMethod;
 use russell_sparse::Sym;
 use std::collections::HashMap;
@@ -284,17 +284,16 @@ fn new_hs_model_problem<'a>(use_continuous_modulus: bool) -> Result<(System<'a, 
         .set_prepare_to_iterate(|args| {
             args.ddx = 0.0;
         })
-        .set_update_secondary_state(|do_backup, u0, u1, _l0, _l1, args| {
-            if do_backup {
-                args.local_state.iter_backup();
-            } else {
-                args.local_state.iter_restore();
+        .set_update_secondary_state(|phase, u0, u1, _l0, _l1, args| {
+            match phase {
+                TrialPhase::Predictor => args.local_state.iter_backup(),
+                TrialPhase::Corrector => args.local_state.iter_restore(),
             }
             let x = &mut args.local_state.strain;
             let y = &mut args.local_state.stress;
             args.ddx = B * (u1[0] - u0[0]);
             args.model.backward_euler_update(x, y, args.ddx)?;
-            if do_backup {
+            if phase == TrialPhase::Predictor {
                 args.xx_predictor.push(*x);
                 args.yy_predictor.push(*y);
             }

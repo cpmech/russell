@@ -31,4 +31,10 @@ pub(crate) trait SolverTrait<A>: Send {
 
     /// Handles the reject case by calculating a new stepsize
     fn reject(&mut self, work: &mut Workspace, args: &mut A);
+
+    /// Restores the external state variables to the snapshot taken at the start of the step
+    ///
+    /// Used both by `reject` (the retried step starts again from the step-start state) and by
+    /// `Solver::solve`, which calls it when a step is still in flight at a terminal failure.
+    fn restore_secondary_state(&mut self, args: &mut A);
 }

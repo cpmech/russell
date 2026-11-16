@@ -1,4 +1,4 @@
-use super::{CONFIG_H_MIN, Config, IniDir, Method, Status};
+use super::{CONFIG_H_MIN, Config, IniDir, Method, Status, TrialPhase};
 use super::{SolverTrait, Stop, System, Workspace};
 use crate::{RdiffType, StrError};
 use russell_lab::{Norm, Vector};
@@ -639,8 +639,7 @@ impl<'a, A> SolverArclength<'a, A> {
 
         // external: update secondary variables (e.g., local state)
         if let Some(f) = self.system.update_secondary_state.as_ref() {
-            let do_backup = false; // already done by the predictor
-            let status = Status::from_sup(f(do_backup, u, &work.u, l, work.l, args));
+            let status = Status::from_sup(f(TrialPhase::Corrector, u, &work.u, l, work.l, args));
             if status.failure() {
                 return Ok(status);
             }
@@ -688,17 +687,23 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     /// When `self.force_target` is set (by `polish`) and a Min/MaxLambda stop is given, the step is
     /// taken in the λ-imposed mode (θ = 0) so that it lands exactly on the target.
     fn step(&mut self, work: &mut Workspace, u: &Vector, l: f64, stop: Stop, args: &mut A) -> Result<Status, StrError> {
-        // external: create a copy of external state variables
-        if work.auto {
+        // external: create a copy of external state variables at the beginning of a fresh step
+        //
+        // A retried step skips this because the rejection already restored the snapshot.
+        if work.backup_needed {
             if let Some(f) = self.system.backup_secondary_state.as_ref() {
                 f(args);
             }
+            work.backup_needed = false;
         }
 
         // external: prepare to iterate (e.g., reset algorithmic variables)
         if let Some(f) = self.system.prepare_to_iterate.as_ref() {
             f(args);
         }
+
+        // from here on, any failure must restore the external state variables (see `Solver::solve`)
+        work.step_in_flight = true;
 
         // reset iteration error control
         work.err.reset(u, l);
@@ -783,8 +788,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
 
         // predictor: update secondary variables (e.g., local state)
         if let Some(f) = self.system.update_secondary_state.as_ref() {
-            let do_backup = true;
-            let status = Status::from_sup(f(do_backup, u, &work.u, l, work.l, args));
+            let status = Status::from_sup(f(TrialPhase::Predictor, u, &work.u, l, work.l, args));
             if status.failure() {
                 return Ok(status);
             }
@@ -854,10 +858,12 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         match stop.lambda() {
             Some((l1, _)) if f64::abs(l1 - l) > CONFIG_H_MIN => {
                 self.force_target = true;
-                let status = self.step(work, u, l, stop, args)?;
+                let res = self.step(work, u, l, stop, args);
+                // clear the targeting flags before propagating the step result: a failed polish
+                // must not leave the solver in the lambda-imposed mode
                 self.force_target = false;
                 self.target_mode = false;
-                Ok(Some(status))
+                Ok(Some(res?))
             }
             _ => Ok(None),
         }
@@ -872,6 +878,11 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     ///
     /// Returns `rdiff` the relative difference used in stepsize adaptation
     fn accept(&mut self, work: &mut Workspace, u: &mut Vector, l: &mut f64, _args: &mut A) -> Result<f64, StrError> {
+        // the step is settled: the next step must take a fresh snapshot and a failure at the
+        // caller's level must not restore this accepted step
+        work.step_in_flight = false;
+        work.backup_needed = true;
+
         // update the state
         vec_copy(u, &work.u).unwrap(); // u := u₁
         *l = work.l; // λ := λ₁
@@ -939,15 +950,12 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
 
     /// Handles the reject case by restoring the state and computing a new stepsize
     ///
-    /// Restores the previous u vector, external state variables (if using automatic
-    /// stepsize control), and clears the debug predictor values.
+    /// Restores the external state variables and clears the debug predictor values. The retry
+    /// starts again from the step-start snapshot, so it needs no fresh backup.
     fn reject(&mut self, work: &mut Workspace, args: &mut A) {
         // external: restore external state variables
-        if work.auto {
-            if let Some(f) = self.system.restore_secondary_state.as_ref() {
-                f(args);
-            }
-        }
+        self.restore_secondary_state(args);
+        work.step_in_flight = false;
 
         // remove predictor values
         if self.config.debug_predictor {
@@ -959,13 +967,20 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             }
         }
     }
+
+    /// Restores the external state variables to the step-start snapshot
+    fn restore_secondary_state(&mut self, args: &mut A) {
+        if let Some(f) = self.system.restore_secondary_state.as_ref() {
+            f(args);
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::SolverArclength;
+    use super::{SolverArclength, SolverTrait, Workspace};
     use crate::{Config, DeltaLambda, IniDir, IterationError, Method, NoArgs, Samples, Solver, Status, Stop, SupStatus, System};
     use russell_lab::Vector;
     use russell_sparse::Sym;
@@ -1049,5 +1064,51 @@ mod tests {
         assert_eq!(err.analyze_chord(&u0, 0.0, &u_cur, 0.0, &x), false);
         assert!(err.chord_l2 > err.delta_l2);
         assert_eq!(err.check_large_delta(), Some(Status::LargeDelta));
+    }
+
+    /// A `polish` that returns `Err` must clear the targeting flags before propagating the error.
+    ///
+    /// The flags are private, and `#[cfg(test)]` is not active for the integration tests, so this
+    /// is asserted here, where the fields are reachable. `tests/test_secondary_state_callbacks.rs`
+    /// covers the public behavior (the same solver is reused after the failed polish).
+    #[test]
+    fn failed_polish_clears_the_targeting_flags() {
+        // G(u, λ) = u - λ, except that the residual fails for λ > 0.8 while `fail` is set. The
+        // polish predictor overshoots the target (λ = 0.81), so the failure happens inside polish.
+        let system = System::new(
+            1,
+            Some(1),
+            Sym::No,
+            |gg, l, u, fail: &mut bool| {
+                if *fail && l > 0.8 {
+                    return Err("failed inside polish");
+                }
+                gg[0] = u[0] - l;
+                Ok(())
+            },
+            |ggu, ggl, _l, _u, _fail: &mut bool| {
+                ggu.put(0, 0, 1.0).unwrap();
+                ggl[0] = -1.0;
+                Ok(())
+            },
+        )
+        .unwrap();
+
+        let mut config = Config::new();
+        config.set_method(Method::Arclength);
+        let mut solver = SolverArclength::new(&config, system).unwrap();
+        let mut work = Workspace::new(&config, &solver.system);
+        let mut fail = true;
+        let mut u = Vector::from(&[0.0]);
+        solver.initialize(&mut work, 0.2, &u, 0.0, IniDir::Pos, &mut fail).unwrap();
+
+        // simulate an accepted step that stopped just short of the target
+        work.u[0] = 0.79;
+        work.l = 0.79;
+        u[0] = 0.79;
+        let res = solver.polish(&mut work, &u, 0.79, Stop::MaxLambda(0.8), &mut fail);
+        assert_eq!(res.err(), Some("failed inside polish"));
+        assert!(!solver.force_target, "force_target must be cleared when polish fails");
+        assert!(!solver.target_mode, "target_mode must be cleared when polish fails");
     }
 }

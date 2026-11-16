@@ -257,6 +257,15 @@ pub enum SupStatus {
     Stop,
 }
 
+/// Indicates whether the secondary-state update is on the predictor or a Newton corrector
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TrialPhase {
+    /// Predictor evaluation at the start of a step attempt
+    Predictor,
+    /// Corrector iteration inside Newton-Raphson
+    Corrector,
+}
+
 /// Specifies the problem classes in Soderlind (2003) that can be used to define the stepsize control parameters
 ///
 /// Reference:

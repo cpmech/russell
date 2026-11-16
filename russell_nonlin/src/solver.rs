@@ -105,7 +105,41 @@ impl<'a, A> Solver<'a, A> {
     /// # Returns
     ///
     /// Returns the status code.
+    ///
+    /// # External state variables
+    ///
+    /// When the run ends in a terminal failure while a step is still in flight, the external state
+    /// variables are restored to the snapshot taken at the start of that step, so `args` never keeps
+    /// the trial values of a step that was not accepted.
     pub fn solve<'b>(
+        &mut self,
+        args: &mut A,
+        u: &mut Vector,
+        l: &mut f64,
+        dir: IniDir,
+        stop: Stop,
+        ddl: &DeltaLambda,
+        output: Option<&mut Output<'b, A>>,
+    ) -> Result<Status, StrError> {
+        let res = self.solve_inner(args, u, l, dir, stop, ddl, output);
+        let terminal_failure = match &res {
+            Err(_) => true,
+            Ok(status) => status.failure(),
+        };
+        if terminal_failure && self.work.step_in_flight {
+            // The failing step was never accepted nor rejected, so the external state variables are
+            // still at the trial values: put them back at the snapshot taken at the start of the step.
+            self.actual.restore_secondary_state(args);
+            self.work.step_in_flight = false;
+        }
+        res
+    }
+
+    /// Solves the nonlinear system, without the terminal restore of the external state variables
+    ///
+    /// The input validation lives here so that a validation error is not treated as an in-flight
+    /// step failure by [`Solver::solve`].
+    fn solve_inner<'b>(
         &mut self,
         args: &mut A,
         u: &mut Vector,

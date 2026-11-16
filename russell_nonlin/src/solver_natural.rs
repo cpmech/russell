@@ -1,4 +1,4 @@
-use super::{Config, IniDir, Method, Status};
+use super::{Config, IniDir, Method, Status, TrialPhase};
 use super::{SolverTrait, Stop, System, Workspace};
 use crate::{CONFIG_H_MIN, StrError};
 use russell_lab::{Vector, vec_add, vec_copy, vec_update};
@@ -160,8 +160,7 @@ impl<'a, A> SolverNatural<'a, A> {
 
         // external: update secondary variables
         if let Some(f) = self.system.update_secondary_state.as_ref() {
-            let do_backup = false; // already done by the predictor
-            let status = Status::from_sup(f(do_backup, u, &work.u, l, work.l, args));
+            let status = Status::from_sup(f(TrialPhase::Corrector, u, &work.u, l, work.l, args));
             if status.failure() {
                 return Ok(status);
             }
@@ -238,17 +237,23 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
 
     /// Calculates u such that G(u, λ) = 0
     fn step(&mut self, work: &mut Workspace, u: &Vector, l: f64, stop: Stop, args: &mut A) -> Result<Status, StrError> {
-        // external: create a copy of external state variables
-        if work.auto {
+        // external: create a copy of external state variables at the beginning of a fresh step
+        //
+        // A retried step skips this because the rejection already restored the snapshot.
+        if work.backup_needed {
             if let Some(f) = self.system.backup_secondary_state.as_ref() {
                 f(args);
             }
+            work.backup_needed = false;
         }
 
         // external: prepare to iterate (e.g., reset algorithmic variables)
         if let Some(f) = self.system.prepare_to_iterate.as_ref() {
             f(args);
         }
+
+        // from here on, any failure must restore the external state variables (see `Solver::solve`)
+        work.step_in_flight = true;
 
         // reset iteration error control
         work.err.reset(u, l);
@@ -286,8 +291,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
 
         // predictor: update secondary variables (e.g., local state)
         if let Some(f) = self.system.update_secondary_state.as_ref() {
-            let do_backup = true;
-            let status = Status::from_sup(f(do_backup, u, &work.u, l, work.l, args));
+            let status = Status::from_sup(f(TrialPhase::Predictor, u, &work.u, l, work.l, args));
             if status.failure() {
                 return Ok(status);
             }
@@ -347,6 +351,11 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
     ///
     /// Returns `rdiff` the relative difference used in stepsize adaptation
     fn accept(&mut self, work: &mut Workspace, u: &mut Vector, l: &mut f64, _args: &mut A) -> Result<f64, StrError> {
+        // the step is settled: the next step must take a fresh snapshot and a failure at the
+        // caller's level must not restore this accepted step
+        work.step_in_flight = false;
+        work.backup_needed = true;
+
         // calculate the relative difference
         let rdiff = self.calculate_rerr(work, u);
 
@@ -363,15 +372,12 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
 
     /// Handles the reject case by restoring the state and computing a new stepsize
     ///
-    /// Restores external state variables if using automatic stepsize control and
-    /// clears the debug predictor values.
+    /// Restores the external state variables and clears the debug predictor values. The retry
+    /// starts again from the step-start snapshot, so it needs no fresh backup.
     fn reject(&mut self, work: &mut Workspace, args: &mut A) {
         // external: restore external state variables
-        if work.auto {
-            if let Some(f) = self.system.restore_secondary_state.as_ref() {
-                f(args);
-            }
-        }
+        self.restore_secondary_state(args);
+        work.step_in_flight = false;
 
         // remove predictor values
         if self.config.debug_predictor {
@@ -381,6 +387,13 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
             if work.u.dim() > 1 {
                 predictor_values.2.pop();
             }
+        }
+    }
+
+    /// Restores the external state variables to the step-start snapshot
+    fn restore_secondary_state(&mut self, args: &mut A) {
+        if let Some(f) = self.system.restore_secondary_state.as_ref() {
+            f(args);
         }
     }
 }

@@ -1,5 +1,5 @@
 use russell_lab::{Vector, approx_eq};
-use russell_nonlin::{Config, DeltaLambda, IniDir, Method, NoArgs, Solver, Status, Stop, System};
+use russell_nonlin::{Config, DeltaLambda, IniDir, Method, NoArgs, Solver, Status, Stop, System, TrialPhase};
 use russell_sparse::Sym;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -97,12 +97,12 @@ fn target_mode_uses_the_scaled_arclength_bound_on_the_retry() {
     )
     .unwrap();
 
-    // The first secondary update performed during an iteration (do_backup = false) forces a
+    // The first secondary update performed during an iteration (phase = Corrector) forces a
     // retry; that first step is already in target mode because λ is within the initial step of
     // the target.
     let calls = AtomicUsize::new(0);
-    system.set_update_secondary_state(move |do_backup, _, _, _, _, _| {
-        if !do_backup && calls.fetch_add(1, Ordering::SeqCst) == 0 {
+    system.set_update_secondary_state(move |phase, _, _, _, _, _| {
+        if phase == TrialPhase::Corrector && calls.fetch_add(1, Ordering::SeqCst) == 0 {
             Ok(russell_nonlin::SupStatus::Retry)
         } else {
             Ok(russell_nonlin::SupStatus::Continue)

@@ -3,9 +3,6 @@ use russell_lab::approx_eq;
 use russell_pde::{ProblemSamples, Spc2d, SpcMap2d, StrError, TransfiniteSamples};
 use russell_sparse::Genie;
 
-#[cfg(feature = "mumps")]
-use serial_test::serial;
-
 const SAVE_FIGURE: bool = false;
 
 #[test]
@@ -44,7 +41,6 @@ fn test_2d_prob01_spc_map() -> Result<(), StrError> {
 
 #[cfg(feature = "mumps")]
 #[test]
-#[serial]
 fn test_2d_prob01_spc_mumps() -> Result<(), StrError> {
     for nn_tol in &[
         (7, 1e-6), //
@@ -61,7 +57,6 @@ fn test_2d_prob01_spc_mumps() -> Result<(), StrError> {
 
 #[cfg(feature = "mumps")]
 #[test]
-#[serial]
 fn test_2d_prob01_spc_map_mumps() -> Result<(), StrError> {
     for nn_tol in &[
         (7, 1e-6), //

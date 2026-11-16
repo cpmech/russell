@@ -37,7 +37,6 @@ russell_pde = { path = "../russell_pde", version = "5" }
 russell_ode = { path = "../russell_ode", version = "5" }
 plotpy = "1.24"
 rayon = "1.12"
-serial_test = "4.0"
 
 [lints]
 workspace = true

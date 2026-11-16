@@ -76,8 +76,9 @@ unsafe extern "C" {
 /// **Reference:** <https://mumps-solver.org>
 ///
 /// MUMPS itself is not thread-safe, so `russell_sparse` serializes every call that enters the
-/// library — `preprocess`, `solve` and `Drop` — with a process-wide mutex; it is therefore safe to
-/// use solvers from several threads, one MUMPS call at a time.
+/// library — `preprocess`, `solve` and `Drop` — with one process-wide mutex shared by the real and
+/// the complex solver; solvers may therefore be used from several threads, executing one MUMPS call
+/// at a time.
 ///
 /// **Note:** We use `calloc` in `interface_mumps.c` which correctly zero-initializes our struct but
 /// Valgrind yields some warnings persist — they come from deep inside MUMPS's functions in an OpenMP
@@ -474,13 +475,8 @@ mod tests {
     use super::*;
     use crate::{ComplexCooMatrix, Ordering, Samples, Scaling};
     use russell_lab::{complex_approx_eq, complex_vec_approx_eq, cpx};
-    use serial_test::serial;
-
-    // IMPORTANT:
-    // Since MUMPS is not thread-safe, we need to use serial_test::serial
 
     #[test]
-    #[serial]
     fn preprocess_handles_errors() {
         // allocate a new solver
         let mut solver = ComplexSolverMUMPS::new().unwrap();
@@ -533,7 +529,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn preprocess_fails_on_singular_matrix() {
         let mut coo = ComplexCooMatrix::new(3, 3, 2, Sym::No).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
@@ -542,7 +537,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn solve_handles_errors() {
         let mut coo = ComplexCooMatrix::new(2, 2, 2, Sym::No).unwrap();
         coo.put(0, 0, cpx!(123.0, 1.0)).unwrap();
@@ -570,7 +564,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn preprocess_and_solve_work() {
         // allocate x and rhs
         let mut x = ComplexVector::new(3);
@@ -657,7 +650,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn preprocess_fails_when_params_changed_on_second_call() {
         let mut solver = ComplexSolverMUMPS::new().unwrap();
         let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower();
@@ -673,7 +665,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn preprocess_accepts_unchanged_params_on_second_call() {
         let mut solver = ComplexSolverMUMPS::new().unwrap();
         let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower();
@@ -691,7 +682,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn preprocess_rejects_params_first_given_after_a_none_call() {
         let mut solver = ComplexSolverMUMPS::new().unwrap();
         let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower();

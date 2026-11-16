@@ -3,9 +3,6 @@ use russell_lab::approx_eq;
 use russell_pde::{Fdm2d, Grid2d, ProblemSamples, StrError};
 use russell_sparse::Genie;
 
-#[cfg(feature = "mumps")]
-use serial_test::serial;
-
 const SAVE_FIGURE: bool = false;
 
 #[test]
@@ -31,7 +28,6 @@ fn test_2d_prob03_fdm() -> Result<(), StrError> {
 
 #[cfg(feature = "mumps")]
 #[test]
-#[serial]
 fn test_2d_prob03_fdm_mumps_sym() -> Result<(), StrError> {
     for bc_case in &["DDDD", "NNDD", "NDND", "DNND", "DDNN"] {
         for helmholtz in &[true, false] {

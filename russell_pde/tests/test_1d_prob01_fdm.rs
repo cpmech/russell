@@ -2,9 +2,6 @@ use russell_lab::approx_eq;
 use russell_pde::{Fdm1d, Grid1d, ProblemSamples, StrError};
 use russell_sparse::Genie;
 
-#[cfg(feature = "mumps")]
-use serial_test::serial;
-
 #[test]
 fn test_1d_prob01_fdm() -> Result<(), StrError> {
     // SPS
@@ -20,7 +17,6 @@ fn test_1d_prob01_fdm() -> Result<(), StrError> {
 
 #[cfg(feature = "mumps")]
 #[test]
-#[serial]
 fn test_1d_prob01_fdm_mumps() -> Result<(), StrError> {
     // SPS
     run_fdm(false, 5, 1e-15, Genie::Mumps, false)?;

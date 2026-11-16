@@ -4,7 +4,7 @@
 
 The MUMPS wrapper uses a two-layer C/Rust FFI pattern. The C layer (`interface_mumps.c`) manages the MUMPS `DMUMPS_STRUC_C` struct and the job-based analysis→factorization→solve pipeline, while the Rust layer (`solver_mumps.rs`) provides a safe interface via `LinSolTrait`, handling COO one-based index conversion, parameter mapping, error analysis, and timing.
 
-Unlike the other solvers, MUMPS accepts raw COO format directly (one-based Fortran-style indices) and is **not thread-safe** — tests use `#[serial]`.
+Unlike the other solvers, MUMPS accepts raw COO format directly (one-based Fortran-style indices) and is **not thread-safe** — `russell_sparse` serializes every call that enters the library (`preprocess`, `solve`, `Drop`) with one process-wide mutex shared by the real and complex solvers, so solvers may be used from several threads, one MUMPS call at a time.
 
 ---
 
@@ -235,7 +235,7 @@ Unsupported generic `Ordering`/`Scaling` values fall back to `MUMPS_ORDERING_AUT
 
 ### Thread Safety and OpenMP
 
-MUMPS is **not thread-safe**. The solver must not be used concurrently from multiple threads. Tests use `#[serial]` to enforce sequential execution.
+MUMPS is **not thread-safe**. `russell_sparse` therefore serializes every call that enters the library — `preprocess`, `solve` and `Drop` — with one process-wide mutex (`MUMPS_LOCK` in `mumps_lock.rs`) shared by the real and the complex solver, so solvers may be used from several threads, one MUMPS call at a time.
 
 The number of OpenMP threads is passed via `ICNTL(16)`. The Rust code defaults to 1 thread to avoid a known issue with OpenBLAS, unless:
 - Intel MKL is detected (via `using_intel_mkl()`)

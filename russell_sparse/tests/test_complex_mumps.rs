@@ -2,10 +2,8 @@
 
 use russell_lab::*;
 use russell_sparse::prelude::*;
-use serial_test::serial;
 
 #[test]
-#[serial]
 fn test_complex_mumps() -> Result<(), StrError> {
     let n = 10;
     let d = (n as f64) / 10.0;

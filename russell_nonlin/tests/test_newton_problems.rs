@@ -4,9 +4,6 @@ use russell_nonlin::{Config, DeltaLambda, IniDir, Samples, Solver, Status, Stop}
 #[cfg(feature = "mumps")]
 use russell_sparse::Genie;
 
-#[cfg(feature = "mumps")]
-use serial_test::serial;
-
 #[test]
 fn test_newton_problems_ok_1() {
     // problem
@@ -182,7 +179,6 @@ fn test_two_eq_nr_prob_1_singular() {
 
 #[cfg(feature = "mumps")]
 #[test]
-#[serial]
 fn _test_two_eq_nr_prob_1_singular_mumps() {
     // problem
     let (system, mut u, _, mut args) = Samples::two_eq_nr_prob_1();

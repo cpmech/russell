@@ -2,9 +2,6 @@ use russell_lab::approx_eq;
 use russell_pde::{ProblemSamples, Spc1d, StrError};
 use russell_sparse::Genie;
 
-#[cfg(feature = "mumps")]
-use serial_test::serial;
-
 #[test]
 fn test_1d_prob01_spc() -> Result<(), StrError> {
     // SPS
@@ -16,7 +13,6 @@ fn test_1d_prob01_spc() -> Result<(), StrError> {
 
 #[cfg(feature = "mumps")]
 #[test]
-#[serial]
 fn test_1d_prob01_spc_mumps() -> Result<(), StrError> {
     // SPS
     run_spc(false, 4, 1e-15, Genie::Mumps)?;

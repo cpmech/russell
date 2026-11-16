@@ -3,9 +3,6 @@ use russell_lab::*;
 use russell_sparse::StrError;
 use russell_sparse::prelude::*;
 
-#[cfg(feature = "mumps")]
-use serial_test::serial;
-
 fn calc_residual(rr: &mut Vector, uu: &Vector) {
     let (d1, d2, d3, d4) = (uu[0], uu[1], uu[2], uu[3]);
     rr[0] = 2.0 * d1 + d1 * d1 * d1 * d1 + d2 + 3.0 * d1 * d2 * d2 - 9.0 * d4 + d4 * d4 * d4 * d4 - 0.2;
@@ -102,7 +99,6 @@ fn solve_nonlinear_system(genie: Genie) -> Result<(), StrError> {
 }
 
 #[test]
-#[serial]
 #[cfg(feature = "mumps")]
 fn test_nonlinear_system_mumps() -> Result<(), StrError> {
     solve_nonlinear_system(Genie::Mumps)

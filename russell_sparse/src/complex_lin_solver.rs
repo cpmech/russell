@@ -180,11 +180,7 @@ mod tests {
     use crate::{Genie, Samples};
     use russell_lab::{ComplexVector, complex_vec_approx_eq, cpx};
 
-    #[cfg(feature = "mumps")]
-    use serial_test::serial;
-
     #[test]
-    #[serial]
     #[cfg(feature = "mumps")]
     fn complex_lin_solver_compute_works_mumps() {
         let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower();

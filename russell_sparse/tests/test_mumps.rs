@@ -3,10 +3,8 @@
 use russell_lab::*;
 use russell_sparse::StrError;
 use russell_sparse::prelude::*;
-use serial_test::serial;
 
 #[test]
-#[serial]
 fn test_mumps() -> Result<(), StrError> {
     let n = 10;
     let d = (n as f64) / 10.0;
@@ -73,9 +71,8 @@ fn make_complex_system() -> Result<(ComplexCooMatrix, ComplexVector, ComplexVect
 /// Exercises `dmumps_c` from several threads at once
 ///
 /// MUMPS keeps process-global state and tears down its OpenMP worker teams on
-/// `JOB = -2`, so concurrent solve/preprocess/drop is not safe. This test is
-/// deliberately **not** `#[serial]`: it is the reproduction case that pins the
-/// synchronization added later.
+/// `JOB = -2`, so concurrent solve/preprocess/drop needs the process-wide mutex
+/// to be safe. This test pins that synchronization.
 #[test]
 fn test_mumps_concurrent_stress() {
     const N: usize = 150;

@@ -217,11 +217,7 @@ mod tests {
     use crate::{Genie, Samples};
     use russell_lab::{Vector, vec_approx_eq};
 
-    #[cfg(feature = "mumps")]
-    use serial_test::serial;
-
     #[test]
-    #[serial]
     #[cfg(feature = "mumps")]
     fn lin_solver_compute_works_mumps() {
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(true, false);

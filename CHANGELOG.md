@@ -5,16 +5,17 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [5.3.0] - 2026-11-17
 
-### Changed
+### Changed (breaking)
 
 - MUMPS must now be the thread-safe fork: the linked library exports `mumps_is_thread_safe` and
   dispatches every call to a persistent worker inside the library. The client-side worker thread
   (`mumps_lock.rs`) was deleted, so `preprocess`, `solve` and `Drop` run on the caller's thread.
   The compile scripts (`zscripts/*-compile-mumps.bash`) now fetch
   `https://github.com/cpmech/MUMPS_592` at the pinned commit, and a `mumps` build fails when the
-  linked library does not export the symbol.
+  linked library does not export the symbol. This is a breaking requirement: a stock MUMPS 5.9.2
+  no longer links, by design.
 
 ## [5.2.1] - 2026-11-16
 

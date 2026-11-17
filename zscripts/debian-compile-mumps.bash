@@ -39,7 +39,7 @@ fi
 # The MUMPS source is the thread-safe fork: every MUMPS call is dispatched to a
 # persistent worker inside the library, so clients need no lock or worker of their own.
 MUMPS_REPO="https://github.com/cpmech/MUMPS_592.git"
-MUMPS_COMMIT="92b8a68bdda62e7a39b3af2b18eb4109082e2e30"   # branch ts-phase1
+MUMPS_COMMIT="92b8a68bdda62e7a39b3af2b18eb4109082e2e30"   # main
 MUMPS_DIR="MUMPS_${VERSION}"
 
 cd /tmp

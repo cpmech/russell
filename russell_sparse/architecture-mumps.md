@@ -235,7 +235,7 @@ Unsupported generic `Ordering`/`Scaling` values fall back to `MUMPS_ORDERING_AUT
 
 ### Thread Safety and OpenMP
 
-The MUMPS build is thread-safe by itself. The source is the fork pinned in the compile scripts (`https://github.com/cpmech/MUMPS_592` at commit `92b8a68bdda62e7a39b3af2b18eb4109082e2e30`, branch `ts-phase1`), which exports `mumps_is_thread_safe` = 1 and dispatches every call to a persistent worker inside the library. `russell_sparse` therefore calls every FFI entry point — `preprocess`, `solve` and `Drop` — directly on the caller's thread, with no lock or worker of its own; solvers may be used from several threads. The build script probes the installation and stops the build unless the symbol is there, so a stock MUMPS cannot be linked silently.
+The MUMPS build is thread-safe by itself. The source is the fork pinned in the compile scripts (`https://github.com/cpmech/MUMPS_592` at commit `a761e34`, on `main`), which exports `mumps_is_thread_safe` = 1 and dispatches every call to a persistent worker inside the library. `russell_sparse` therefore calls every FFI entry point — `preprocess`, `solve` and `Drop` — directly on the caller's thread, with no lock or worker of its own; solvers may be used from several threads. The build script probes the installation and stops the build unless the symbol is there, so a stock MUMPS cannot be linked silently.
 
 The number of OpenMP threads is passed via `ICNTL(16)`. The Rust code defaults to 1 thread to avoid a known issue with OpenBLAS, unless:
 - Intel MKL is detected (via `using_intel_mkl()`)

@@ -5,6 +5,20 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.3.1] - 2026-11-17
+
+### Fixed
+
+- The build probe for `mumps_is_thread_safe` failed under the OpenBLAS MUMPS build (the CI
+  configuration): it links `libmumps_common_cpmech` directly, and GNU ld then also demanded that
+  the library's own `dgemm_`/`sgemm_` references be resolvable on the probe's command line. The
+  probe now passes `-Wl,--allow-shlib-undefined`, so it checks its own reference only — a MUMPS
+  without the symbol still fails, by name. The failure message also distinguishes a missing
+  symbol (installation problem, names the fork) from a probe that could not be built or run.
+- `dorival_thread_safe` is no longer built by `make d` in the MUMPS examples: it needs an
+  OpenMP-enabled compiler, and the macOS makefile builds MUMPS without `-fopenmp`, which stopped
+  the whole MUMPS install on macOS. The pinned fork commit moved to `a761e34`.
+
 ## [5.3.0] - 2026-11-17
 
 ### Changed (breaking)

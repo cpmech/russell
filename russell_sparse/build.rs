@@ -503,47 +503,59 @@ mod unix {
 /// This is a requirement, not a capability: `src/solver_mumps.rs` calls MUMPS directly on
 /// the caller's thread, which is sound only because the library dispatches internally. A
 /// stock installation therefore stops the build rather than silently keeping a worker here.
+///
+/// The failure is reported in two flavours, because they mean different things: the linker's
+/// own `undefined reference to mumps_is_thread_safe` is an installation problem (the message
+/// names the fork and the script), while any other failure of the probe is a local build
+/// problem and is reported with the compiler's or the program's output.
 #[cfg(all(feature = "mumps", not(target_os = "windows")))]
 fn probe_thread_safe(lib: &std::path::Path) {
-    if !mumps_exports_thread_safety(lib) {
-        panic!(
-            "russell_sparse requires the thread-safe MUMPS: the linked libmumps_common_cpmech has no \
-             mumps_is_thread_safe. Build and install it with zscripts/arch-compile-mumps.bash (or the \
-             debian/macos variant), which fetches https://github.com/cpmech/MUMPS_592 at the pinned commit."
-        );
+    match run_thread_safety_probe(lib) {
+        Ok(()) => {
+            println!("cargo:warning=russell_sparse: MUMPS is thread-safe; calls run on the caller's thread")
+        }
+        Err(output) if output.contains("mumps_is_thread_safe") => panic!(
+            "russell_sparse requires the thread-safe MUMPS: the linked MUMPS has no \
+             mumps_is_thread_safe.\n\n{output}\n\
+             Build and install it with zscripts/arch-compile-mumps.bash (or the debian/macos \
+             variant), which fetches https://github.com/cpmech/MUMPS_592 at the pinned commit."
+        ),
+        Err(output) => panic!(
+            "russell_sparse: the probe that looks for mumps_is_thread_safe could not be \
+             compiled, linked or run, so the MUMPS installation was not accepted.\n\n{output}"
+        ),
     }
-    println!("cargo:warning=russell_sparse: MUMPS is thread-safe; calls run on the caller's thread");
 }
 
-/// Compiles, links and runs the probe, returning `false` at the first failure.
+/// Compiles, links and runs the probe; the error carries the output of the failing step.
 ///
-/// Writing, compiling, linking and running are all part of the question -- a compiler that
-/// cannot build a C program is as good a reason to stop the build as a missing symbol -- so
-/// each of them can end the probe. Only a program that exits with status zero (that is, a
-/// `mumps_is_thread_safe` returning 1) is a success.
+/// The probe links `libmumps_common_cpmech` directly, and GNU ld then also insists that every
+/// symbol left undefined *inside* that library be resolvable on this command line -- under the
+/// OpenBLAS build those are `dgemm_` and friends, which the probe never calls. The probe only
+/// asks whether the symbol is exported, so `--allow-shlib-undefined` restricts the check to the
+/// probe's own reference; a library without `mumps_is_thread_safe` still fails, and the linker
+/// says so by name. macOS checks the other way round (executable symbols only) and has no such
+/// flag, so it is passed on ELF targets only.
 #[cfg(all(feature = "mumps", not(target_os = "windows")))]
-fn mumps_exports_thread_safety(lib: &std::path::Path) -> bool {
+fn run_thread_safety_probe(lib: &std::path::Path) -> Result<(), String> {
     const PROBE_SOURCE: &str = "\
 extern int mumps_is_thread_safe(void);
 int main(void) { return mumps_is_thread_safe() == 1 ? 0 : 1; }
 ";
 
-    let out_dir = match std::env::var_os("OUT_DIR") {
-        Some(dir) => std::path::PathBuf::from(dir),
-        None => return false,
-    };
+    let out_dir = std::env::var_os("OUT_DIR")
+        .map(std::path::PathBuf::from)
+        .ok_or_else(|| "OUT_DIR is not set, so the probe cannot be written".to_string())?;
     let source = out_dir.join("mumps_probe.c");
     let executable = out_dir.join("mumps_probe");
-    if std::fs::write(&source, PROBE_SOURCE).is_err() {
-        return false;
-    }
+    std::fs::write(&source, PROBE_SOURCE).map_err(|error| format!("could not write {}: {error}", source.display()))?;
 
     // The same compiler that builds the shims: `cc` already resolved it (CC, target
     // and sysroot included), and its extra arguments have to travel with the call.
     let compiler = cc::Build::new().get_compiler();
     let lib_arg = lib.display().to_string();
-    let linked = std::process::Command::new(compiler.path())
-        .args(compiler.args())
+    let mut link = std::process::Command::new(compiler.path());
+    link.args(compiler.args())
         .arg("-o")
         .arg(&executable)
         .arg(&source)
@@ -551,16 +563,35 @@ int main(void) { return mumps_is_thread_safe() == 1 ? 0 : 1; }
         .arg("-lmumps_common_cpmech")
         .arg(format!("-Wl,-rpath,{lib_arg}"))
         .arg("-lpthread")
-        .arg("-lm")
-        .status();
-    if !matches!(linked, Ok(status) if status.success()) {
-        return false;
+        .arg("-lm");
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("macos") {
+        link.arg("-Wl,--allow-shlib-undefined");
+    }
+    let linked = link.output().map_err(|error| format!("could not run the C compiler: {error}"))?;
+    if !linked.status.success() {
+        return Err(probe_output(&linked));
     }
 
-    std::process::Command::new(&executable)
+    let ran = std::process::Command::new(&executable)
         .env("LD_LIBRARY_PATH", &lib_arg)
-        .status()
-        .is_ok_and(|status| status.success())
+        .output()
+        .map_err(|error| format!("could not run {}: {error}", executable.display()))?;
+    if !ran.status.success() {
+        return Err(probe_output(&ran));
+    }
+    Ok(())
+}
+
+/// Renders a failed command's output for the build error.
+#[cfg(all(feature = "mumps", not(target_os = "windows")))]
+fn probe_output(output: &std::process::Output) -> String {
+    let mut text = String::new();
+    text.push_str(&String::from_utf8_lossy(&output.stderr));
+    text.push_str(&String::from_utf8_lossy(&output.stdout));
+    if text.trim().is_empty() {
+        text = format!("the command failed with {}", output.status);
+    }
+    text
 }
 
 /// Emits a link search directory.

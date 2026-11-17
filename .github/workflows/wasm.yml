@@ -34,8 +34,18 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Install wasmtime
         run: |
-          curl -sSf https://wasmtime.dev/install.sh | bash
-          echo "$HOME/.wasmtime/bin" >> "$GITHUB_PATH"
+          set -euo pipefail
+          # Pin the release and fetch the asset directly: the installer script
+          # resolves "latest" through the GitHub API, and on a rate-limited
+          # runner that produced the URL ".../download/{/wasmtime-{-x86_64-linux.tar.xz".
+          # `curl | bash` also hid that failure, since the pipeline's status was
+          # bash's. Both are gone here: a failed download fails the step.
+          version=v50.0.2
+          curl -sSfL "https://github.com/bytecodealliance/wasmtime/releases/download/${version}/wasmtime-${version}-x86_64-linux.tar.xz" \
+            -o /tmp/wasmtime.tar.xz
+          tar -xJf /tmp/wasmtime.tar.xz -C /tmp
+          echo "/tmp/wasmtime-${version}-x86_64-linux" >> "$GITHUB_PATH"
+          "/tmp/wasmtime-${version}-x86_64-linux/wasmtime" --version
       - name: Report the toolchain
         run: |
           rustc --version

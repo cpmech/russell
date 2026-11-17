@@ -1,7 +1,7 @@
 #!/bin/bash
 # Compiles and installs the sequential MUMPS solver on macOS.
 #
-# The libraries come from the upstream tarball at mumps-solver.org and are built
+# The libraries come from the thread-safe fork at github.com/cpmech/MUMPS_592 and are built
 # with Homebrew's gfortran against Apple's Accelerate framework; they carry the
 # project's `_cpmech` suffix (`PLAT` in the makefile) so they cannot be confused
 # with a system MUMPS. Install names are rewritten to `@rpath/...`, which is what
@@ -13,7 +13,7 @@
 # gfortran must be available (brew install gcc).
 set -euo pipefail
 
-PREFIX="${1:-/usr/local}"
+PREFIX="${PREFIX:-${1:-/usr/local}}"
 INCDIR="$PREFIX/include/mumps"
 LIBDIR="$PREFIX/lib/mumps"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -34,20 +34,20 @@ as_root() {
     fi
 }
 
-MUMPS_GZ="MUMPS_${VERSION}.tar.gz"
+# The MUMPS source is the thread-safe fork: every MUMPS call is dispatched to a
+# persistent worker inside the library, so clients need no lock or worker of their own.
+# git comes from the Xcode command line tools, so there is nothing to install here.
+MUMPS_REPO="https://github.com/cpmech/MUMPS_592.git"
+MUMPS_COMMIT="92b8a68bdda62e7a39b3af2b18eb4109082e2e30"   # branch ts-phase1
 MUMPS_DIR="MUMPS_${VERSION}"
-cd /tmp
-if [ -d "$MUMPS_DIR" ]; then
-    echo "... removing previous $MUMPS_DIR directory"
-    rm -rf "$MUMPS_DIR"
-fi
-if [ -f "$MUMPS_GZ" ]; then
-    echo "... using existing $MUMPS_GZ file"
-else
-    curl -fL "https://mumps-solver.org/MUMPS_${VERSION}.tar.gz" -o "$MUMPS_GZ"
-fi
 
-tar xzf "$MUMPS_GZ"
+cd /tmp
+rm -rf "$MUMPS_DIR"
+git init -q "$MUMPS_DIR"
+git -C "$MUMPS_DIR" remote add origin "$MUMPS_REPO"
+git -C "$MUMPS_DIR" fetch -q --depth 1 origin "$MUMPS_COMMIT"
+git -C "$MUMPS_DIR" checkout -q --detach FETCH_HEAD
+echo "... MUMPS source: $MUMPS_REPO $MUMPS_COMMIT"
 cd "$MUMPS_DIR"
 cp "$PDIR/Makefile.inc.macos" Makefile.inc
 

@@ -70,10 +70,10 @@ fn make_complex_system() -> Result<(ComplexCooMatrix, ComplexVector, ComplexVect
 
 /// Exercises `dmumps_c` and `zmumps_c` from several threads at once
 ///
-/// Ten caller threads hammer `new`/`preprocess`/`solve`/`drop` while every FFI call is
-/// dispatched to the single process-wide MUMPS worker thread. MUMPS therefore keeps one
-/// OpenMP master thread and its full team (the default `mumps_num_threads = 0` lets MUMPS
-/// choose), even though the callers run concurrently. This test pins that protocol.
+/// Ten caller threads hammer `new`/`preprocess`/`solve`/`drop` concurrently. The
+/// thread-safe MUMPS library dispatches every call to its own persistent worker, so
+/// the callers share one OpenMP team (the default `mumps_num_threads = 0` lets MUMPS
+/// choose). This test pins that protocol.
 #[test]
 fn test_mumps_concurrent_stress() {
     const N: usize = 150;
@@ -140,9 +140,9 @@ fn test_mumps_concurrent_stress() {
 
 /// Holds several MUMPS instances alive at once, interleaving their lifecycles
 ///
-/// A solver that held a non-reentrant lock across its lifetime would deadlock
-/// on the second `new` of the same thread. This test must pass both before and
-/// after the synchronization is added: it pins the protocol that fix preserves.
+/// Each instance carries its own state, and the library serializes the calls
+/// internally, so creating a second solver must not block the first: this test
+/// pins that the instances stay independent in both creation orders.
 #[test]
 fn test_mumps_multiple_instances_single_thread() -> Result<(), StrError> {
     let (coo, x_correct, rhs) = make_system()?;

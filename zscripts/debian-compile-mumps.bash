@@ -18,7 +18,7 @@ USE_INTEL_MKL=${1:-0}
 
 # Installation paths and source version
 VERSION="5.9.2"
-PREFIX="/usr/local"
+PREFIX="${PREFIX:-/usr/local}"
 INCDIR="$PREFIX/include/mumps"
 LIBDIR="$PREFIX/lib/mumps"
 PDIR="$(pwd)/zscripts/makefiles-mumps"
@@ -26,7 +26,7 @@ PDIR="$(pwd)/zscripts/makefiles-mumps"
 # Install build tools and BLAS/LAPACK dependencies;
 # libmetis-dev is needed for graph-partitioning-based reordering
 sudo apt-get update -y
-sudo apt-get install -y --no-install-recommends curl libmetis-dev make
+sudo apt-get install -y --no-install-recommends curl libmetis-dev make git
 if [ "${USE_INTEL_MKL}" = "1" ]; then
     set +u  # setvars.sh references variables before setting them; suppress -u temporarily
     source /opt/intel/oneapi/setvars.sh  # sets CC, FC, and PATH for the ifx compiler
@@ -36,21 +36,19 @@ else
     sudo apt-get install -y --no-install-recommends gfortran liblapacke-dev libopenblas-dev libomp-dev
 fi
 
-# Download the source tarball from mumps-solver.org (reuse it if already present)
-MUMPS_GZ="MUMPS_${VERSION}.tar.gz"
+# The MUMPS source is the thread-safe fork: every MUMPS call is dispatched to a
+# persistent worker inside the library, so clients need no lock or worker of their own.
+MUMPS_REPO="https://github.com/cpmech/MUMPS_592.git"
+MUMPS_COMMIT="92b8a68bdda62e7a39b3af2b18eb4109082e2e30"   # branch ts-phase1
 MUMPS_DIR="MUMPS_${VERSION}"
-cd /tmp
-if [ -d "$MUMPS_DIR" ]; then
-    echo "... removing previous $MUMPS_DIR directory"
-    rm -rf "$MUMPS_DIR"
-fi
-if [ -f "$MUMPS_GZ" ]; then
-    echo "... using existing $MUMPS_GZ file"
-else
-    curl -fL "https://mumps-solver.org/MUMPS_${VERSION}.tar.gz" -o "$MUMPS_GZ"
-fi
 
-tar xzf "$MUMPS_GZ"
+cd /tmp
+rm -rf "$MUMPS_DIR"
+git init -q "$MUMPS_DIR"
+git -C "$MUMPS_DIR" remote add origin "$MUMPS_REPO"
+git -C "$MUMPS_DIR" fetch -q --depth 1 origin "$MUMPS_COMMIT"
+git -C "$MUMPS_DIR" checkout -q --detach FETCH_HEAD
+echo "... MUMPS source: $MUMPS_REPO $MUMPS_COMMIT"
 cd "$MUMPS_DIR"
 
 # Select the Makefile.inc that matches the chosen BLAS/LAPACK backend

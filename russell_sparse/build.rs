@@ -31,6 +31,15 @@
 //! Windows and Unix compile the *same* source list ([`shim_files`]); only the
 //! include roots and the library names differ -- shared libraries on Unix, and
 //! the statically linked `_cpmech` MUMPS on Windows.
+//!
+//! On Unix, the `mumps` feature also requires the thread-safe MUMPS: a two-line C
+//! program that calls `mumps_is_thread_safe` is compiled, linked and run against
+//! the same library the shims use. Any failure -- the write, the compile, the
+//! link (a missing symbol is an `undefined reference`) or the run -- stops the
+//! build with the message that names the fork and the script that installs it.
+//! There is no fallback: `src/solver_mumps.rs` calls MUMPS directly on the
+//! caller's thread, and the library is what serializes and dispatches the calls.
+//! A successful build prints a warning saying so.
 
 #[cfg(any(feature = "umfpack", feature = "mumps"))]
 use std::path::PathBuf;
@@ -431,6 +440,7 @@ mod unix {
         build.include(&include);
         super::emit_link_search(&lib);
         super::emit_rpath(&lib);
+        super::probe_thread_safe(&lib);
         println!("cargo:rustc-link-lib=dylib=dmumps_cpmech");
         println!("cargo:rustc-link-lib=dylib=zmumps_cpmech");
     }
@@ -475,6 +485,82 @@ mod unix {
             .map(|dir| dir.to_string())
             .collect()
     }
+}
+
+// ----------------------------------------------------------------------------
+// Capability probe: the linked MUMPS must be the thread-safe build
+// ----------------------------------------------------------------------------
+
+/// Stops the build unless the linked MUMPS exports `mumps_is_thread_safe`.
+///
+/// The answer comes from a probe and from nothing else: a two-line C program calling the
+/// symbol is compiled against the same headers and library directory as the shims, linked
+/// with the same C compiler, and run. A MUMPS without the symbol fails at the *link*, with
+/// `undefined reference to mumps_is_thread_safe`, so the probe's outcome is also the
+/// installation's answer; there is no need to inspect the shared objects or to re-read what
+/// `pkg-config` says.
+///
+/// This is a requirement, not a capability: `src/solver_mumps.rs` calls MUMPS directly on
+/// the caller's thread, which is sound only because the library dispatches internally. A
+/// stock installation therefore stops the build rather than silently keeping a worker here.
+#[cfg(all(feature = "mumps", not(target_os = "windows")))]
+fn probe_thread_safe(lib: &std::path::Path) {
+    if !mumps_exports_thread_safety(lib) {
+        panic!(
+            "russell_sparse requires the thread-safe MUMPS: the linked libmumps_common_cpmech has no \
+             mumps_is_thread_safe. Build and install it with zscripts/arch-compile-mumps.bash (or the \
+             debian/macos variant), which fetches https://github.com/cpmech/MUMPS_592 at the pinned commit."
+        );
+    }
+    println!("cargo:warning=russell_sparse: MUMPS is thread-safe; calls run on the caller's thread");
+}
+
+/// Compiles, links and runs the probe, returning `false` at the first failure.
+///
+/// Writing, compiling, linking and running are all part of the question -- a compiler that
+/// cannot build a C program is as good a reason to stop the build as a missing symbol -- so
+/// each of them can end the probe. Only a program that exits with status zero (that is, a
+/// `mumps_is_thread_safe` returning 1) is a success.
+#[cfg(all(feature = "mumps", not(target_os = "windows")))]
+fn mumps_exports_thread_safety(lib: &std::path::Path) -> bool {
+    const PROBE_SOURCE: &str = "\
+extern int mumps_is_thread_safe(void);
+int main(void) { return mumps_is_thread_safe() == 1 ? 0 : 1; }
+";
+
+    let out_dir = match std::env::var_os("OUT_DIR") {
+        Some(dir) => std::path::PathBuf::from(dir),
+        None => return false,
+    };
+    let source = out_dir.join("mumps_probe.c");
+    let executable = out_dir.join("mumps_probe");
+    if std::fs::write(&source, PROBE_SOURCE).is_err() {
+        return false;
+    }
+
+    // The same compiler that builds the shims: `cc` already resolved it (CC, target
+    // and sysroot included), and its extra arguments have to travel with the call.
+    let compiler = cc::Build::new().get_compiler();
+    let lib_arg = lib.display().to_string();
+    let linked = std::process::Command::new(compiler.path())
+        .args(compiler.args())
+        .arg("-o")
+        .arg(&executable)
+        .arg(&source)
+        .arg(format!("-L{lib_arg}"))
+        .arg("-lmumps_common_cpmech")
+        .arg(format!("-Wl,-rpath,{lib_arg}"))
+        .arg("-lpthread")
+        .arg("-lm")
+        .status();
+    if !matches!(linked, Ok(status) if status.success()) {
+        return false;
+    }
+
+    std::process::Command::new(&executable)
+        .env("LD_LIBRARY_PATH", &lib_arg)
+        .status()
+        .is_ok_and(|status| status.success())
 }
 
 /// Emits a link search directory.

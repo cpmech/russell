@@ -1,7 +1,6 @@
 use super::{CooMatrix, LinSolParams, LinSolTrait, Ordering, Scaling, StatsLinSol, Sym};
 use crate::StrError;
 use crate::constants::*;
-use crate::mumps_lock::{SendPtr, run_on_mumps_thread};
 use russell_lab::{Stopwatch, Vector, using_intel_mkl, vec_copy};
 
 /// Opaque struct holding a C-pointer to InterfaceMUMPS
@@ -68,10 +67,10 @@ unsafe extern "C" {
 ///
 /// **Reference:** <https://mumps-solver.org>
 ///
-/// MUMPS itself is not thread-safe, so `russell_sparse` dispatches every FFI call — `preprocess`,
-/// `solve` and `Drop` — synchronously onto one dedicated process-wide MUMPS worker thread. The
-/// worker both serializes the calls and keeps MUMPS's OpenMP teams bound to a single OS master
-/// thread that never exits mid-run; solvers may therefore be used from many threads.
+/// MUMPS is thread-safe here: the library is built from the thread-safe fork, which dispatches
+/// every call to a persistent worker inside the library (`mumps_is_thread_safe` = 1), so clients
+/// need no lock or worker of their own. Every FFI call — `preprocess`, `solve` and `Drop` — runs
+/// directly on the caller's thread, and solvers may be used from many threads.
 ///
 /// **Note:** We use `calloc` in `interface_mumps.c` which correctly zero-initializes our struct but
 /// Valgrind yields some warnings persist — they come from deep inside MUMPS's functions in an OpenMP
@@ -148,10 +147,9 @@ pub struct SolverMUMPS {
 impl Drop for SolverMUMPS {
     /// Tells the c-code to release memory
     fn drop(&mut self) {
-        let solver = SendPtr(self.solver);
-        run_on_mumps_thread(move || unsafe {
-            solver_mumps_drop(solver.get());
-        });
+        unsafe {
+            solver_mumps_drop(self.solver);
+        }
     }
 }
 
@@ -288,68 +286,50 @@ impl LinSolTrait for SolverMUMPS {
 
         // call initialize just once
         if !self.initialized {
-            let solver = SendPtr(self.solver);
-            let indices_i = SendPtr(self.fortran_indices_i.as_ptr() as *mut i32);
-            let indices_j = SendPtr(self.fortran_indices_j.as_ptr() as *mut i32);
-            let values_aij = SendPtr(mat.values.as_ptr() as *mut f64);
-            let effective_num_threads = self.effective_num_threads;
-            let stopwatch = &mut self.stopwatch;
-            let (status, elapsed) = run_on_mumps_thread(move || {
-                stopwatch.reset();
-                let status = unsafe {
-                    solver_mumps_initialize(
-                        solver.get(),
-                        ordering,
-                        scaling,
-                        pct_inc_workspace,
-                        max_work_memory,
-                        effective_num_threads,
-                        verbose,
-                        general_symmetric,
-                        positive_definite,
-                        ndim,
-                        nnz,
-                        indices_i.get(),
-                        indices_j.get(),
-                        values_aij.get(),
-                    )
-                };
-                (status, stopwatch.stop())
-            });
+            self.stopwatch.reset();
+            let status = unsafe {
+                solver_mumps_initialize(
+                    self.solver,
+                    ordering,
+                    scaling,
+                    pct_inc_workspace,
+                    max_work_memory,
+                    self.effective_num_threads,
+                    verbose,
+                    general_symmetric,
+                    positive_definite,
+                    ndim,
+                    nnz,
+                    self.fortran_indices_i.as_ptr(),
+                    self.fortran_indices_j.as_ptr(),
+                    mat.values.as_ptr(),
+                )
+            };
             if status != SUCCESSFUL_EXIT {
                 return Err(handle_mumps_error_code(status));
             }
-            self.time_initialize_ns = elapsed;
+            self.time_initialize_ns = self.stopwatch.stop();
             self.initialized = true;
             self.initialized_params = par;
         }
 
         // call factorize
-        let solver = SendPtr(self.solver);
-        let effective_ordering = SendPtr(&mut self.effective_ordering);
-        let effective_scaling = SendPtr(&mut self.effective_scaling);
-        let determinant_coefficient = SendPtr(&mut self.determinant_coefficient);
-        let determinant_exponent = SendPtr(&mut self.determinant_exponent);
-        let stopwatch = &mut self.stopwatch;
-        let (status, elapsed) = run_on_mumps_thread(move || {
-            stopwatch.reset();
-            let status = unsafe {
-                solver_mumps_factorize(
-                    solver.get(),
-                    effective_ordering.get(),
-                    effective_scaling.get(),
-                    determinant_coefficient.get(),
-                    determinant_exponent.get(),
-                    compute_determinant,
-                    verbose,
-                )
-            };
-            (status, stopwatch.stop())
-        });
+        self.stopwatch.reset();
+        let status = unsafe {
+            solver_mumps_factorize(
+                self.solver,
+                &mut self.effective_ordering,
+                &mut self.effective_scaling,
+                &mut self.determinant_coefficient,
+                &mut self.determinant_exponent,
+                compute_determinant,
+                verbose,
+            )
+        };
         if status != SUCCESSFUL_EXIT {
             return Err(handle_mumps_error_code(status));
         }
-        self.time_preprocess_ns = elapsed;
+        self.time_preprocess_ns = self.stopwatch.stop();
 
         // done
         self.factorized = true;
@@ -393,20 +373,20 @@ impl LinSolTrait for SolverMUMPS {
         // call MUMPS solve
         vec_copy(x, rhs).unwrap();
         let verb = if verbose { 1 } else { 0 };
-        let solver = SendPtr(self.solver);
-        let rhs_ptr = SendPtr(x.as_mut_data().as_mut_ptr());
-        let error_analysis_array = SendPtr(self.error_analysis_array_len_8.as_mut_ptr());
-        let error_analysis_option = self.error_analysis_option;
-        let stopwatch = &mut self.stopwatch;
-        let (status, elapsed) = run_on_mumps_thread(move || {
-            stopwatch.reset();
-            let status = unsafe { solver_mumps_solve(solver.get(), rhs_ptr.get(), error_analysis_array.get(), error_analysis_option, verb) };
-            (status, stopwatch.stop())
-        });
+        self.stopwatch.reset();
+        let status = unsafe {
+            solver_mumps_solve(
+                self.solver,
+                x.as_mut_data().as_mut_ptr(),
+                self.error_analysis_array_len_8.as_mut_ptr(),
+                self.error_analysis_option,
+                verb,
+            )
+        };
         if status != SUCCESSFUL_EXIT {
             return Err(handle_mumps_error_code(status));
         }
-        self.time_solve_ns = elapsed;
+        self.time_solve_ns = self.stopwatch.stop();
 
         // done
         Ok(())

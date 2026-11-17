@@ -5,6 +5,25 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.4.0] - 2026-11-17
+
+### Changed (breaking)
+
+- The OpenBLAS guard is gone: `mumps_num_threads` goes straight to `ICNTL(16)` for every BLAS, with
+  0 meaning "MUMPS takes `OMP_NUM_THREADS`". The public field
+  `LinSolParams::mumps_override_prevent_nt_issue_with_openblas` and the corresponding
+  `solve_matrix_market` flag were removed, since there is nothing left to override.
+  Evidence, against the gfortran + OpenBLAS build of the thread-safe MUMPS: the internal team is
+  correct at `ICNTL(16)` = 2, 4 and 8 on a 62 500-unknown Laplacian (3/3 runs each); 32 plain OS
+  caller threads run 20 lifecycles each cleanly at `OMP=8` and `16` with the internal team on; the
+  unlocked Fortran reproducer passes 10/10 at both thread counts; and `pmsim`'s driver
+  specifications agree with the guarded build to `1.2e-11` relative on the physical columns
+  (bit-identical at one thread), with no homogeneity warning. Nor is there a speed penalty any more: on that Laplacian, pinned to
+  eight cores with OpenBLAS 0.3.34, `ICNTL(16)=1` takes 0.206 s and the automatic `ICNTL(16)=0`
+  takes 0.193 s (8 x 8 threads included). The 5.2.x-era "very, very slow" case no longer
+  reproduces; the README keeps the history and the workaround (`mumps_num_threads = 1` or
+  `OPENBLAS_NUM_THREADS=1`) for builds where it does.
+
 ## [5.3.1] - 2026-11-17
 
 ### Fixed

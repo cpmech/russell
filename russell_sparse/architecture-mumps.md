@@ -176,7 +176,7 @@ On first call:
 3. Converts zero-based COO indices to one-based Fortran indices by adding 1 to each `indices_i[k]` and `indices_j[k]`
 4. Maps generic `Ordering` to MUMPS ordering constants via `mumps_ordering()`
 5. Maps generic `Scaling` to MUMPS scaling constants via `mumps_scaling()`
-6. Determines thread count: if Intel MKL detected or user overrides, uses `par.mumps_num_threads`; otherwise defaults to 1 (avoids OpenBLAS threading bug)
+6. Determines the thread count: `par.mumps_num_threads` goes straight to `ICNTL(16)`, where 0 lets MUMPS take `OMP_NUM_THREADS` — for every BLAS, since the MUMPS build is thread-safe
 7. Applies parameters: `mumps_pct_inc_workspace`, `mumps_max_work_memory`, `error_analysis_option`
 8. Calls `solver_mumps_initialize()` with one-based indices and original values
 9. Records `time_initialize_ns`
@@ -237,10 +237,7 @@ Unsupported generic `Ordering`/`Scaling` values fall back to `MUMPS_ORDERING_AUT
 
 The MUMPS build is thread-safe by itself. The source is the fork pinned in the compile scripts (`https://github.com/cpmech/MUMPS_592` at commit `a761e34`, on `main`), which exports `mumps_is_thread_safe` = 1 and dispatches every call to a persistent worker inside the library. `russell_sparse` therefore calls every FFI entry point — `preprocess`, `solve` and `Drop` — directly on the caller's thread, with no lock or worker of its own; solvers may be used from several threads. The build script probes the installation and stops the build unless the symbol is there, so a stock MUMPS cannot be linked silently.
 
-The number of OpenMP threads is passed via `ICNTL(16)`. The Rust code defaults to 1 thread to avoid a known issue with OpenBLAS, unless:
-- Intel MKL is detected (via `using_intel_mkl()`)
-- User explicitly sets `par.mumps_num_threads != 0`
-- User enables `par.mumps_override_prevent_nt_issue_with_openblas`
+The number of OpenMP threads is passed via `ICNTL(16)`. `par.mumps_num_threads` is used as given, with 0 meaning "MUMPS takes `OMP_NUM_THREADS`"; there is no BLAS-dependent default any more. The old rule — one thread unless Intel MKL was detected, to dodge an OpenBLAS threading bug — was retired in 5.4.0: against the gfortran + OpenBLAS build of the thread-safe MUMPS the internal team runs correct at 2, 4 and 8 threads, 32 plain OS caller threads churn it cleanly at `OMP=8` and `16`, and `pmsim`'s driver specifications are numerically unchanged (bit-identical at one thread).
 
 ---
 

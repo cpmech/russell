@@ -1,7 +1,7 @@
 use super::{CooMatrix, LinSolParams, LinSolTrait, Ordering, Scaling, StatsLinSol, Sym};
 use crate::StrError;
 use crate::constants::*;
-use russell_lab::{Stopwatch, Vector, using_intel_mkl, vec_copy};
+use russell_lab::{Stopwatch, Vector, vec_copy};
 
 /// Opaque struct holding a C-pointer to InterfaceMUMPS
 ///
@@ -268,11 +268,9 @@ impl LinSolTrait for SolverMUMPS {
         let scaling = mumps_scaling(par.scaling);
         let pct_inc_workspace = to_i32(par.mumps_pct_inc_workspace);
         let max_work_memory = to_i32(par.mumps_max_work_memory);
-        self.effective_num_threads = if using_intel_mkl() || par.mumps_num_threads != 0 || par.mumps_override_prevent_nt_issue_with_openblas {
-            to_i32(par.mumps_num_threads)
-        } else {
-            1 // avoid bug with OpenBLAS
-        };
+        // ICNTL(16): 0 lets MUMPS take the OpenMP default. No BLAS needs a guard any more:
+        // the MUMPS build dispatches internally and is thread-safe (mumps_is_thread_safe = 1).
+        self.effective_num_threads = to_i32(par.mumps_num_threads);
 
         // requests
         let compute_determinant = if par.compute_determinant { 1 } else { 0 };

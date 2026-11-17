@@ -179,13 +179,11 @@ pub struct LinSolParams {
     /// **Note:** Set this value to 0 for an automatic configuration
     pub mumps_max_work_memory: usize,
 
-    /// Defines the number of threads for MUMPS
+    /// Defines the number of threads for MUMPS (ICNTL(16))
     ///
-    /// **Note:** Set this value to 0 to allow an automatic detection
+    /// **Note:** 0 lets MUMPS take the OpenMP default (`OMP_NUM_THREADS`). That holds for every
+    /// BLAS: the MUMPS build is thread-safe by itself (see `architecture-mumps.md`).
     pub mumps_num_threads: usize,
-
-    /// Overrides the prevention of number-of-threads issue with OpenBLAS (not recommended)
-    pub mumps_override_prevent_nt_issue_with_openblas: bool,
 
     /// Enforces the unsymmetric strategy, even for symmetric matrices (not recommended; UMFPACK only)
     pub umfpack_enforce_unsymmetric_strategy: bool,
@@ -218,7 +216,6 @@ impl LinSolParams {
             mumps_pct_inc_workspace: 100,
             mumps_max_work_memory: 0,
             mumps_num_threads: 0,
-            mumps_override_prevent_nt_issue_with_openblas: false,
             umfpack_enforce_unsymmetric_strategy: false,
             direct_method: DirectMethod::default(),
             verbose: false,

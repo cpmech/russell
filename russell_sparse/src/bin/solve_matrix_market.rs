@@ -1,4 +1,4 @@
-use russell_lab::{ComplexVector, Stopwatch, StrError, Vector, cpx, set_num_threads, using_intel_mkl};
+use russell_lab::{ComplexVector, Stopwatch, StrError, Vector, cpx, set_num_threads};
 use russell_sparse::is_memory_error;
 use russell_sparse::prelude::*;
 use structopt::StructOpt;
@@ -36,10 +36,6 @@ struct Options {
     /// Number of threads
     #[structopt(short = "n", long, default_value = "0")]
     nt: u32,
-
-    /// Overrides the prevention of number-of-threads issue with OpenBLAS (not recommended)
-    #[structopt(long)]
-    override_prevent_issue: bool,
 
     /// Activate verbose mode
     #[structopt(short = "v", long)]
@@ -176,7 +172,6 @@ fn main() -> Result<(), StrError> {
     }
     params.compute_error_estimates = opt.error_estimates;
     params.compute_condition_numbers = opt.condition_numbers;
-    params.mumps_override_prevent_nt_issue_with_openblas = opt.override_prevent_issue;
     params.verbose = opt.verbose;
     params.iterative.tolerance = opt.iterative.iter_tol;
     params.iterative.absolute_tolerance = opt.iterative.iter_abs_tol;
@@ -189,9 +184,6 @@ fn main() -> Result<(), StrError> {
     params.iterative.amg_smoother = parse_amg_smoother(&opt.iterative.amg_smoother)?;
     params.iterative.amg_coarse_enough = opt.iterative.amg_coarse_enough;
     params.iterative.amg_max_levels = opt.iterative.amg_max_levels;
-    if !using_intel_mkl() && opt.override_prevent_issue {
-        println!("... WARNING: overriding the prevention of issue with OpenBLAS ...");
-    }
 
     // allocate stats structure
     let mut stats = StatsLinSol::new();

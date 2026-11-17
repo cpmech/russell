@@ -415,31 +415,36 @@ The output looks like this:
 
 
 
-## MUMPS + OpenBLAS issue
+## MUMPS + OpenBLAS issue (retired in 5.4.0)
 
-We found that MUMPS + OpenBLAS becomes very, very slow when the number of OpenMP threads is left automatic, i.e., using the available number of threads. Thus, with OpenBLAS, it is recommended to set LinSolParams.mumps_num_threads = 1 (this is automatically set when using OpenBLAS).
+Older OpenBLAS builds made MUMPS "very, very slow" when the number of OpenMP threads was left automatic,
+so `russell_sparse` used to force `ICNTL(16) = 1` whenever Intel MKL was not detected (References #1 and
+#2, the latter stating on page 72: _"We have observed that multi-threading of OpenBLAS library in MUMPS
+leads to multiple thread conflicts which sometimes result in significant slow-down of the solver."_).
 
-This issue has been discussed in Reference #1 and also in Reference #2, which states (page 72) _"We have observed that multi-threading of OpenBLAS library in MUMPS leads to multiple thread conflicts which sometimes result in significant slow-down of the solver."_
+That guard was removed in **5.4.0**, together with `LinSolParams::mumps_override_prevent_nt_issue_with_openblas`
+and the `--override-prevent-issue` flag: with the thread-safe MUMPS build the combination is measured, not
+assumed. On a 62 500-unknown 2-D Laplacian, pinned to eight cores, gfortran + OpenBLAS MUMPS (median of
+three runs each):
 
-Therefore, we have to take one of the two approaches:
+| `ICNTL(16)` | `OPENBLAS_NUM_THREADS` | time |
+|---|---|---|
+| 1 (what the guard enforced) | 8 | 0.206 s |
+| 1 | 1 | 0.205 s |
+| 0 (automatic, what removal gives) | 8 | 0.193 s |
+| 8 | 8 | 0.191 s |
+| 8 | 1 | 0.191 s |
 
-* If fixing the number of OpenMP threads for MUMPS, set the number of OpenMP threads for OpenBLAS to 1
-* If fixing the number of OpenMP threads for OpenBLAS, set the number of OpenMP threads for MUMPS to 1 
+Correctness was checked on the same build: the internal team is right at `ICNTL(16)` = 2, 4 and 8; 32 plain
+OS caller threads run 20 lifecycles each cleanly at `OMP=8` and `16` with the internal team on; and `pmsim`'s
+driver specifications agree with the guarded build to `1.2e-11` relative on the physical columns (bit-identical
+at one thread).
 
-This issue has **not** been noticed with MUMPS + Intel MKL.
+If an OpenBLAS build on another machine still shows the old slow-down, the workaround needs no special
+field: set `LinSolParams.mumps_num_threads = 1`, or `OPENBLAS_NUM_THREADS=1`, so that only one of the two
+libraries threads at a time.
 
-Command to reproduce the issue:
-
-```bash
-OMP_NUM_THREADS=20 ~/rust_modules/release/solve_matrix_market -g mumps ~/Downloads/matrix-market/inline_1.mtx -m 0 -v --override-prevent-issue
-```
-
-Also, to reproduce the issue, we need:
-
-* Remove Debian OpenBLAS, MUMPS, etc.
-* Install the compiled MUMPS solver with `zscripts/debian-compile-mumps.bash` and `zscripts/debian-compile-suitesparse.bash`
-
-### References
+## References
 
 1. Pedroso DM (2024) [Caveats of three direct linear solvers for finite element analyses](https://onlinelibrary.wiley.com/doi/10.1002/nme.7545), _International Journal for Numerical Methods in Engineering_, doi.org/10.1002/nme.7545.
 2. Dorozhinskii R (2019) [Configuration of a linear solver for linearly implicit time integration and efficient data transfer in parallel thermo-hydraulic computations](https://mediatum.ub.tum.de/doc/1486743/1486743.pdf). _Master's Thesis in Computational Science and Engineering._ Department of Informatics Technical University of Munich.

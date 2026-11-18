@@ -517,7 +517,7 @@ fn probe_thread_safe(lib: &std::path::Path) {
             "russell_sparse requires the thread-safe MUMPS: the linked MUMPS has no \
              mumps_is_thread_safe.\n\n{output}\n\
              Build and install it with zscripts/arch-compile-mumps.bash (or the debian/macos \
-             variant), which fetches https://github.com/cpmech/MUMPS_592 at the pinned commit."
+             variant), which fetches the fork's `main` branch."
         ),
         Err(output) => panic!(
             "russell_sparse: the probe that looks for mumps_is_thread_safe could not be \

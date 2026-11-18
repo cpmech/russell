@@ -4,7 +4,7 @@
 
 The MUMPS wrapper uses a two-layer C/Rust FFI pattern. The C layer (`interface_mumps.c`) manages the MUMPS `DMUMPS_STRUC_C` struct and the job-based analysis→factorization→solve pipeline, while the Rust layer (`solver_mumps.rs`) provides a safe interface via `LinSolTrait`, handling COO one-based index conversion, parameter mapping, error analysis, and timing.
 
-Unlike the other solvers, MUMPS accepts raw COO format directly (one-based Fortran-style indices). Its build is thread-safe by itself: the `_cpmech` libraries come from the fork pinned in the compile scripts and report `mumps_is_thread_safe` = 1, dispatching every call to a persistent worker inside the library. Every FFI call (`preprocess`, `solve`, `Drop`) therefore runs on the caller's thread — with no lock or worker of our own — and solvers may be used from many threads.
+Unlike the other solvers, MUMPS accepts raw COO format directly (one-based Fortran-style indices). Its build is thread-safe by itself: the `_cpmech` libraries come from the fork's `main` branch, fetched by the compile scripts, and report `mumps_is_thread_safe` = 1, dispatching every call to a persistent worker inside the library. Every FFI call (`preprocess`, `solve`, `Drop`) therefore runs on the caller's thread — with no lock or worker of our own — and solvers may be used from many threads.
 
 ---
 
@@ -235,7 +235,7 @@ Unsupported generic `Ordering`/`Scaling` values fall back to `MUMPS_ORDERING_AUT
 
 ### Thread Safety and OpenMP
 
-The MUMPS build is thread-safe by itself. The source is the fork pinned in the compile scripts (`https://github.com/cpmech/MUMPS_592` at commit `a761e34`, on `main`), which exports `mumps_is_thread_safe` = 1 and dispatches every call to a persistent worker inside the library. `russell_sparse` therefore calls every FFI entry point — `preprocess`, `solve` and `Drop` — directly on the caller's thread, with no lock or worker of its own; solvers may be used from several threads. The build script probes the installation and stops the build unless the symbol is there, so a stock MUMPS cannot be linked silently.
+The MUMPS build is thread-safe by itself. The source is the fork's `main` branch (`https://github.com/cpmech/MUMPS_592`), fetched by the compile scripts; it exports `mumps_is_thread_safe` = 1 and dispatches every call to a persistent worker inside the library. `russell_sparse` therefore calls every FFI entry point — `preprocess`, `solve` and `Drop` — directly on the caller's thread, with no lock or worker of its own; solvers may be used from several threads. The build script probes the installation and stops the build unless the symbol is there, so a stock MUMPS cannot be linked silently.
 
 The number of OpenMP threads is passed via `ICNTL(16)`. `par.mumps_num_threads` is used as given, with 0 meaning "MUMPS takes `OMP_NUM_THREADS`"; there is no BLAS-dependent default any more. The old rule — one thread unless Intel MKL was detected, to dodge an OpenBLAS threading bug — was retired in 5.4.0: against the gfortran + OpenBLAS build of the thread-safe MUMPS the internal team runs correct at 2, 4 and 8 threads, 32 plain OS caller threads churn it cleanly at `OMP=8` and `16`, and `pmsim`'s driver specifications are numerically unchanged (bit-identical at one thread).
 

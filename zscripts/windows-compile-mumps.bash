@@ -5,7 +5,6 @@
 set -euo pipefail
 
 # Configuration
-VERSION="5.9.2"
 PREFIX="/ucrt64"
 INCDIR="$PREFIX/include/mumps"
 LIBDIR="$PREFIX/lib/mumps"
@@ -22,16 +21,12 @@ pacman -S --noconfirm base-devel curl git \
 # The MUMPS source is the thread-safe fork: every MUMPS call is dispatched to a
 # persistent worker inside the library, so clients need no lock or worker of their own.
 MUMPS_REPO="https://github.com/cpmech/MUMPS_592.git"
-MUMPS_COMMIT="a761e349ee379642c31ed156596802adebfe1d5a"   # main
-MUMPS_DIR="MUMPS_${VERSION}"
+MUMPS_DIR="MUMPS_592"
 
 cd /tmp
 rm -rf "$MUMPS_DIR"
-git init -q "$MUMPS_DIR"
-git -C "$MUMPS_DIR" remote add origin "$MUMPS_REPO"
-git -C "$MUMPS_DIR" fetch -q --depth 1 origin "$MUMPS_COMMIT"
-git -C "$MUMPS_DIR" checkout -q --detach FETCH_HEAD
-echo "... MUMPS source: $MUMPS_REPO $MUMPS_COMMIT"
+git clone -q --depth 1 "$MUMPS_REPO" "$MUMPS_DIR"
+echo "... MUMPS source: $MUMPS_REPO main ($(git -C "$MUMPS_DIR" rev-parse --short HEAD))"
 cd "$MUMPS_DIR"
 
 # Copy the Makefile.inc file

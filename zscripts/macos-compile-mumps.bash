@@ -18,7 +18,6 @@ INCDIR="$PREFIX/include/mumps"
 LIBDIR="$PREFIX/lib/mumps"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PDIR="$HERE/makefiles-mumps"
-VERSION="5.9.2"
 
 if ! command -v gfortran >/dev/null 2>&1; then
     echo "macos-compile-mumps: gfortran is required (brew install gcc)" >&2
@@ -38,16 +37,12 @@ as_root() {
 # persistent worker inside the library, so clients need no lock or worker of their own.
 # git comes from the Xcode command line tools, so there is nothing to install here.
 MUMPS_REPO="https://github.com/cpmech/MUMPS_592.git"
-MUMPS_COMMIT="a761e349ee379642c31ed156596802adebfe1d5a"   # main
-MUMPS_DIR="MUMPS_${VERSION}"
+MUMPS_DIR="MUMPS_592"
 
 cd /tmp
 rm -rf "$MUMPS_DIR"
-git init -q "$MUMPS_DIR"
-git -C "$MUMPS_DIR" remote add origin "$MUMPS_REPO"
-git -C "$MUMPS_DIR" fetch -q --depth 1 origin "$MUMPS_COMMIT"
-git -C "$MUMPS_DIR" checkout -q --detach FETCH_HEAD
-echo "... MUMPS source: $MUMPS_REPO $MUMPS_COMMIT"
+git clone -q --depth 1 "$MUMPS_REPO" "$MUMPS_DIR"
+echo "... MUMPS source: $MUMPS_REPO main ($(git -C "$MUMPS_DIR" rev-parse --short HEAD))"
 cd "$MUMPS_DIR"
 cp "$PDIR/Makefile.inc.macos" Makefile.inc
 

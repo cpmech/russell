@@ -511,9 +511,8 @@ mod unix {
 #[cfg(all(feature = "mumps", not(target_os = "windows")))]
 fn probe_thread_safe(lib: &std::path::Path) {
     match run_thread_safety_probe(lib) {
-        Ok(()) => {
-            println!("cargo:warning=russell_sparse: MUMPS is thread-safe; calls run on the caller's thread")
-        }
+        // The probe succeeded: the library meets the requirement, and there is nothing to report.
+        Ok(()) => {}
         Err(output) if output.contains("mumps_is_thread_safe") => panic!(
             "russell_sparse requires the thread-safe MUMPS: the linked MUMPS has no \
              mumps_is_thread_safe.\n\n{output}\n\

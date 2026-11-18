@@ -5,6 +5,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.4.1] - 2026-11-18
+
+### Changed
+
+- The build script no longer prints "MUMPS is thread-safe; calls run on the caller's thread" when the
+  probe succeeds. The requirement is unchanged: a MUMPS without `mumps_is_thread_safe` still stops the
+  build.
+
 ## [5.4.0] - 2026-11-17
 
 ### Changed (breaking)

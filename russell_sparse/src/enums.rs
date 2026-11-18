@@ -239,6 +239,7 @@ pub enum Scaling {
     /// * UMFPACK: ✅ available (also the default)
     Sum,
 }
+
 impl Genie {
     /// Returns the Genie by name
     ///

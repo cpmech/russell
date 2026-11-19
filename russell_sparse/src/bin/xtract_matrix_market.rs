@@ -18,6 +18,22 @@ const REQUIRED: [&str; 1] = ["mumps"];
 /// Optional solver columns with a preferred position in the table.
 const NAMED_OPTIONAL: [&str; 4] = ["umfpack", "faer", "qdldl", "basiclu"];
 
+/// Descriptions of the failure keys used in the solver columns.
+const KEY_DESCRIPTIONS: &[(&str, &str)] = &[
+    ("stop-time", "stopped by the time guard"),
+    ("no-mem", "ran out of memory"),
+    ("only-sym", "solver requires a symmetric matrix"),
+    ("only-spd", "solver requires a symmetric positive-definite matrix"),
+    ("not-pd", "input was assumed positive-definite, but it is not"),
+    ("no-conv", "iterative solver did not converge"),
+    ("breakdown", "iterative method broke down"),
+    ("singular", "matrix or pivot is singular"),
+    ("bad-input", "invalid matrix or input (shape, indices, NaN/inf, empty)"),
+    ("not-avail", "solver is not available in this build"),
+    ("too-big", "matrix is too large for the solver"),
+    ("error", "other error; read the logs"),
+];
+
 /// Holds one row of the comparison table.
 #[derive(Debug, Default)]
 struct MatrixData {
@@ -26,6 +42,7 @@ struct MatrixData {
     symmetric: bool,
     positive_definite: bool,
     times: HashMap<String, u64>,
+    failures: HashMap<String, &'static str>,
 }
 
 fn main() -> Result<(), String> {
@@ -64,13 +81,13 @@ fn main() -> Result<(), String> {
                 continue;
             }
         };
-        if let Some((solver, data)) = parse_record(&value) {
-            merge_record(&mut matrices, solver, data);
+        if let Some(data) = parse_record(&value) {
+            merge_record(&mut matrices, data);
         }
     }
 
     if matrices.is_empty() {
-        return Err("no valid solved runs found".to_string());
+        return Err("no valid solver results found".to_string());
     }
 
     let mut rows: Vec<MatrixData> = matrices.into_values().collect();
@@ -78,6 +95,9 @@ fn main() -> Result<(), String> {
 
     for row in &rows {
         for solver in REQUIRED {
+            if let Some(key) = row.failures.get(solver) {
+                return Err(format!("matrix {} has no valid {} time ({})", row.name, solver, key));
+            }
             if !row.times.contains_key(solver) {
                 return Err(format!("matrix {} has no valid {} time", row.name, solver));
             }
@@ -85,7 +105,9 @@ fn main() -> Result<(), String> {
     }
 
     let optional = optional_solvers(&rows);
+    let used_keys = used_failure_keys(&rows);
     print_table(&rows, &optional);
+    print_key_descriptions(&used_keys);
     Ok(())
 }
 
@@ -117,14 +139,12 @@ fn collect_json_files(dir: &Path, files: &mut Vec<PathBuf>) -> std::io::Result<(
     Ok(())
 }
 
-/// Extracts the solver name and timing data from one JSON record
-fn parse_record(value: &Value) -> Option<(String, MatrixData)> {
+/// Extracts one matrix/solver record from a JSON value
+fn parse_record(value: &Value) -> Option<MatrixData> {
     let solver = value.pointer("/main/solver")?.as_str()?.to_lowercase();
-    let solved = value.pointer("/main/solved").and_then(Value::as_bool).unwrap_or(true);
-    if !solved {
+    if solver.is_empty() {
         return None;
     }
-
     let name = value.pointer("/matrix/name")?.as_str()?.to_string();
     let nnz = value.pointer("/matrix/nnz").and_then(Value::as_u64).unwrap_or(0);
     let symmetric = value
@@ -133,33 +153,108 @@ fn parse_record(value: &Value) -> Option<(String, MatrixData)> {
         .map(|sym| !sym.eq_ignore_ascii_case("no"))
         .unwrap_or(false);
     let positive_definite = value.pointer("/requests/positive_definite").and_then(Value::as_bool).unwrap_or(false);
-    let total_ifs = value.pointer("/time_nanoseconds/total_ifs").and_then(Value::as_u64).unwrap_or(0);
-    if total_ifs == 0 {
+    let solved = value
+        .pointer("/main/solved")
+        .and_then(Value::as_bool)
+        .unwrap_or_else(|| value.pointer("/main/error_from_solver").and_then(Value::as_str).is_none());
+
+    let mut data = MatrixData {
+        name,
+        nnz,
+        symmetric,
+        positive_definite,
+        ..Default::default()
+    };
+    if solved {
+        let total_ifs = value.pointer("/time_nanoseconds/total_ifs").and_then(Value::as_u64).unwrap_or(0);
+        if total_ifs == 0 {
+            return None;
+        }
+        data.times.insert(solver, total_ifs);
+    } else {
+        data.failures.insert(solver, failure_key(value)?);
+    }
+    Some(data)
+}
+
+/// Classifies a failed run into one of the keys shown in the table
+///
+/// Returns `None` for records without timing and without failure information,
+/// such as the JSON produced by an information-only run.
+fn failure_key(value: &Value) -> Option<&'static str> {
+    if value.pointer("/main/stopped_by_time_guard").and_then(Value::as_bool).unwrap_or(false) {
+        return Some("stop-time");
+    }
+    if value.pointer("/main/out_of_memory").and_then(Value::as_bool).unwrap_or(false) {
+        return Some("no-mem");
+    }
+    let raw = value.pointer("/main/error_from_solver").and_then(Value::as_str).unwrap_or("");
+    if raw.is_empty() {
         return None;
     }
+    if russell_sparse::is_memory_error(raw) {
+        return Some("no-mem");
+    }
+    Some(classify_message(&raw.to_lowercase()))
+}
 
-    Some((
-        solver.clone(),
-        MatrixData {
-            name,
-            nnz,
-            symmetric,
-            positive_definite,
-            times: HashMap::from([(solver, total_ifs)]),
-        },
-    ))
+/// Classifies an error message into one of the failure keys
+fn classify_message(message: &str) -> &'static str {
+    if message.contains("time guard") {
+        "stop-time"
+    } else if message.contains("not available") || message.contains("not compiled") || message.contains("enable the `") {
+        "not-avail"
+    } else if message.contains("symmetric positive definite") {
+        "only-spd"
+    } else if message.contains("requires a symmetric") || message.contains("requires sym::") {
+        "only-sym"
+    } else if message.contains("not positive definite") {
+        "not-pd"
+    } else if message.contains("did not converge") {
+        "no-conv"
+    } else if message.contains("broke down") {
+        "breakdown"
+    } else if message.contains("singular") {
+        "singular"
+    } else if message.contains("too large") {
+        "too-big"
+    } else if message.contains("nan")
+        || message.contains("non-finite")
+        || message.contains("not square")
+        || message.contains("must be square")
+        || message.contains("invalid")
+        || message.contains("shape")
+        || message.contains("dimension")
+        || message.contains("duplicate")
+        || message.contains("out of range")
+        || message.contains("not sorted")
+        || message.contains("at least one non-zero")
+        || message.contains("rejected")
+    {
+        "bad-input"
+    } else {
+        "error"
+    }
 }
 
 /// Merges one solver record into the matrix map
-fn merge_record(matrices: &mut HashMap<String, MatrixData>, solver: String, data: MatrixData) {
+fn merge_record(matrices: &mut HashMap<String, MatrixData>, data: MatrixData) {
     if let Some(row) = matrices.get_mut(&data.name) {
         row.symmetric |= data.symmetric;
         row.positive_definite |= data.positive_definite;
         if row.nnz == 0 {
             row.nnz = data.nnz;
         }
-        if let Some(total_ifs) = data.times.get(&solver) {
-            row.times.entry(solver).or_insert(*total_ifs);
+        for (solver, total_ifs) in data.times {
+            if !row.times.contains_key(&solver) {
+                row.times.insert(solver.clone(), total_ifs);
+                row.failures.remove(&solver);
+            }
+        }
+        for (solver, key) in data.failures {
+            if !row.times.contains_key(&solver) {
+                row.failures.entry(solver).or_insert(key);
+            }
         }
     } else {
         matrices.insert(data.name.clone(), data);
@@ -170,7 +265,7 @@ fn merge_record(matrices: &mut HashMap<String, MatrixData>, solver: String, data
 fn optional_solvers(rows: &[MatrixData]) -> Vec<String> {
     let mut found = BTreeSet::new();
     for row in rows {
-        for solver in row.times.keys() {
+        for solver in row.times.keys().chain(row.failures.keys()) {
             if !REQUIRED.contains(&solver.as_str()) {
                 found.insert(solver.clone());
             }
@@ -186,6 +281,11 @@ fn optional_solvers(rows: &[MatrixData]) -> Vec<String> {
     optional
 }
 
+/// Returns the failure keys that appear in the table
+fn used_failure_keys(rows: &[MatrixData]) -> BTreeSet<&'static str> {
+    rows.iter().flat_map(|row| row.failures.values().copied()).collect()
+}
+
 /// Returns the symmetry classification used in the table
 fn sym_label(row: &MatrixData) -> &'static str {
     if !row.symmetric {
@@ -198,6 +298,11 @@ fn sym_label(row: &MatrixData) -> &'static str {
     }
 }
 
+/// Formats a time relative to MUMPS with two decimal digits
+fn relative_time(nanoseconds: u64, mumps_nanoseconds: u64) -> String {
+    format!("{:.2}x", nanoseconds as f64 / mumps_nanoseconds as f64)
+}
+
 /// Prints the comparison table
 fn print_table(rows: &[MatrixData], optional: &[String]) {
     let mut headers: Vec<String> = vec!["matrix".to_string(), "nnz".to_string(), "sym".to_string()];
@@ -205,15 +310,26 @@ fn print_table(rows: &[MatrixData], optional: &[String]) {
         headers.push(format!("{}_time", solver));
     }
     for solver in optional {
-        headers.push(format!("{}_time", solver));
+        headers.push(solver.clone());
     }
 
     let mut cells: Vec<Vec<String>> = Vec::with_capacity(rows.len());
     for row in rows {
+        let mumps_ns = row.times.get("mumps").copied().unwrap_or(0);
         let mut line = vec![row.name.clone(), row.nnz.to_string(), sym_label(row).to_string()];
-        for solver in REQUIRED.iter().copied().chain(optional.iter().map(String::as_str)) {
+        for solver in REQUIRED {
             let time = row.times.get(solver).map(|ns| format_nanoseconds(*ns as u128)).unwrap_or_default();
             line.push(time);
+        }
+        for solver in optional {
+            let cell = if let Some(ns) = row.times.get(solver) {
+                if mumps_ns > 0 { relative_time(*ns, mumps_ns) } else { String::new() }
+            } else if let Some(key) = row.failures.get(solver) {
+                (*key).to_string()
+            } else {
+                String::new()
+            };
+            line.push(cell);
         }
         cells.push(line);
     }
@@ -231,6 +347,20 @@ fn print_table(rows: &[MatrixData], optional: &[String]) {
     println!("{}", separator.join("  "));
     for line in &cells {
         println!("{}", format_row(line, &widths, &right_aligned));
+    }
+}
+
+/// Prints the descriptions of the failure keys that were used
+fn print_key_descriptions(keys: &BTreeSet<&'static str>) {
+    if keys.is_empty() {
+        return;
+    }
+    println!();
+    println!("keys:");
+    for &(key, description) in KEY_DESCRIPTIONS {
+        if keys.contains(key) {
+            println!("  {:<10} {}", key, description);
+        }
     }
 }
 
@@ -256,6 +386,8 @@ fn print_usage() {
     println!();
     println!("Reads the JSON files written by solve_matrix_market and prints a solver timing table.");
     println!("MUMPS times are required for every matrix; the other solvers are optional.");
+    println!("Optional solver columns show the time relative to MUMPS (for example, 1.25x),");
+    println!("or a failure key whose description is printed after the table.");
     println!("Default directory: $OUTPUT_DIR when set, otherwise /tmp/russell_sparse/results/$SYSTEM.");
 }
 
@@ -276,34 +408,91 @@ mod tests {
 
     #[test]
     fn parse_record_works() {
-        let value = sample("Faer", "mat1", 10, "YesLower", true, 1234);
-        let (solver, data) = parse_record(&value).unwrap();
-        assert_eq!(solver, "faer");
+        let data = parse_record(&sample("Faer", "mat1", 10, "YesLower", true, 1234)).unwrap();
         assert_eq!(data.name, "mat1");
         assert_eq!(data.nnz, 10);
         assert!(data.symmetric);
         assert!(data.positive_definite);
         assert_eq!(data.times["faer"], 1234);
+        assert!(data.failures.is_empty());
     }
 
     #[test]
-    fn parse_record_skips_unsolved_and_zero_times() {
-        let mut value = sample("Faer", "mat1", 10, "No", false, 1234);
+    fn parse_record_keeps_failures() {
+        let mut value = sample("QDLDL", "mat1", 10, "No", false, 0);
+        value["main"]["solved"] = json!(false);
+        value["main"]["error_from_solver"] = json!("QDLDL requires a symmetric matrix");
+        let data = parse_record(&value).unwrap();
+        assert_eq!(data.failures["qdldl"], "only-sym");
+        assert!(data.times.is_empty());
+    }
+
+    #[test]
+    fn parse_record_skips_success_without_time() {
+        assert!(parse_record(&sample("Faer", "mat1", 10, "No", false, 0)).is_none());
+    }
+
+    #[test]
+    fn parse_record_skips_information_only_records() {
+        let mut value = sample("FAER", "mat1", 10, "No", false, 0);
         value["main"]["solved"] = json!(false);
         assert!(parse_record(&value).is_none());
-        let value = sample("Faer", "mat1", 10, "No", false, 0);
-        assert!(parse_record(&value).is_none());
+    }
+
+    #[test]
+    fn failure_keys_are_classified() {
+        assert_eq!(
+            failure_key(&json!({
+                "main": {"stopped_by_time_guard": true, "out_of_memory": false, "solved": false}
+            }))
+            .unwrap(),
+            "stop-time"
+        );
+        assert_eq!(
+            failure_key(&json!({
+                "main": {"stopped_by_time_guard": false, "out_of_memory": true, "solved": false}
+            }))
+            .unwrap(),
+            "no-mem"
+        );
+        assert!(failure_key(&json!({"main": {"solved": false}})).is_none());
+        for (message, key) in [
+            ("QDLDL requires a symmetric matrix", "only-sym"),
+            ("CG failed: the matrix may not be symmetric positive definite", "only-spd"),
+            ("the matrix is not positive definite as assumed", "not-pd"),
+            ("the iterative solver did not converge", "no-conv"),
+            ("the iterative solver broke down", "breakdown"),
+            ("the matrix is singular", "singular"),
+            ("the matrix is too large for the Faer solver", "too-big"),
+            ("the matrix must be square", "bad-input"),
+            ("MUMPS is not available; enable the `mumps` feature", "not-avail"),
+            ("something unexpected", "error"),
+        ] {
+            assert_eq!(classify_message(&message.to_lowercase()), key, "message: {message}");
+        }
+    }
+
+    #[test]
+    fn merge_record_prefers_a_successful_time() {
+        let mut matrices = HashMap::new();
+        let mut failed = parse_record(&sample("Faer", "mat1", 10, "No", false, 1)).unwrap();
+        failed.times.clear();
+        failed.failures.insert("faer".to_string(), "error");
+        merge_record(&mut matrices, failed);
+        let data = parse_record(&sample("Faer", "mat1", 10, "No", false, 100)).unwrap();
+        merge_record(&mut matrices, data);
+
+        let row = &matrices["mat1"];
+        assert_eq!(row.times["faer"], 100);
+        assert!(!row.failures.contains_key("faer"));
     }
 
     #[test]
     fn merge_record_or_updates_flags_and_keeps_first_time() {
         let mut matrices = HashMap::new();
-        let (solver, data) = parse_record(&sample("Mumps", "mat1", 10, "YesFull", true, 100)).unwrap();
-        merge_record(&mut matrices, solver, data);
-        let (solver, data) = parse_record(&sample("UMFPACK", "mat1", 10, "No", false, 200)).unwrap();
-        merge_record(&mut matrices, solver, data);
-        let (solver, data) = parse_record(&sample("Mumps", "mat1", 10, "YesFull", true, 300)).unwrap();
-        merge_record(&mut matrices, solver, data);
+        merge_record(&mut matrices, parse_record(&sample("Mumps", "mat1", 10, "YesFull", true, 100)).unwrap());
+        merge_record(&mut matrices, parse_record(&sample("UMFPACK", "mat1", 10, "No", false, 200)).unwrap());
+        merge_record(&mut matrices, parse_record(&sample("Mumps", "mat1", 10, "YesFull", true, 300)).unwrap());
 
         let row = &matrices["mat1"];
         assert!(row.symmetric);
@@ -323,12 +512,29 @@ mod tests {
     }
 
     #[test]
-    fn optional_solvers_are_ordered() {
+    fn optional_solvers_include_failures_and_are_ordered() {
         let mut row = MatrixData::default();
-        for solver in ["gmres", "basiclu", "faer", "mumps", "umfpack", "qdldl"] {
+        for solver in ["gmres", "basiclu", "faer", "mumps", "qdldl"] {
             row.times.insert(solver.to_string(), 1);
         }
+        row.failures.insert("umfpack".to_string(), "only-sym");
         assert_eq!(optional_solvers(&[row]), ["umfpack", "faer", "qdldl", "basiclu", "gmres"]);
+    }
+
+    #[test]
+    fn relative_time_has_two_digits() {
+        assert_eq!(relative_time(500, 1000), "0.50x");
+        assert_eq!(relative_time(1234, 1000), "1.23x");
+    }
+
+    #[test]
+    fn used_failure_keys_are_collected() {
+        let mut row = MatrixData::default();
+        row.failures.insert("faer".to_string(), "only-sym");
+        row.failures.insert("umfpack".to_string(), "no-mem");
+        let keys = used_failure_keys(&[row]);
+        assert!(keys.contains("only-sym"));
+        assert!(keys.contains("no-mem"));
     }
 
     #[test]

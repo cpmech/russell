@@ -129,6 +129,8 @@ fi
 mkdir -p "$OUTPUT_DIR"
 INPUT_DIR=$(cd "$INPUT_DIR" && pwd)
 OUTPUT_DIR=$(cd "$OUTPUT_DIR" && pwd)
+SOLVER_DIR="$OUTPUT_DIR/$SOLVER"
+mkdir -p "$SOLVER_DIR"
 
 RUN_MATS=("${REAL_MATS[@]}" "${COMPLEX_MATS[@]}")
 if ((FIRST_N > 0)); then
@@ -155,7 +157,7 @@ run_matrix() {
     local name=$1
     CURRENT_MAT=$((CURRENT_MAT + 1))
     local file="$INPUT_DIR/$name.mtx"
-    local out="$OUTPUT_DIR/$name.json"
+    local out="$SOLVER_DIR/$name.json"
     if [[ ! -f "$file" ]]; then
         echo "skip $CURRENT_MAT/$TOTAL_MATS $name: $file not found" >&2
         return
@@ -178,4 +180,4 @@ time {
     done
 }
 
-echo "results written to $OUTPUT_DIR" >&2
+echo "results written to $SOLVER_DIR" >&2

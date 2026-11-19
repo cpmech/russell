@@ -117,6 +117,13 @@ while (($# > 0)); do
     shift
 done
 
+shopt -s nocasematch
+if [[ ! "$SOLVER" =~ ^(faer|cg|bicgstab|gmres|mumps|umfpack|basiclu|qdldl)$ ]]; then
+    echo "invalid solver: $SOLVER (choose one of: faer, cg, bicgstab, gmres, mumps, umfpack, basiclu, qdldl)" >&2
+    exit 1
+fi
+shopt -u nocasematch
+
 if [[ ! -d "$INPUT_DIR" ]]; then
     echo "input directory not found: $INPUT_DIR" >&2
     exit 1
@@ -168,9 +175,12 @@ run_matrix() {
         echo "=== $CURRENT_MAT/$TOTAL_MATS $name ===" >&2
     fi
     # A failed solve is a result, not a script failure; the JSON records it.
-    cargo run -q --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
+    if ! cargo run -q --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
         --package russell_sparse "${FEATURE_ARGS[@]}" \
-        --bin solve_matrix_market -- "${ARGS[@]}" "$file" >"$out" || true
+        --bin solve_matrix_market -- "${ARGS[@]}" "$file" >"$out"; then
+        # Do not leave an empty result behind when the program failed before writing JSON.
+        [[ -s "$out" ]] || rm -f "$out"
+    fi
 }
 
 TIMEFORMAT='total time: %3R s'

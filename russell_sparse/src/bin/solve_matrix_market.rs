@@ -96,7 +96,7 @@ struct Options {
     nrun: u32,
 
     /// Abort the run when it exceeds this many seconds (0 disables the time guard)
-    #[structopt(long, default_value = "90")]
+    #[structopt(long, default_value = "100")]
     time_guard: u64,
 }
 

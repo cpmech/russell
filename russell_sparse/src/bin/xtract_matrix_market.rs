@@ -286,6 +286,15 @@ fn used_failure_keys(rows: &[MatrixData]) -> BTreeSet<&'static str> {
     rows.iter().flat_map(|row| row.failures.values().copied()).collect()
 }
 
+/// Returns the display name used for a matrix in the table
+fn display_name(name: &str) -> &str {
+    match name {
+        "pres-cylin-3d-tet10-coarse" => "pres-cylin-c",
+        "pres-cylin-3d-tet10-fine" => "pres-cylin-f",
+        _ => name,
+    }
+}
+
 /// Returns the symmetry classification used in the table
 fn sym_label(row: &MatrixData) -> &'static str {
     if !row.symmetric {
@@ -316,7 +325,7 @@ fn print_table(rows: &[MatrixData], optional: &[String]) {
     let mut cells: Vec<Vec<String>> = Vec::with_capacity(rows.len());
     for row in rows {
         let mumps_ns = row.times.get("mumps").copied().unwrap_or(0);
-        let mut line = vec![row.name.clone(), row.nnz.to_string(), sym_label(row).to_string()];
+        let mut line = vec![display_name(&row.name).to_string(), row.nnz.to_string(), sym_label(row).to_string()];
         for solver in REQUIRED {
             let time = row.times.get(solver).map(|ns| fmt_nano(*ns as u128, 2)).unwrap_or_default();
             line.push(time);
@@ -499,6 +508,13 @@ mod tests {
         assert!(row.positive_definite);
         assert_eq!(row.times["mumps"], 100);
         assert_eq!(row.times["umfpack"], 200);
+    }
+
+    #[test]
+    fn display_names_are_shortened() {
+        assert_eq!(display_name("pres-cylin-3d-tet10-coarse"), "pres-cylin-c");
+        assert_eq!(display_name("pres-cylin-3d-tet10-fine"), "pres-cylin-f");
+        assert_eq!(display_name("bwm2000"), "bwm2000");
     }
 
     #[test]

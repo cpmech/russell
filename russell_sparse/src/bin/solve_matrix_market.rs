@@ -413,12 +413,30 @@ fn start_time_guard(seconds: u64, stats: &StatsLinSol, hide_json: bool) -> TimeG
                     println!("{}", snapshot.get_json());
                     let _ = std::io::stdout().flush();
                 }
-                std::process::exit(124);
+                exit_now(124);
             }
             thread::sleep(Duration::from_millis(50));
         }
     });
     TimeGuard { done: Some(done) }
+}
+
+/// Terminates immediately without running exit handlers
+///
+/// `std::process::exit` runs the C runtime and OpenMP cleanup handlers. When the
+/// watchdog fires while the solver is inside MKL's `dgemm`, those handlers race
+/// with the OpenMP runtime and can crash with SIGSEGV. `_exit` bypasses them.
+#[cfg(unix)]
+fn exit_now(status: i32) -> ! {
+    unsafe extern "C" {
+        fn _exit(status: i32) -> !;
+    }
+    unsafe { _exit(status) }
+}
+
+#[cfg(not(unix))]
+fn exit_now(status: i32) -> ! {
+    std::process::exit(status)
 }
 
 /// Marks the statistics as stopped by the time guard

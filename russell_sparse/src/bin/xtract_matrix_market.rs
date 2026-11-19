@@ -5,7 +5,7 @@
 //! The default directory is the one used by `run_solve_matrix_market.bash`:
 //! `$OUTPUT_DIR` when set, otherwise `/tmp/russell_sparse/results/$SYSTEM`.
 
-use russell_lab::format_nanoseconds;
+use russell_lab::format_nanoseconds_with_digits as fmt_nano;
 use serde_json::Value;
 use std::collections::{BTreeSet, HashMap};
 use std::env;
@@ -318,7 +318,7 @@ fn print_table(rows: &[MatrixData], optional: &[String]) {
         let mumps_ns = row.times.get("mumps").copied().unwrap_or(0);
         let mut line = vec![row.name.clone(), row.nnz.to_string(), sym_label(row).to_string()];
         for solver in REQUIRED {
-            let time = row.times.get(solver).map(|ns| format_nanoseconds(*ns as u128)).unwrap_or_default();
+            let time = row.times.get(solver).map(|ns| fmt_nano(*ns as u128, 2)).unwrap_or_default();
             line.push(time);
         }
         for solver in optional {

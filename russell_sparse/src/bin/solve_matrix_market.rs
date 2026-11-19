@@ -162,7 +162,7 @@ fn main() -> Result<(), StrError> {
     }
 
     // select linear solver
-    let genie = Genie::from(&opt.genie)?;
+    let genie = Genie::from(&opt.genie.to_uppercase())?;
 
     // select the symmetric handling option
     let handling = match genie {

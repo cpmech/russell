@@ -58,25 +58,41 @@ INPUT_DIR=${INPUT_DIR:-$HOME/Downloads/matrix-market}
 SYSTEM=${SYSTEM:-arch}
 OUTPUT_DIR=${OUTPUT_DIR:-/tmp/russell_sparse/results/$SYSTEM}
 FEATURES=${FEATURES-intel_mkl,umfpack,mumps}
-GENIE=${GENIE:-FAER}
+SOLVER=FAER
 
 usage() {
-    echo "Usage: $0 [--information | --solve] [--first10]"
+    echo "Usage: $0 [--information | --solve] [-g <name>] [--first10] [-1..-5]"
     echo ""
     echo "  -i, --information  only print the matrix information (default)"
     echo "  -s, --solve        solve the linear systems"
-    echo "  -1, --first10      only run the first 10 REAL_MATS"
+    echo "  -g, --genie <name> solver (default FAER)"
+    echo "  -f, --first10      only run the first 10 REAL_MATS"
+    echo "  -1 ... -5          number of runs (default 1)"
     echo ""
-    echo "Environment: RUSSELL_DIR, INPUT_DIR, OUTPUT_DIR, SYSTEM, FEATURES, GENIE"
+    echo "Environment: RUSSELL_DIR, INPUT_DIR, OUTPUT_DIR, SYSTEM, FEATURES"
 }
 
 INFORMATION=1
 FIRST10=0
+NRUN=1
 while (($# > 0)); do
     case "$1" in
         -i | --information) INFORMATION=1 ;;
         -s | --solve) INFORMATION=0 ;;
-        -1 | --first10) FIRST10=1 ;;
+        -g | --genie)
+            if (($# < 2)); then
+                echo "option $1 requires a solver name" >&2
+                exit 1
+            fi
+            SOLVER=$2
+            shift
+            ;;
+        -f | --first10) FIRST10=1 ;;
+        -1) NRUN=1 ;;
+        -2) NRUN=2 ;;
+        -3) NRUN=3 ;;
+        -4) NRUN=4 ;;
+        -5) NRUN=5 ;;
         -h | --help)
             usage
             exit 0
@@ -110,7 +126,7 @@ fi
 TOTAL_MATS=${#RUN_MATS[@]}
 CURRENT_MAT=0
 
-ARGS=(-g "$GENIE")
+ARGS=(-g "$SOLVER" --nrun "$NRUN")
 if ((INFORMATION)); then
     ARGS+=(--information)
 fi

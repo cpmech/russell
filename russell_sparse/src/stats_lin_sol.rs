@@ -29,6 +29,11 @@ pub struct StatsLinSolMain {
     /// Indicates whether UMFPACK support was compiled in
     pub has_umfpack: bool,
 
+    /// Indicates that the matrix was read, preprocessing succeeded, and the linear system was solved successfully
+    ///
+    /// This flag is `false` for information-only runs, which read the matrix but do not preprocess or solve it.
+    pub solved: bool,
+
     /// Indicates whether the solver ran out of memory
     pub out_of_memory: bool,
 
@@ -285,6 +290,7 @@ impl StatsLinSol {
                 solver: unknown.clone(),
                 has_mumps: cfg!(feature = "mumps"),
                 has_umfpack: cfg!(feature = "umfpack"),
+                solved: false,
                 out_of_memory: false,
                 error_from_solver: None,
             },
@@ -491,6 +497,7 @@ impl StatsLinSol {
     /// emitted OOM JSON contains no partial timings or errors from earlier runs in a multi-run loop.
     pub fn clear_run_results(&mut self) {
         let blank = StatsLinSol::new();
+        self.main.solved = false;
         self.output = blank.output;
         self.determinant = blank.determinant;
         self.verify = blank.verify;
@@ -603,6 +610,17 @@ mod tests {
         assert_eq!(stats.time_human.preprocess_array, &["2s", "3s", "7s"]);
         assert_eq!(stats.time_human.solve_array, &["3s", "7s", "14s"]);
         assert_eq!(stats.time_human.total_ifs_array, &["6s", "12s", "27s"]);
+    }
+
+    #[test]
+    fn solved_flag_round_trips() {
+        let mut stats = StatsLinSol::new();
+        assert!(!stats.main.solved);
+        stats.main.solved = true;
+        let json = stats.get_json();
+        assert!(json.contains("\"solved\": true"));
+        let parsed: StatsLinSol = serde_json::from_str(&json).unwrap();
+        assert!(parsed.main.solved);
     }
 
     #[test]
@@ -728,6 +746,7 @@ mod tests {
         let mut stats = generate_data();
         stats.main.solver = "CG".to_string();
         stats.matrix.name = "test_mat".to_string();
+        stats.main.solved = true;
         stats.verify.max_abs_diff = 1e-12;
         stats.verify.relative_error = 1e-13;
         stats.iterative_stats = Some(super::StatsLinSolIterative {
@@ -741,6 +760,7 @@ mod tests {
         let json = stats.get_json();
         assert_eq!(stats.main.solver, "CG");
         assert_eq!(stats.matrix.name, "test_mat");
+        assert!(!stats.main.solved);
         assert!(stats.main.out_of_memory);
         assert_eq!(stats.time_nanoseconds.read_matrix, ONE_SEC);
         assert_eq!(stats.time_human.read_matrix, "1s");

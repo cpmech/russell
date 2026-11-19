@@ -13,6 +13,10 @@ struct Options {
     /// Matrix-market file
     matrix_market_file: String,
 
+    /// Only get information about the matrix and exit
+    #[structopt(short = "i", long)]
+    information: bool,
+
     /// Solver selection; accepted values: `faer`, `cg`, `bicgstab`, `gmres`, `basiclu`, `qdldl`, `mumps`, or `umfpack`
     #[structopt(short = "g", long, default_value = "Faer")]
     genie: String,
@@ -199,6 +203,21 @@ fn main() -> Result<(), StrError> {
     let (coo_real, coo_complex) = read_matrix_market(&opt.matrix_market_file, handling)?;
     stats.time_nanoseconds.read_matrix = sw.stop();
 
+    // stop after reading the matrix when only its information is requested
+    if opt.information {
+        if let Some(coo) = &coo_real {
+            stats.set_matrix_name_from_path(&opt.matrix_market_file);
+            stats.set_matrix_info_from_coo(coo);
+        } else if let Some(coo) = &coo_complex {
+            stats.set_matrix_name_from_path(&opt.matrix_market_file);
+            stats.set_matrix_info_from_coo(coo);
+        }
+        if !opt.hide_json {
+            println!("{}", stats.get_json());
+        }
+        return Ok(());
+    }
+
     // --- real ---------------------------------------------------------------------------------
     if let Some(coo) = coo_real {
         // write vismatrix file
@@ -332,6 +351,9 @@ fn main() -> Result<(), StrError> {
         }
     }
 
+    // the matrix was read, preprocessing succeeded, and every solve succeeded
+    stats.main.solved = true;
+
     // print stats
     if !opt.hide_json {
         println!("{}", stats.get_json());
@@ -344,6 +366,7 @@ fn main() -> Result<(), StrError> {
 /// Clears partial run results and emits the OOM JSON when requested
 fn finish_on_memory_error(stats: &mut StatsLinSol, hide_json: bool) {
     stats.clear_run_results();
+    stats.main.solved = false;
     stats.main.out_of_memory = true;
     if !hide_json {
         println!("{}", stats.get_json());
@@ -352,6 +375,7 @@ fn finish_on_memory_error(stats: &mut StatsLinSol, hide_json: bool) {
 
 /// Records a solver error in the statistics and emits the JSON when requested
 fn finish_on_solver_error(stats: &mut StatsLinSol, error: StrError, hide_json: bool) -> Result<(), StrError> {
+    stats.main.solved = false;
     stats.main.error_from_solver = Some(error.to_string());
     if !hide_json {
         println!("{}", stats.get_json());
@@ -555,6 +579,7 @@ mod tests {
         let mut stats = StatsLinSol::new();
         let res = finish_on_solver_error(&mut stats, "solver failed", true);
         assert_eq!(res.err(), Some("solver failed"));
+        assert!(!stats.main.solved);
         assert_eq!(stats.main.error_from_solver.as_deref(), Some("solver failed"));
         let json = stats.get_json();
         assert!(json.contains("\"error_from_solver\": \"solver failed\""));
@@ -564,6 +589,7 @@ mod tests {
     fn finish_on_memory_error_clears_partial_runs() {
         let mut stats = StatsLinSol::new();
         stats.main.solver = format!("{}", Genie::Iterative(IterativeMethod::Gmres));
+        stats.main.solved = true;
         stats.output.faer_effective_method = "Supernodal".to_string();
         stats.output.faer_flop_ratio = 2.0;
         stats.time_nanoseconds.initialize = 10;
@@ -578,6 +604,7 @@ mod tests {
 
         finish_on_memory_error(&mut stats, true);
 
+        assert!(!stats.main.solved);
         assert!(stats.main.out_of_memory);
         assert_eq!(stats.main.solver, "GMRES");
         assert!(stats.output.faer_effective_method.is_empty());

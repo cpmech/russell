@@ -61,19 +61,19 @@ FEATURES=${FEATURES-intel_mkl,umfpack,mumps}
 SOLVER=FAER
 
 usage() {
-    echo "Usage: $0 [--information | --solve] [-g <name>] [--first10] [-1..-5]"
+    echo "Usage: $0 [--information | --solve] [-g <name>] [-f <n>] [-1..-5]"
     echo ""
     echo "  -i, --information  only print the matrix information (default)"
     echo "  -s, --solve        solve the linear systems"
     echo "  -g, --genie <name> solver (default FAER)"
-    echo "  -f, --first10      only run the first 10 REAL_MATS"
+    echo "  -f, --first <n>    only run the first <n> REAL_MATS"
     echo "  -1 ... -5          number of runs (default 1)"
     echo ""
     echo "Environment: RUSSELL_DIR, INPUT_DIR, OUTPUT_DIR, SYSTEM, FEATURES"
 }
 
 INFORMATION=1
-FIRST10=0
+FIRST_N=0
 NRUN=1
 while (($# > 0)); do
     case "$1" in
@@ -87,7 +87,18 @@ while (($# > 0)); do
             SOLVER=$2
             shift
             ;;
-        -f | --first10) FIRST10=1 ;;
+        -f | --first)
+            if (($# < 2)); then
+                echo "option $1 requires a number" >&2
+                exit 1
+            fi
+            if [[ ! $2 =~ ^[1-9][0-9]*$ ]]; then
+                echo "option $1 requires a positive integer" >&2
+                exit 1
+            fi
+            FIRST_N=$2
+            shift
+            ;;
         -1) NRUN=1 ;;
         -2) NRUN=2 ;;
         -3) NRUN=3 ;;
@@ -120,8 +131,8 @@ INPUT_DIR=$(cd "$INPUT_DIR" && pwd)
 OUTPUT_DIR=$(cd "$OUTPUT_DIR" && pwd)
 
 RUN_MATS=("${REAL_MATS[@]}" "${COMPLEX_MATS[@]}")
-if ((FIRST10)); then
-    RUN_MATS=("${REAL_MATS[@]:0:10}")
+if ((FIRST_N > 0)); then
+    RUN_MATS=("${REAL_MATS[@]:0:FIRST_N}")
 fi
 TOTAL_MATS=${#RUN_MATS[@]}
 CURRENT_MAT=0

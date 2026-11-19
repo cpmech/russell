@@ -128,17 +128,21 @@ pub enum FaerMethod {
 impl FaerMethod {
     /// Default threshold used when `--faer-method auto` is requested without `--faer-flop-ratio`
     ///
-    /// Note that `FaerMethod::default()` is [`FaerMethod::Simplicial`], not `Auto`: across
-    /// SuiteSparse matrices (`bwm2000` through `xenon1`, `mhd1280b`, `mplate`) and synthetic 3D
-    /// vector-FEM lattices (`fem-3d-m15`, `fem-3d-m20`), `algebra_linear`'s supernodal path (which
-    /// updates fronts without contribution blocks) was never meaningfully faster and regressed by
-    /// 3x to 59x (and timed out past 180s on `xenon1` and `fem-3d-m20`, where simplicial took
-    /// 54.8s and 19.9s), with no `flop_ratio` threshold separating wins from regressions.
+    /// Note that `FaerMethod::default()` is [`FaerMethod::Simplicial`], not `Auto`; its
+    /// documentation carries the measured comparison that led to that default.
     pub const DEFAULT_FLOP_RATIO_THRESHOLD: f64 = 1.0;
 }
 
 impl Default for FaerMethod {
-    /// Defaults to [`FaerMethod::Simplicial`] based on the 12-matrix release sweep.
+    /// Defaults to [`FaerMethod::Simplicial`] based on the release sweep (12 matrices).
+    ///
+    /// On the SuiteSparse matrices of `benchmark-russell` with at most 1.2M pattern entries, the
+    /// supernodal path (which omits contribution blocks) was slower on every matrix that completed —
+    /// **1.06x** on `bwm2000` to **54x** on `Goodwin_040` — level only on the 157x157
+    /// `pmsim-hex8-27`, and it passed the 180s probe on `xenon1`, where simplicial takes 55s. The
+    /// synthetic 3D lattices of the sweep showed no win either, and no `flop_ratio` threshold
+    /// separated wins from regressions. `Auto { flop_ratio_threshold }` remains available for
+    /// callers whose fronts are small and dense.
     fn default() -> Self {
         Self::Simplicial
     }

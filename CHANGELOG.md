@@ -24,13 +24,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `None` now delegates to `FaerMethod::default()`; finite nonnegative validation is enforced on
   `flop_ratio_threshold`; and subsequent refactorizations store and compare `initialized_params`,
   returning `"subsequent factorizations must not change LinSolParams"` on any mismatch.
-- Reverted `FaerMethod::default()` to `FaerMethod::Simplicial`. Across an idle release sweep of
-  the 9 `benchmark-russell` matrices with at most 1.2M pattern entries plus synthetic 3D
-  3-dof/node vector-FEM tangent lattices (`10,125` to `46,875` dofs), `algebra_linear`'s
-  supernodal factorization (which omits supernodal contribution blocks) was never meaningfully
-  faster and regressed 3x–59x on every non-trivial matrix, timing out past 180s on `xenon1` and
-  `fem-3d-m20` where simplicial completed in `54.8s` and `19.9s`. No monotonic `flop_ratio` lower
-  bound separated FEM gains from regressions.
+- Reverted `FaerMethod::default()` to `FaerMethod::Simplicial`. In the release sweep (the nine
+  `benchmark-russell` matrices with at most 1.2M pattern entries plus synthetic 3D vector-FEM
+  tangents), `algebra_linear`'s supernodal factorization — which omits supernodal contribution
+  blocks — was never faster: on the SuiteSparse matrices that completed it ran **1.06x**
+  (`bwm2000`) to **54x** (`Goodwin_040`) slower than simplicial, at parity only on the 157x157
+  `pmsim-hex8-27`, and it passed the 180s probe on `xenon1`, where simplicial takes 55s. No
+  monotonic `flop_ratio` lower bound separated wins from regressions, so `Simplicial` is the
+  default and `Auto { flop_ratio_threshold }` stays available for callers whose fronts are small
+  and dense.
 - Added optional `StatsLinSolOutput::effective_faer_method` and `StatsLinSolOutput::faer_flop_ratio`
   fields (`#[serde(default, skip_serializing_if = "Option::is_none")]`) populated by both
   `SolverFaer` and `ComplexSolverFaer`.

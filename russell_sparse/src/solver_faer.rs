@@ -48,8 +48,8 @@ pub(crate) fn resolve_faer_method(method: FaerMethod) -> Result<LuMethod, StrErr
 ///   as `Auto`; this backend has no natural-ordering option.
 /// * `scaling`: no scaling is applied, for either `Auto` or `No`. Other values
 ///   are treated as `Auto`.
-/// * `faer_method`: `FaerMethod::default()` when `params` is `None`. `Auto` picks
-///   simplicial or supernodal from the fill's flop proxy, while `Simplicial` and
+/// * `faer_method`: `FaerMethod::default()` (`Simplicial`) when `params` is `None`. `Auto`
+///   picks simplicial or supernodal from the fill's flop proxy, while `Simplicial` and
 ///   `Supernodal` force a single path.
 /// * `compute_determinant`: not available; `preprocess` returns an error.
 /// * `compute_error_estimates` and `compute_condition_numbers`: not available;
@@ -522,7 +522,8 @@ mod tests {
         assert_eq!(stats.main.solver, "Faer");
         assert_eq!(stats.output.effective_ordering, "Colamd");
         assert_eq!(stats.output.effective_scaling, "No");
-        assert!(stats.output.effective_faer_method.is_some());
+        assert_eq!(stats.output.effective_faer_method.as_deref(), Some("Simplicial"));
+        assert_eq!(stats.output.faer_flop_ratio, None);
         assert_eq!(stats.time_nanoseconds.initialize_array.len(), 1);
         assert_eq!(stats.time_nanoseconds.preprocess_array.len(), 1);
         assert_eq!(stats.time_nanoseconds.solve_array.len(), 1);

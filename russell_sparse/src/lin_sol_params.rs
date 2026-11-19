@@ -126,19 +126,21 @@ pub enum FaerMethod {
 }
 
 impl FaerMethod {
-    /// The threshold below which the automatic choice stays simplicial
+    /// Default threshold used when `--faer-method auto` is requested without `--faer-flop-ratio`
     ///
-    /// Measured on the matrices of this workspace and of pmsim's driver: the supernodal
-    /// factorization wins from a proxy of about one upward, because the front elimination is
-    /// contiguous down the columns while the simplicial one gathers per entry.
+    /// Note that `FaerMethod::default()` is [`FaerMethod::Simplicial`], not `Auto`: across
+    /// SuiteSparse matrices (`bwm2000` through `xenon1`, `mhd1280b`, `mplate`) and synthetic 3D
+    /// vector-FEM lattices (`fem-3d-m15`, `fem-3d-m20`), `algebra_linear`'s supernodal path (which
+    /// updates fronts without contribution blocks) was never meaningfully faster and regressed by
+    /// 3x to 59x (and timed out past 180s on `xenon1` and `fem-3d-m20`, where simplicial took
+    /// 54.8s and 19.9s), with no `flop_ratio` threshold separating wins from regressions.
     pub const DEFAULT_FLOP_RATIO_THRESHOLD: f64 = 1.0;
 }
 
 impl Default for FaerMethod {
+    /// Defaults to [`FaerMethod::Simplicial`] based on the 12-matrix release sweep.
     fn default() -> Self {
-        Self::Auto {
-            flop_ratio_threshold: Self::DEFAULT_FLOP_RATIO_THRESHOLD,
-        }
+        Self::Simplicial
     }
 }
 
@@ -253,6 +255,7 @@ mod tests {
         assert_eq!(params.mumps_max_work_memory, 0);
         assert_eq!(params.mumps_num_threads, 0);
         assert!(!params.umfpack_enforce_unsymmetric_strategy);
+        assert_eq!(params.faer_method, FaerMethod::Simplicial);
         assert_eq!(params.faer_method, FaerMethod::default());
         assert_eq!(params.iterative, IterativeParams::default());
     }

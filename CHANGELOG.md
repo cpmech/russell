@@ -5,6 +5,46 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.5.0] - 2026-11-19
+
+### Changed (breaking)
+
+- Upgraded `algebra_linear` to `3.0.0` (single dependency across `russell_lab` and `russell_sparse`).
+- Renamed the pure-Rust sparse direct solver backend from `Direct` to `Faer` throughout the
+  workspace, examples, CLI tools, tests, documentation, and CI workflows (with no compatibility
+  aliases): `Genie::Direct` -> `Genie::Faer`, `SolverDirect` -> `SolverFaer`,
+  `ComplexSolverDirect` -> `ComplexSolverFaer`, `DirectMethod` -> `FaerMethod`, and
+  `LinSolParams::direct_method` -> `LinSolParams::faer_method`. `Genie::from` and CLI `-g`/`--genie`
+  now default to `"Faer"` and reject `"direct"` / `"Direct"`.
+- Replaced `solve_matrix_market`'s `--direct-supernodal` flag with
+  `--faer-method <auto|simplicial|supernodal>` and `--faer-flop-ratio <f>` (finite and nonnegative;
+  rejected unless `--faer-method auto` is selected), and fixed `stats.main.solver` casing on early
+  out-of-memory exits.
+- Updated `SolverFaer::preprocess` and `ComplexSolverFaer::preprocess` parameter handling:
+  `None` now delegates to `FaerMethod::default()`; finite nonnegative validation is enforced on
+  `flop_ratio_threshold`; and subsequent refactorizations store and compare `initialized_params`,
+  returning `"subsequent factorizations must not change LinSolParams"` on any mismatch.
+- Reverted `FaerMethod::default()` to `FaerMethod::Simplicial`. Across an idle release sweep of
+  the 9 `benchmark-russell` matrices with at most 1.2M pattern entries plus synthetic 3D
+  3-dof/node vector-FEM tangent lattices (`10,125` to `46,875` dofs), `algebra_linear`'s
+  supernodal factorization (which omits supernodal contribution blocks) was never meaningfully
+  faster and regressed 3x–59x on every non-trivial matrix, timing out past 180s on `xenon1` and
+  `fem-3d-m20` where simplicial completed in `54.8s` and `19.9s`. No monotonic `flop_ratio` lower
+  bound separated FEM gains from regressions.
+- Added optional `StatsLinSolOutput::effective_faer_method` and `StatsLinSolOutput::faer_flop_ratio`
+  fields (`#[serde(default, skip_serializing_if = "Option::is_none")]`) populated by both
+  `SolverFaer` and `ComplexSolverFaer`.
+- Hardened `SolverIterative` and `solve_matrix_market` against out-of-memory failures: removed
+  persistent scratch buffers from `NumCsrMatrix`, added consuming `NumCsrMatrix::into_parts` for
+  `amg_setup_owned`, added `IterativeParams::amg_max_memory_mb` (and `--amg-max-memory-mb` CLI flag,
+  default `0` = unlimited) forwarded to both AMG setup and Krylov solve, mapped
+  `amgcl::Error::OutOfMemory` to a recognized memory error, and cleared partial multi-run
+  statistics before emitting `"out_of_memory": true` JSON and exiting `0` on `preprocess` or
+  `solve` OOM.
+- Bumped all 7 workspace crates (`russell_lab`, `russell_stat`, `russell_tensor`, `russell_sparse`,
+  `russell_pde`, `russell_ode`, `russell_nonlin`) to `5.5.0` and raised internal workspace
+  dependency floors to `5.5`.
+
 ## [5.4.1] - 2026-11-18
 
 ### Changed

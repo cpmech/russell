@@ -516,7 +516,11 @@ mod tests {
 
     #[test]
     fn parse_faer_method_validates_inputs() {
-        assert_eq!(parse_faer_method(None, None).unwrap(), FaerMethod::default());
+        assert_eq!(parse_faer_method(None, None).unwrap(), FaerMethod::Simplicial);
+        assert_eq!(
+            parse_faer_method(None, Some(1.0)).err(),
+            Some("faer-flop-ratio requires --faer-method auto")
+        );
         assert_eq!(
             parse_faer_method(Some("auto"), None).unwrap(),
             FaerMethod::Auto {

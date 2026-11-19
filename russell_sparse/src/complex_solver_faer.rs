@@ -292,7 +292,8 @@ mod tests {
         assert_eq!(stats.main.solver, "Faer");
         assert_eq!(stats.output.effective_ordering, "Colamd");
         assert_eq!(stats.output.effective_scaling, "No");
-        assert!(stats.output.effective_faer_method.is_some());
+        assert_eq!(stats.output.effective_faer_method.as_deref(), Some("Simplicial"));
+        assert_eq!(stats.output.faer_flop_ratio, None);
         assert!(solver.get_ns_init() > 0);
         assert!(solver.get_ns_preprocess() > 0);
         assert!(solver.get_ns_solve() > 0);

@@ -4,6 +4,7 @@ set -euo pipefail
 
 # Matrices in ascending size, so an interrupted suite still has the small rows
 REAL_MATS=(
+    pmsim-hex8-27
     bwm2000
     rdb5000
     Goodwin_040
@@ -12,6 +13,7 @@ REAL_MATS=(
     twotone
     Raj1
     boyd2
+    pres-cylin-3d-tet10-coarse
     Goodwin_071
     darcy003
     rma10
@@ -36,8 +38,6 @@ REAL_MATS=(
     dielFilterV2real
     Flan_1565
     pres-cylin-3d-tet10-fine
-    pres-cylin-3d-tet10-coarse
-    pmsim-hex8-27
 )
 
 COMPLEX_MATS=(
@@ -62,19 +62,23 @@ FEATURES=${FEATURES-intel_mkl,umfpack,mumps}
 GENIE=${GENIE:-FAER}
 
 usage() {
-    echo "Usage: $0 [--information | --solve]"
+    echo "Usage: $0 [--information | --solve] [--first10]"
     echo ""
     echo "  -i, --information  only print the matrix information (default)"
     echo "  -s, --solve        solve the linear systems"
+    echo "  -1, --first10      only run the first 10 REAL_MATS"
     echo ""
     echo "Environment: RUSSELL_DIR, INPUT_DIR, OUTPUT_DIR, SYSTEM, FEATURES, GENIE"
 }
 
 INFORMATION=1
+FIRST10=0
+FAILED=0
 while (($# > 0)); do
     case "$1" in
         -i | --information) INFORMATION=1 ;;
         -s | --solve) INFORMATION=0 ;;
+        -1 | --first10) FIRST10=1 ;;
         -h | --help)
             usage
             exit 0
@@ -101,6 +105,13 @@ mkdir -p "$OUTPUT_DIR"
 INPUT_DIR=$(cd "$INPUT_DIR" && pwd)
 OUTPUT_DIR=$(cd "$OUTPUT_DIR" && pwd)
 
+RUN_MATS=("${REAL_MATS[@]}" "${COMPLEX_MATS[@]}")
+if ((FIRST10)); then
+    RUN_MATS=("${REAL_MATS[@]:0:10}")
+fi
+TOTAL_MATS=${#RUN_MATS[@]}
+CURRENT_MAT=0
+
 ARGS=(-g "$GENIE")
 if ((INFORMATION)); then
     ARGS+=(--information)
@@ -117,26 +128,36 @@ cargo build --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
 
 run_matrix() {
     local name=$1
+    CURRENT_MAT=$((CURRENT_MAT + 1))
     local file="$INPUT_DIR/$name.mtx"
     local out="$OUTPUT_DIR/$name.json"
     if [[ ! -f "$file" ]]; then
-        echo "skip $name: $file not found" >&2
+        echo "skip $CURRENT_MAT/$TOTAL_MATS $name: $file not found" >&2
         return
     fi
     if ((INFORMATION)); then
-        echo "=== $name (information only) ===" >&2
+        echo "=== $CURRENT_MAT/$TOTAL_MATS $name (information only) ===" >&2
     else
-        echo "=== $name ===" >&2
+        echo "=== $CURRENT_MAT/$TOTAL_MATS $name ===" >&2
     fi
     if ! cargo run -q --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
         --package russell_sparse "${FEATURE_ARGS[@]}" \
         --bin solve_matrix_market -- "${ARGS[@]}" "$file" >"$out"; then
         echo "failed: $name" >&2
+        FAILED=1
     fi
 }
 
-for name in "${REAL_MATS[@]}" "${COMPLEX_MATS[@]}"; do
-    run_matrix "$name"
-done
+TIMEFORMAT='total time: %3R s'
+time {
+    for name in "${RUN_MATS[@]}"; do
+        run_matrix "$name"
+    done
+}
+
+if ((FAILED)); then
+    echo "some matrices failed; results written to $OUTPUT_DIR" >&2
+    exit 1
+fi
 
 echo "results written to $OUTPUT_DIR" >&2

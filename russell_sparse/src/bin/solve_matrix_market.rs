@@ -188,7 +188,7 @@ fn main() -> Result<(), StrError> {
 
     // allocate stats structure
     let mut stats = StatsLinSol::new();
-    stats.main.solver = solver_display_name(genie).to_string();
+    stats.main.solver = format!("{}", genie);
     stats.requests.ordering = format!("{:?}", params.ordering);
     stats.requests.scaling = format!("{:?}", params.scaling);
     stats.requests.mumps_num_threads = params.mumps_num_threads;
@@ -227,7 +227,7 @@ fn main() -> Result<(), StrError> {
                     finish_on_memory_error(&mut stats, opt.hide_json);
                     return Ok(());
                 }
-                return Err(e);
+                return finish_on_solver_error(&mut stats, e, opt.hide_json);
             }
 
             // solve linear system
@@ -236,7 +236,7 @@ fn main() -> Result<(), StrError> {
                     finish_on_memory_error(&mut stats, opt.hide_json);
                     return Ok(());
                 }
-                return Err(e);
+                return finish_on_solver_error(&mut stats, e, opt.hide_json);
             }
 
             // update stats
@@ -303,7 +303,7 @@ fn main() -> Result<(), StrError> {
                     finish_on_memory_error(&mut stats, opt.hide_json);
                     return Ok(());
                 }
-                return Err(e);
+                return finish_on_solver_error(&mut stats, e, opt.hide_json);
             }
 
             // solve linear system
@@ -312,7 +312,7 @@ fn main() -> Result<(), StrError> {
                     finish_on_memory_error(&mut stats, opt.hide_json);
                     return Ok(());
                 }
-                return Err(e);
+                return finish_on_solver_error(&mut stats, e, opt.hide_json);
             }
 
             // update stats
@@ -341,20 +341,6 @@ fn main() -> Result<(), StrError> {
     Ok(())
 }
 
-/// Returns the proper display name stored in `stats.main.solver` for early OOM exits
-fn solver_display_name(genie: Genie) -> &'static str {
-    match genie {
-        Genie::Faer => "Faer",
-        Genie::Iterative(IterativeMethod::Cg) => "CG",
-        Genie::Iterative(IterativeMethod::BiCgStab) => "BiCGStab",
-        Genie::Iterative(IterativeMethod::Gmres) => "GMRES",
-        Genie::Mumps => "MUMPS",
-        Genie::Umfpack => "UMFPACK",
-        Genie::BasicLu => "BasicLU",
-        Genie::Qdldl => "QDLDL",
-    }
-}
-
 /// Clears partial run results and emits the OOM JSON when requested
 fn finish_on_memory_error(stats: &mut StatsLinSol, hide_json: bool) {
     stats.clear_run_results();
@@ -362,6 +348,15 @@ fn finish_on_memory_error(stats: &mut StatsLinSol, hide_json: bool) {
     if !hide_json {
         println!("{}", stats.get_json());
     }
+}
+
+/// Records a solver error in the statistics and emits the JSON when requested
+fn finish_on_solver_error(stats: &mut StatsLinSol, error: StrError, hide_json: bool) -> Result<(), StrError> {
+    stats.main.error_from_solver = Some(error.to_string());
+    if !hide_json {
+        println!("{}", stats.get_json());
+    }
+    Err(error)
 }
 
 /// Parses `--faer-method` and `--faer-flop-ratio`
@@ -507,20 +502,8 @@ fn get_bfwb62_correct_x() -> Vector {
 
 #[cfg(test)]
 mod tests {
-    use super::{finish_on_memory_error, parse_faer_method, solver_display_name};
+    use super::{finish_on_memory_error, finish_on_solver_error, parse_faer_method};
     use russell_sparse::prelude::*;
-
-    #[test]
-    fn solver_display_name_matches_expected_casing() {
-        assert_eq!(solver_display_name(Genie::Faer), "Faer");
-        assert_eq!(solver_display_name(Genie::Iterative(IterativeMethod::Cg)), "CG");
-        assert_eq!(solver_display_name(Genie::Iterative(IterativeMethod::BiCgStab)), "BiCGStab");
-        assert_eq!(solver_display_name(Genie::Iterative(IterativeMethod::Gmres)), "GMRES");
-        assert_eq!(solver_display_name(Genie::Mumps), "MUMPS");
-        assert_eq!(solver_display_name(Genie::Umfpack), "UMFPACK");
-        assert_eq!(solver_display_name(Genie::BasicLu), "BasicLU");
-        assert_eq!(solver_display_name(Genie::Qdldl), "QDLDL");
-    }
 
     #[test]
     fn parse_faer_method_validates_inputs() {
@@ -568,11 +551,21 @@ mod tests {
     }
 
     #[test]
+    fn finish_on_solver_error_fills_stats() {
+        let mut stats = StatsLinSol::new();
+        let res = finish_on_solver_error(&mut stats, "solver failed", true);
+        assert_eq!(res.err(), Some("solver failed"));
+        assert_eq!(stats.main.error_from_solver.as_deref(), Some("solver failed"));
+        let json = stats.get_json();
+        assert!(json.contains("\"error_from_solver\": \"solver failed\""));
+    }
+
+    #[test]
     fn finish_on_memory_error_clears_partial_runs() {
         let mut stats = StatsLinSol::new();
-        stats.main.solver = solver_display_name(Genie::Iterative(IterativeMethod::Gmres)).to_string();
-        stats.output.effective_faer_method = Some("Supernodal".to_string());
-        stats.output.faer_flop_ratio = Some(2.0);
+        stats.main.solver = format!("{}", Genie::Iterative(IterativeMethod::Gmres));
+        stats.output.faer_effective_method = "Supernodal".to_string();
+        stats.output.faer_flop_ratio = 2.0;
         stats.time_nanoseconds.initialize = 10;
         stats.time_nanoseconds.preprocess = 20;
         stats.time_nanoseconds.solve = 30;
@@ -587,8 +580,8 @@ mod tests {
 
         assert!(stats.main.out_of_memory);
         assert_eq!(stats.main.solver, "GMRES");
-        assert!(stats.output.effective_faer_method.is_none());
-        assert!(stats.output.faer_flop_ratio.is_none());
+        assert!(stats.output.faer_effective_method.is_empty());
+        assert_eq!(stats.output.faer_flop_ratio, 0.0);
         assert_eq!(stats.time_nanoseconds.total_ifs, 0);
         assert!(stats.time_nanoseconds.initialize_array.is_empty());
         assert!(stats.time_nanoseconds.preprocess_array.is_empty());

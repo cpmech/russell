@@ -294,7 +294,7 @@ impl LinSolTrait for SolverQdldl {
         stats.main.solver = "QDLDL".to_string();
         stats.output.effective_ordering = "No".to_string();
         stats.output.effective_scaling = "No".to_string();
-        stats.output.qdldl_positive_inertia = self.stats().map(|s| s.positive_inertia);
+        stats.output.qdldl_positive_inertia = self.stats().map(|s| s.positive_inertia).unwrap_or(0);
         stats.time_nanoseconds.initialize_array.push(self.time_initialize_ns);
         stats.time_nanoseconds.preprocess_array.push(self.time_preprocess_ns);
         stats.time_nanoseconds.solve_array.push(self.time_solve_ns);
@@ -352,7 +352,7 @@ mod tests {
         assert_eq!(stats.main.solver, "QDLDL");
         assert_eq!(stats.output.effective_ordering, "No");
         assert_eq!(stats.output.effective_scaling, "No");
-        assert_eq!(stats.output.qdldl_positive_inertia, Some(3));
+        assert_eq!(stats.output.qdldl_positive_inertia, 3);
         assert_eq!(stats.time_nanoseconds.initialize_array.len(), 1);
         assert_eq!(stats.time_nanoseconds.preprocess_array.len(), 1);
         assert_eq!(stats.time_nanoseconds.solve_array.len(), 1);
@@ -388,7 +388,7 @@ mod tests {
 
         let mut stats = StatsLinSol::new();
         solver.update_stats(&mut stats);
-        assert_eq!(stats.output.qdldl_positive_inertia, Some(2));
+        assert_eq!(stats.output.qdldl_positive_inertia, 2);
     }
 
     #[test]

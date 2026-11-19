@@ -187,8 +187,8 @@ impl ComplexLinSolTrait for ComplexSolverFaer {
         stats.main.solver = "Faer".to_string();
         stats.output.effective_ordering = "Colamd".to_string();
         stats.output.effective_scaling = "No".to_string();
-        stats.output.effective_faer_method = self.lu.as_ref().map(|lu| lu.effective_method().as_str().to_string());
-        stats.output.faer_flop_ratio = self.lu.as_ref().and_then(|lu| lu.flop_ratio());
+        stats.output.faer_effective_method = self.lu.as_ref().map(|lu| lu.effective_method().as_str().to_string()).unwrap_or_default();
+        stats.output.faer_flop_ratio = self.lu.as_ref().and_then(|lu| lu.flop_ratio()).unwrap_or(0.0);
         stats.time_nanoseconds.initialize_array.push(self.time_initialize_ns);
         stats.time_nanoseconds.preprocess_array.push(self.time_preprocess_ns);
         stats.time_nanoseconds.solve_array.push(self.time_solve_ns);
@@ -292,8 +292,8 @@ mod tests {
         assert_eq!(stats.main.solver, "Faer");
         assert_eq!(stats.output.effective_ordering, "Colamd");
         assert_eq!(stats.output.effective_scaling, "No");
-        assert_eq!(stats.output.effective_faer_method.as_deref(), Some("Simplicial"));
-        assert_eq!(stats.output.faer_flop_ratio, None);
+        assert_eq!(stats.output.faer_effective_method, "Simplicial");
+        assert_eq!(stats.output.faer_flop_ratio, 0.0);
         assert!(solver.get_ns_init() > 0);
         assert!(solver.get_ns_preprocess() > 0);
         assert!(solver.get_ns_solve() > 0);
@@ -350,8 +350,8 @@ mod tests {
         complex_vec_approx_eq(&x, x_correct, 1e-13);
         let mut stats = StatsLinSol::new();
         solver.update_stats(&mut stats);
-        assert_eq!(stats.output.effective_faer_method.as_deref(), Some("Supernodal"));
-        assert!(stats.output.faer_flop_ratio.is_some());
+        assert_eq!(stats.output.faer_effective_method, "Supernodal");
+        assert!(stats.output.faer_flop_ratio > 0.0);
 
         let params = LinSolParams {
             faer_method: FaerMethod::Simplicial,
@@ -364,8 +364,8 @@ mod tests {
         complex_vec_approx_eq(&x, x_correct, 1e-13);
         let mut stats = StatsLinSol::new();
         solver.update_stats(&mut stats);
-        assert_eq!(stats.output.effective_faer_method.as_deref(), Some("Simplicial"));
-        assert_eq!(stats.output.faer_flop_ratio, None);
+        assert_eq!(stats.output.faer_effective_method, "Simplicial");
+        assert_eq!(stats.output.faer_flop_ratio, 0.0);
     }
 
     #[test]

@@ -280,7 +280,7 @@ fn main() -> Result<(), StrError> {
     // print the iterative statistics
     let mut stats = StatsLinSol::new();
     solver.update_stats(&mut stats);
-    let iterative = stats.iterative.as_ref().expect("iterative statistics");
+    let iterative = stats.iterative_stats.as_ref().expect("iterative statistics");
     println!("method = {}", iterative.method);
     println!("preconditioner = {}", iterative.preconditioner);
     println!("iterations = {:?}", iterative.iterations_array);

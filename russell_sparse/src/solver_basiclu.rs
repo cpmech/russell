@@ -237,7 +237,7 @@ impl LinSolTrait for SolverBasicLu {
         stats.main.solver = "BasicLU".to_string();
         stats.output.effective_ordering = "Markowitz".to_string();
         stats.output.effective_scaling = "No".to_string();
-        stats.output.basiclu_rank = self.stats().map(|s| s.rank);
+        stats.output.basiclu_rank = self.stats().map(|s| s.rank).unwrap_or(0);
         stats.time_nanoseconds.initialize_array.push(self.time_initialize_ns);
         stats.time_nanoseconds.preprocess_array.push(self.time_preprocess_ns);
         stats.time_nanoseconds.solve_array.push(self.time_solve_ns);
@@ -301,7 +301,7 @@ mod tests {
         assert_eq!(stats.main.solver, "BasicLU");
         assert_eq!(stats.output.effective_ordering, "Markowitz");
         assert_eq!(stats.output.effective_scaling, "No");
-        assert_eq!(stats.output.basiclu_rank, Some(4));
+        assert_eq!(stats.output.basiclu_rank, 4);
         assert_eq!(stats.time_nanoseconds.initialize_array.len(), 1);
         assert_eq!(stats.time_nanoseconds.preprocess_array.len(), 1);
         assert_eq!(stats.time_nanoseconds.solve_array.len(), 1);

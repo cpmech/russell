@@ -40,7 +40,7 @@ struct Options {
     write_matrix: bool,
 
     /// Solver selection
-    #[structopt(short = "g", long, default_value = "Direct")]
+    #[structopt(short = "g", long, default_value = "Faer")]
     genie: String,
 
     /// Ordering strategy

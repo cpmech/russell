@@ -185,7 +185,7 @@ pub struct Spc2d<'a> {
     /// Sparse linear solver type
     ///
     /// Determines which solver backend to use (e.g., UMFPACK, MUMPS).
-    /// Default: `Genie::Direct`
+    /// Default: `Genie::Faer`
     genie: Genie,
 }
 
@@ -280,7 +280,7 @@ impl<'a> Spc2d<'a> {
             equations,
             interp_x,
             interp_y,
-            genie: Genie::Direct,
+            genie: Genie::Faer,
         })
     }
 
@@ -288,7 +288,7 @@ impl<'a> Spc2d<'a> {
     ///
     /// # Input
     ///
-    /// * `genie` - Sparse solver type (e.g., `Genie::Direct`, `Genie::Mumps`)
+    /// * `genie` - Sparse solver type (e.g., `Genie::Faer`, `Genie::Mumps`)
     pub fn set_solver_options(&mut self, genie: Genie) {
         self.genie = genie;
     }

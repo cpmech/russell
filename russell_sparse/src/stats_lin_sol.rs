@@ -18,7 +18,7 @@ pub struct StatsLinSolMain {
     pub platform: String,
     /// BLAS library selected at build time (e.g., Native, OpenBLAS, or Intel MKL)
     pub blas_lib: String,
-    /// Name of the solver that produced the statistics (e.g., `Direct`, `Umfpack`, or `MUMPS`)
+    /// Name of the solver that produced the statistics (e.g., `Faer`, `UMFPACK`, or `MUMPS`)
     pub solver: String,
     /// Indicates whether MUMPS support was compiled in
     pub mumps: bool,
@@ -73,6 +73,12 @@ pub struct StatsLinSolOutput {
     pub umfpack_strategy: String,
     /// UMFPACK reciprocal condition number estimate
     pub umfpack_rcond_estimate: f64,
+    /// Effective factorization method used by the Faer solver (`"Simplicial"` or `"Supernodal"`), when applicable
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effective_faer_method: Option<String>,
+    /// Symbolic flop-ratio proxy `Σ col_counts² / nnz(A)` computed by the Faer solver, when applicable
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub faer_flop_ratio: Option<f64>,
 }
 
 /// Holds the determinant of the coefficient matrix (if requested)
@@ -233,6 +239,8 @@ impl StatsLinSol {
                 openmp_num_threads: 0,
                 umfpack_strategy: unknown.clone(),
                 umfpack_rcond_estimate: 0.0,
+                effective_faer_method: None,
+                faer_flop_ratio: None,
             },
             determinant: StatsLinSolDeterminant {
                 mantissa_real: 0.0,
@@ -403,11 +411,28 @@ impl StatsLinSol {
         self.time_human.total_ifs = format_nanoseconds(self.time_nanoseconds.total_ifs);
         self.time_human.verify = format_nanoseconds(self.time_nanoseconds.verify);
     }
+
+    /// Clears partial run arrays, scalar timings, and verification fields after an out-of-memory error
+    ///
+    /// Keeps `main`, `matrix`, `requests`, and `time_nanoseconds.read_matrix` intact so the
+    /// emitted OOM JSON contains no partial timings or errors from earlier runs in a multi-run loop.
+    pub fn clear_run_results(&mut self) {
+        let blank = StatsLinSol::new();
+        self.output = blank.output;
+        self.determinant = blank.determinant;
+        self.verify = blank.verify;
+        self.mumps_stats = blank.mumps_stats;
+        self.iterative = None;
+        let read_matrix = self.time_nanoseconds.read_matrix;
+        self.time_nanoseconds = blank.time_nanoseconds;
+        self.time_nanoseconds.read_matrix = read_matrix;
+        self.time_human = blank.time_human;
+    }
 }
 
 /// Returns true if the error message indicates an out-of-memory condition
 ///
-/// Covers both solvers: UMFPACK and MUMPS.
+/// Covers UMFPACK, MUMPS, and the iterative solver.
 pub fn is_memory_error(e: &str) -> bool {
     e.contains("MALLOC") || e.contains("Not enough memory") || e.contains("ALLOC_FAILED") || e.contains("memory is too small")
 }
@@ -417,7 +442,7 @@ pub fn is_memory_error(e: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::StatsLinSol;
-    use crate::{CooMatrix, IterativeMethod, LinSolTrait, MMsym, Samples, SolverDirect, SolverIterative, read_matrix_market};
+    use crate::{CooMatrix, FaerMethod, IterativeMethod, LinSolParams, LinSolTrait, MMsym, Samples, SolverFaer, SolverIterative, read_matrix_market};
     use russell_lab::Vector;
 
     #[test]
@@ -544,11 +569,11 @@ mod tests {
         (coo, Vector::filled(3, 1.0))
     }
 
-    /// Runs one Direct solve and updates the statistics
-    fn run_direct() -> StatsLinSol {
+    /// Runs one Faer solve and updates the statistics
+    fn run_faer(params: Option<LinSolParams>) -> StatsLinSol {
         let (coo, rhs) = positive_definite_system();
-        let mut solver = SolverDirect::new().unwrap();
-        solver.preprocess(&coo, None).unwrap();
+        let mut solver = SolverFaer::new().unwrap();
+        solver.preprocess(&coo, params).unwrap();
         let mut x = Vector::new(3);
         solver.solve(&mut x, &rhs, false).unwrap();
         let mut stats = StatsLinSol::new();
@@ -583,12 +608,91 @@ mod tests {
     }
 
     #[test]
-    fn direct_json_has_no_iterative_block() {
-        let mut stats = run_direct();
+    fn faer_json_has_no_iterative_block_and_records_faer_fields() {
+        let mut stats = run_faer(None);
         let json = stats.get_json();
         assert!(!json.contains("\"iterative\""));
         let value: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert!(value.get("iterative").is_none());
+        assert_eq!(stats.main.solver, "Faer");
+        assert!(matches!(stats.output.effective_faer_method.as_deref(), Some("Simplicial" | "Supernodal")));
+
+        let mut simp_params = LinSolParams::new();
+        simp_params.faer_method = FaerMethod::Simplicial;
+        let mut simp_stats = run_faer(Some(simp_params));
+        let simp_json = simp_stats.get_json();
+        assert_eq!(simp_stats.output.effective_faer_method.as_deref(), Some("Simplicial"));
+        assert_eq!(simp_stats.output.faer_flop_ratio, None);
+        assert!(!simp_json.contains("faer_flop_ratio"));
+
+        let mut sup_params = LinSolParams::new();
+        sup_params.faer_method = FaerMethod::Supernodal;
+        let mut sup_stats = run_faer(Some(sup_params));
+        let sup_json = sup_stats.get_json();
+        assert_eq!(sup_stats.output.effective_faer_method.as_deref(), Some("Supernodal"));
+        assert!(sup_stats.output.faer_flop_ratio.is_some());
+        assert!(sup_json.contains("effective_faer_method"));
+        assert!(sup_json.contains("faer_flop_ratio"));
+    }
+
+    #[test]
+    fn pre_rename_json_without_faer_output_fields_still_deserializes() {
+        let mut stats = run_faer(Some(LinSolParams {
+            faer_method: FaerMethod::Supernodal,
+            ..LinSolParams::new()
+        }));
+        let json = stats.get_json();
+        let mut value: serde_json::Value = serde_json::from_str(&json).unwrap();
+        value["main"]["solver"] = serde_json::Value::String("Direct".to_string());
+        let output = value["output"].as_object_mut().unwrap();
+        output.remove("effective_faer_method");
+        output.remove("faer_flop_ratio");
+        let legacy_json = serde_json::to_string(&value).unwrap();
+        let parsed: StatsLinSol = serde_json::from_str(&legacy_json).unwrap();
+        assert_eq!(parsed.main.solver, "Direct");
+        assert_eq!(parsed.output.effective_faer_method, None);
+        assert_eq!(parsed.output.faer_flop_ratio, None);
+    }
+
+    #[test]
+    fn clear_run_results_resets_partial_runs_and_keeps_read_matrix() {
+        let mut stats = generate_data();
+        stats.main.solver = "CG".to_string();
+        stats.matrix.name = "test_mat".to_string();
+        stats.output.effective_faer_method = Some("Supernodal".to_string());
+        stats.output.faer_flop_ratio = Some(12.5);
+        stats.verify.max_abs_diff = 1e-12;
+        stats.verify.relative_error = 1e-13;
+        stats.iterative = Some(super::StatsLinSolIterative {
+            method: "CG".to_string(),
+            iterations_array: vec![5],
+            relative_residual_array: vec![1e-11],
+            ..super::StatsLinSolIterative::default()
+        });
+        stats.clear_run_results();
+        stats.main.out_of_memory = true;
+        let json = stats.get_json();
+        assert_eq!(stats.main.solver, "CG");
+        assert_eq!(stats.matrix.name, "test_mat");
+        assert!(stats.main.out_of_memory);
+        assert_eq!(stats.time_nanoseconds.read_matrix, ONE_SEC);
+        assert_eq!(stats.time_human.read_matrix, "1s");
+        assert_eq!(stats.time_nanoseconds.initialize, 0);
+        assert_eq!(stats.time_nanoseconds.preprocess, 0);
+        assert_eq!(stats.time_nanoseconds.solve, 0);
+        assert_eq!(stats.time_nanoseconds.total_ifs, 0);
+        assert_eq!(stats.time_nanoseconds.verify, 0);
+        assert!(stats.time_nanoseconds.initialize_array.is_empty());
+        assert!(stats.time_nanoseconds.preprocess_array.is_empty());
+        assert!(stats.time_nanoseconds.solve_array.is_empty());
+        assert!(stats.time_nanoseconds.total_ifs_array.is_empty());
+        assert!(stats.time_human.initialize_array.is_empty());
+        assert_eq!(stats.verify.max_abs_diff, 0.0);
+        assert_eq!(stats.verify.relative_error, 0.0);
+        assert_eq!(stats.output.effective_faer_method, None);
+        assert_eq!(stats.output.faer_flop_ratio, None);
+        assert!(stats.iterative.is_none());
+        assert!(!json.contains("\"iterative\""));
     }
 
     #[test]
@@ -604,7 +708,7 @@ mod tests {
 
     #[test]
     fn old_factorize_time_keys_are_rejected() {
-        let mut stats = run_direct();
+        let mut stats = run_faer(None);
         let json = stats.get_json();
         let old = json
             .replace("\"preprocess_array\"", "\"factorize_array\"")

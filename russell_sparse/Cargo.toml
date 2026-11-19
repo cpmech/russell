@@ -26,7 +26,7 @@ umfpack = []
 mumps = []
 
 [dependencies]
-algebra_linear = "2"
+algebra_linear = "3"
 num-traits = "0.2"
 russell_lab = { path = "../russell_lab", version = "5" }
 structopt = "0.3"

@@ -2,7 +2,7 @@
 
 Two toolchains work, and the crate supports both:
 
-- **MSVC**, the default Rust toolchain on Windows. The Direct solver (pure Rust)
+- **MSVC**, the default Rust toolchain on Windows. The Faer solver (pure Rust)
   needs nothing else; UMFPACK comes from [vcpkg](https://vcpkg.io).
   MUMPS is not available here.
 - **MSYS2 with the GNU toolchain**, which also provides OpenBLAS, SuiteSparse and
@@ -13,7 +13,7 @@ Two toolchains work, and the crate supports both:
 
 1. Install Rust from [rust-lang.org](https://rust-lang.org/learn/get-started/),
    keeping the preselected `x86_64-pc-windows-msvc` host triple.
-2. Run the tests. The Direct solver (pure Rust) needs no external library:
+2. Run the tests. The Faer solver (pure Rust) needs no external library:
 
 ```bash
 cargo test

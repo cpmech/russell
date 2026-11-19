@@ -259,7 +259,7 @@ impl Config {
             n_cont_failure_max: 5,
             n_cont_rejection_max: 5,
             // linear solver
-            genie: Genie::Direct,
+            genie: Genie::Faer,
             lin_sol_config: None,
             write_matrix_after_nstep_and_stop: None,
             // iterations
@@ -548,7 +548,7 @@ impl Config {
 
     /// Sets the linear solver kind
     ///
-    /// Default value: Genie::Direct
+    /// Default value: Genie::Faer
     pub fn set_genie(&mut self, genie: Genie) -> &mut Self {
         self.genie = genie;
         self
@@ -1186,7 +1186,7 @@ mod tests {
         assert_eq!(config.get_n_cont_rejection_max(), 5);
 
         // linear solver
-        assert_eq!(config.get_genie(), Genie::Direct);
+        assert_eq!(config.get_genie(), Genie::Faer);
         assert_eq!(config.get_lin_sol_config().is_none(), true);
         assert_eq!(config.get_write_matrix_after_nstep_and_stop().is_none(), true);
 

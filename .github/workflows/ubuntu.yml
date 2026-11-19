@@ -40,7 +40,7 @@ jobs:
       - name: Compile SuiteSparse
         run: |
           bash zscripts/debian-compile-suitesparse.bash
-      - name: Run tests (Direct, default features)
+      - name: Run tests (Faer, default features)
         run: cargo test
       - name: Run tests (UMFPACK)
         run: cargo test --features umfpack

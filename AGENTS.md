@@ -61,7 +61,7 @@ Extra features:
 
 `russell_sparse` selects a backend with `Genie`:
 
-- `Genie::Direct` — the pure-Rust sparse LU from `algebra_linear`; always available.
+- `Genie::Faer` — the pure-Rust sparse LU from `algebra_linear`; always available.
 - `Genie::Iterative(IterativeMethod::{Cg, BiCgStab, Gmres})` — the pure-Rust Krylov and
   AMGCL solvers from `algebra_linear`; always available.
 - `Genie::Mumps` — MUMPS, behind the `mumps` feature.
@@ -71,7 +71,7 @@ Every solver runs in three phases: `initialize` (COO → CSC/CSR, index widening
 `preprocess` (symbolic analysis and numeric factorization, or the AMG hierarchy and
 preconditioner), and `solve`.
 
-**`SolverDirect` wraps one `algebra_linear::SparseLu`.** The CSC arrays are widened on
+**`SolverFaer` wraps one `algebra_linear::sparse::faer::SparseLu`.** The CSC arrays are widened on
 **every** `preprocess` and handed to `SparseLu::factorize`, which compares them with the
 analysed pattern. That comparison is what rejects a reordered matrix with
 `StructureMismatch`; passing cached arrays would make it a no-op. Do not cache them.
@@ -92,7 +92,7 @@ On `wasm32` the AMGCL kernels run serially and `num_threads` is ignored.
 ## WebAssembly
 
 The default features must compile for `wasm32-unknown-unknown` and
-`wasm32-wasip1`: the Direct solver (pure Rust) is used, and `russell_lab` uses
+`wasm32-wasip1`: the Faer solver (pure Rust) is used, and `russell_lab` uses
 `web-time` for the browser clock and `getrandom/wasm_js` for `russell_stat`'s
 random numbers. Do not enable `umfpack` or `mumps` in a wasm build. File-based
 helpers (Matrix Market, JSON stats) compile on both targets but return errors in
@@ -384,13 +384,13 @@ the Rust builds are cached with `Swatinem/rust-cache`.
 
 - **Ubuntu** compiles MUMPS and SuiteSparse via `zscripts/debian-compile-*.bash`
   (into `/usr/local`, with `RUSSELL_LOCAL_PREFIX` set), then runs the suite four
-  ways: default (Direct), `umfpack`, `mumps`, and both. Nightly enforces the
+  ways: default (Faer), `umfpack`, `mumps`, and both. Nightly enforces the
   coverage threshold shown above. A second job installs the packaged
   `libsuitesparse-dev` and runs `umfpack` with `RUSSELL_LOCAL_PREFIX=/nonexistent`,
   exercising the system fallback; `src/util.rs` asserts which source was linked.
 - **Windows** is a matrix over two toolchains: MSYS2 with the GNU toolchain
-  builds MUMPS from source and runs Direct, `umfpack`, `mumps` and both; MSVC
-  takes UMFPACK from vcpkg and runs Direct and `umfpack`, because the Windows
+  builds MUMPS from source and runs Faer, `umfpack`, `mumps` and both; MSVC
+  takes UMFPACK from vcpkg and runs Faer and `umfpack`, because the Windows
   MUMPS build is MinGW objects plus gfortran. vcpkg's install tree is cached.
 - **macOS** runs the default suite and `--features umfpack` against Homebrew's
   SuiteSparse, and a second job compiles MUMPS with Homebrew's gfortran (see

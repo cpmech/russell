@@ -5,9 +5,9 @@ use russell_sparse::Genie;
 #[test]
 fn test_1d_prob01_spc() -> Result<(), StrError> {
     // SPS
-    run_spc(false, 4, 1e-15, Genie::Direct)?;
+    run_spc(false, 4, 1e-15, Genie::Faer)?;
     // LMM
-    run_spc(true, 4, 1e-15, Genie::Direct)?;
+    run_spc(true, 4, 1e-15, Genie::Faer)?;
     Ok(())
 }
 

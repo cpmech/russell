@@ -13,8 +13,8 @@ struct Options {
     /// Matrix-market file
     matrix_market_file: String,
 
-    /// Solver selection; accepted values: `direct`, `cg`, `bicgstab`, `gmres`, `mumps`, or `umfpack`
-    #[structopt(short = "g", long, default_value = "Direct")]
+    /// Solver selection; accepted values: `faer`, `cg`, `bicgstab`, `gmres`, `mumps`, or `umfpack`
+    #[structopt(short = "g", long, default_value = "Faer")]
     genie: String,
 
     /// Ordering strategy
@@ -57,11 +57,15 @@ struct Options {
     #[structopt(short = "u", long)]
     enforce_unsymmetric_strategy: bool,
 
-    /// Selects the supernodal LU in the Direct solver (experimental; Direct only)
+    /// LU factorization method for Faer: `auto`, `simplicial`, or `supernodal` (Faer only)
     #[structopt(long)]
-    direct_supernodal: bool,
+    faer_method: Option<String>,
 
-    /// Iterative solver options (ignored by `direct`, `mumps`, and `umfpack`)
+    /// Flop-ratio threshold for `--faer-method auto` (must be finite and >= 0; rejected unless `--faer-method auto` is active; Faer only)
+    #[structopt(long)]
+    faer_flop_ratio: Option<f64>,
+
+    /// Iterative solver options (ignored by `faer`, `mumps`, and `umfpack`)
     #[structopt(flatten)]
     iterative: IterativeOptions,
 
@@ -83,52 +87,56 @@ struct Options {
     nrun: u32,
 }
 
-// Iterative solver options (ignored by `direct`, `mumps`, and `umfpack`)
+// Iterative solver options (ignored by `faer`, `mumps`, and `umfpack`)
 #[derive(StructOpt, Debug)]
 struct IterativeOptions {
-    /// Relative residual tolerance (iterative solvers; ignored by `direct`, `mumps`, and `umfpack`)
+    /// Relative residual tolerance (iterative solvers; ignored by `faer`, `mumps`, and `umfpack`)
     #[structopt(long, default_value = "1e-10")]
     iter_tol: f64,
 
-    /// Absolute residual tolerance (iterative solvers; ignored by `direct`, `mumps`, and `umfpack`)
+    /// Absolute residual tolerance (iterative solvers; ignored by `faer`, `mumps`, and `umfpack`)
     #[structopt(long, default_value = "0")]
     iter_abs_tol: f64,
 
-    /// Maximum number of Krylov iterations (ignored by `direct`, `mumps`, and `umfpack`)
+    /// Maximum number of Krylov iterations (ignored by `faer`, `mumps`, and `umfpack`)
     #[structopt(long, default_value = "1000")]
     iter_max: usize,
 
-    /// Preconditioner: `amg` or `identity` (ignored by `direct`, `mumps`, and `umfpack`)
+    /// Preconditioner: `amg` or `identity` (ignored by `faer`, `mumps`, and `umfpack`)
     #[structopt(long, default_value = "amg")]
     iter_precond: String,
 
-    /// GMRES restart dimension (GMRES only; ignored by `direct`, `mumps`, and `umfpack`)
+    /// GMRES restart dimension (GMRES only; ignored by `faer`, `mumps`, and `umfpack`)
     #[structopt(long, default_value = "30")]
     iter_restart: usize,
 
-    /// Number of threads for the Krylov and AMG kernels (ignored by `direct`, `mumps`, and `umfpack`)
+    /// Number of threads for the Krylov and AMG kernels (ignored by `faer`, `mumps`, and `umfpack`)
     #[structopt(long, default_value = "1")]
     iter_threads: usize,
 
-    /// Minimum vector length before threads are used (ignored by `direct`, `mumps`, and `umfpack`)
+    /// Minimum vector length before threads are used (ignored by `faer`, `mumps`, and `umfpack`)
     #[structopt(long, default_value = "1024")]
     iter_min_parallel_len: usize,
 
-    /// AMG coarsening: `ruge-stuben`, `aggregation`, or `smoothed-aggregation` (ignored by `direct`, `mumps`, and `umfpack`)
+    /// AMG coarsening: `ruge-stuben`, `aggregation`, or `smoothed-aggregation` (ignored by `faer`, `mumps`, and `umfpack`)
     #[structopt(long, default_value = "ruge-stuben")]
     amg_coarsening: String,
 
-    /// AMG smoother: `gauss-seidel`, `damped-jacobi`, `ilu0`, `chebyshev`, `spai0`, or `spai1` (ignored by `direct`, `mumps`, and `umfpack`)
+    /// AMG smoother: `gauss-seidel`, `damped-jacobi`, `ilu0`, `chebyshev`, `spai0`, or `spai1` (ignored by `faer`, `mumps`, and `umfpack`)
     #[structopt(long, default_value = "gauss-seidel")]
     amg_smoother: String,
 
-    /// AMG size at which the coarsest level is solved directly (ignored by `direct`, `mumps`, and `umfpack`)
+    /// AMG size at which the coarsest level is solved directly (ignored by `faer`, `mumps`, and `umfpack`)
     #[structopt(long, default_value = "64")]
     amg_coarse_enough: usize,
 
-    /// Maximum number of AMG levels (ignored by `direct`, `mumps`, and `umfpack`)
+    /// Maximum number of AMG levels (ignored by `faer`, `mumps`, and `umfpack`)
     #[structopt(long, default_value = "32")]
     amg_max_levels: usize,
+
+    /// Maximum working memory budget in MiB (`0` disables the limit; ignored by `faer`, `mumps`, and `umfpack`)
+    #[structopt(long, default_value = "0")]
+    amg_max_memory_mb: usize,
 }
 
 fn main() -> Result<(), StrError> {
@@ -141,20 +149,12 @@ fn main() -> Result<(), StrError> {
     }
 
     // select linear solver
-    let genie = match opt.genie.to_lowercase().as_str() {
-        "direct" => Genie::Direct,
-        "cg" => Genie::Iterative(IterativeMethod::Cg),
-        "bicgstab" => Genie::Iterative(IterativeMethod::BiCgStab),
-        "gmres" => Genie::Iterative(IterativeMethod::Gmres),
-        "mumps" => Genie::Mumps,
-        "umfpack" => Genie::Umfpack,
-        _ => return Err("genie must be one of: direct, cg, bicgstab, gmres, mumps, umfpack"),
-    };
+    let genie = Genie::from(&opt.genie)?;
 
     // select the symmetric handling option
     let handling = match genie {
         Genie::Mumps => MMsym::LeaveAsLower,
-        Genie::Direct => MMsym::MakeItFull,
+        Genie::Faer => MMsym::MakeItFull,
         Genie::Iterative(_) => MMsym::MakeItFull,
         Genie::Umfpack => MMsym::MakeItFull,
     };
@@ -167,9 +167,7 @@ fn main() -> Result<(), StrError> {
     params.compute_determinant = opt.determinant;
     params.mumps_num_threads = opt.mumps_nt as usize;
     params.umfpack_enforce_unsymmetric_strategy = opt.enforce_unsymmetric_strategy;
-    if opt.direct_supernodal {
-        params.direct_method = DirectMethod::Supernodal;
-    }
+    params.faer_method = parse_faer_method(opt.faer_method.as_deref(), opt.faer_flop_ratio)?;
     params.compute_error_estimates = opt.error_estimates;
     params.compute_condition_numbers = opt.condition_numbers;
     params.verbose = opt.verbose;
@@ -184,10 +182,11 @@ fn main() -> Result<(), StrError> {
     params.iterative.amg_smoother = parse_amg_smoother(&opt.iterative.amg_smoother)?;
     params.iterative.amg_coarse_enough = opt.iterative.amg_coarse_enough;
     params.iterative.amg_max_levels = opt.iterative.amg_max_levels;
+    params.iterative.amg_max_memory_mb = opt.iterative.amg_max_memory_mb;
 
     // allocate stats structure
     let mut stats = StatsLinSol::new();
-    stats.main.solver = genie.to_string();
+    stats.main.solver = solver_display_name(genie).to_string();
     stats.requests.ordering = format!("{:?}", params.ordering);
     stats.requests.scaling = format!("{:?}", params.scaling);
     stats.requests.mumps_num_threads = params.mumps_num_threads;
@@ -216,24 +215,27 @@ fn main() -> Result<(), StrError> {
         let rhs = Vector::filled(nrow, 1.0);
 
         // run a number of times
-        for i_run in 0..opt.nrun {
+        for _i_run in 0..opt.nrun {
             // allocate and configure the solver
             let mut solver = LinSolver::new(genie)?;
 
             // call preprocess
             if let Err(e) = solver.actual.preprocess(&coo, Some(params)) {
                 if is_memory_error(e) {
-                    stats.main.out_of_memory = true;
-                    if !opt.hide_json {
-                        println!("{}", stats.get_json());
-                    }
+                    finish_on_memory_error(&mut stats, opt.hide_json);
                     return Ok(());
                 }
                 return Err(e);
             }
 
             // solve linear system
-            solver.actual.solve(&mut x, &rhs, opt.verbose)?;
+            if let Err(e) = solver.actual.solve(&mut x, &rhs, opt.verbose) {
+                if is_memory_error(e) {
+                    finish_on_memory_error(&mut stats, opt.hide_json);
+                    return Ok(());
+                }
+                return Err(e);
+            }
 
             // update stats
             solver.actual.update_stats(&mut stats);
@@ -244,7 +246,7 @@ fn main() -> Result<(), StrError> {
             stats.time_nanoseconds.verify = sw.stop();
 
             // store largest errors
-            if i_run == 0 {
+            if stats.time_nanoseconds.initialize_array.len() == 1 {
                 stats.verify = verify;
             } else {
                 stats.verify = stats.verify.max_relative_error(&verify);
@@ -254,7 +256,7 @@ fn main() -> Result<(), StrError> {
             if stats.matrix.name == "bfwb62" {
                 let tolerance = match genie {
                     Genie::Mumps => 1e-10,
-                    Genie::Direct => 1e-10,
+                    Genie::Faer => 1e-10,
                     Genie::Iterative(_) => 1e-10,
                     Genie::Umfpack => 1e-10,
                 };
@@ -294,17 +296,20 @@ fn main() -> Result<(), StrError> {
             // call preprocess
             if let Err(e) = solver.actual.preprocess(&coo, Some(params)) {
                 if is_memory_error(e) {
-                    stats.main.out_of_memory = true;
-                    if !opt.hide_json {
-                        println!("{}", stats.get_json());
-                    }
+                    finish_on_memory_error(&mut stats, opt.hide_json);
                     return Ok(());
                 }
                 return Err(e);
             }
 
             // solve linear system
-            solver.actual.solve(&mut x, &rhs, opt.verbose)?;
+            if let Err(e) = solver.actual.solve(&mut x, &rhs, opt.verbose) {
+                if is_memory_error(e) {
+                    finish_on_memory_error(&mut stats, opt.hide_json);
+                    return Ok(());
+                }
+                return Err(e);
+            }
 
             // update stats
             solver.actual.update_stats(&mut stats);
@@ -330,6 +335,69 @@ fn main() -> Result<(), StrError> {
 
     // done
     Ok(())
+}
+
+/// Returns the proper display name stored in `stats.main.solver` for early OOM exits
+fn solver_display_name(genie: Genie) -> &'static str {
+    match genie {
+        Genie::Faer => "Faer",
+        Genie::Iterative(IterativeMethod::Cg) => "CG",
+        Genie::Iterative(IterativeMethod::BiCgStab) => "BiCGStab",
+        Genie::Iterative(IterativeMethod::Gmres) => "GMRES",
+        Genie::Mumps => "MUMPS",
+        Genie::Umfpack => "UMFPACK",
+    }
+}
+
+/// Clears partial run results and emits the OOM JSON when requested
+fn finish_on_memory_error(stats: &mut StatsLinSol, hide_json: bool) {
+    stats.clear_run_results();
+    stats.main.out_of_memory = true;
+    if !hide_json {
+        println!("{}", stats.get_json());
+    }
+}
+
+/// Parses `--faer-method` and `--faer-flop-ratio`
+fn parse_faer_method(method: Option<&str>, flop_ratio: Option<f64>) -> Result<FaerMethod, StrError> {
+    if let Some(threshold) = flop_ratio {
+        if !threshold.is_finite() || threshold < 0.0 {
+            return Err("faer-flop-ratio must be finite and nonnegative");
+        }
+    }
+    match method.map(|v| v.to_lowercase()).as_deref() {
+        None => {
+            if let Some(threshold) = flop_ratio {
+                if matches!(FaerMethod::default(), FaerMethod::Auto { .. }) {
+                    Ok(FaerMethod::Auto {
+                        flop_ratio_threshold: threshold,
+                    })
+                } else {
+                    Err("faer-flop-ratio requires --faer-method auto")
+                }
+            } else {
+                Ok(FaerMethod::default())
+            }
+        }
+        Some("auto") => Ok(FaerMethod::Auto {
+            flop_ratio_threshold: flop_ratio.unwrap_or(FaerMethod::DEFAULT_FLOP_RATIO_THRESHOLD),
+        }),
+        Some("simplicial") => {
+            if flop_ratio.is_some() {
+                Err("faer-flop-ratio requires --faer-method auto")
+            } else {
+                Ok(FaerMethod::Simplicial)
+            }
+        }
+        Some("supernodal") => {
+            if flop_ratio.is_some() {
+                Err("faer-flop-ratio requires --faer-method auto")
+            } else {
+                Ok(FaerMethod::Supernodal)
+            }
+        }
+        Some(_) => Err("faer-method must be one of: auto, simplicial, supernodal"),
+    }
 }
 
 /// Parses the `--iter-precond` option
@@ -429,4 +497,91 @@ fn get_bfwb62_correct_x() -> Vector {
         -1.75640594405328884e+04,
         -1.77959327708208002e+04,
     ])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{finish_on_memory_error, parse_faer_method, solver_display_name};
+    use russell_sparse::prelude::*;
+
+    #[test]
+    fn solver_display_name_matches_expected_casing() {
+        assert_eq!(solver_display_name(Genie::Faer), "Faer");
+        assert_eq!(solver_display_name(Genie::Iterative(IterativeMethod::Cg)), "CG");
+        assert_eq!(solver_display_name(Genie::Iterative(IterativeMethod::BiCgStab)), "BiCGStab");
+        assert_eq!(solver_display_name(Genie::Iterative(IterativeMethod::Gmres)), "GMRES");
+        assert_eq!(solver_display_name(Genie::Mumps), "MUMPS");
+        assert_eq!(solver_display_name(Genie::Umfpack), "UMFPACK");
+    }
+
+    #[test]
+    fn parse_faer_method_validates_inputs() {
+        assert_eq!(parse_faer_method(None, None).unwrap(), FaerMethod::default());
+        assert_eq!(
+            parse_faer_method(Some("auto"), None).unwrap(),
+            FaerMethod::Auto {
+                flop_ratio_threshold: FaerMethod::DEFAULT_FLOP_RATIO_THRESHOLD,
+            }
+        );
+        assert_eq!(
+            parse_faer_method(Some("AUTO"), Some(2.5)).unwrap(),
+            FaerMethod::Auto { flop_ratio_threshold: 2.5 }
+        );
+        assert_eq!(parse_faer_method(Some("simplicial"), None).unwrap(), FaerMethod::Simplicial);
+        assert_eq!(parse_faer_method(Some("supernodal"), None).unwrap(), FaerMethod::Supernodal);
+        assert_eq!(
+            parse_faer_method(Some("simplicial"), Some(1.0)).err(),
+            Some("faer-flop-ratio requires --faer-method auto")
+        );
+        assert_eq!(
+            parse_faer_method(Some("supernodal"), Some(1.0)).err(),
+            Some("faer-flop-ratio requires --faer-method auto")
+        );
+        assert_eq!(
+            parse_faer_method(Some("auto"), Some(-0.1)).err(),
+            Some("faer-flop-ratio must be finite and nonnegative")
+        );
+        assert_eq!(
+            parse_faer_method(Some("auto"), Some(f64::NAN)).err(),
+            Some("faer-flop-ratio must be finite and nonnegative")
+        );
+        assert_eq!(
+            parse_faer_method(Some("auto"), Some(f64::INFINITY)).err(),
+            Some("faer-flop-ratio must be finite and nonnegative")
+        );
+        assert_eq!(
+            parse_faer_method(Some("other"), None).err(),
+            Some("faer-method must be one of: auto, simplicial, supernodal")
+        );
+    }
+
+    #[test]
+    fn finish_on_memory_error_clears_partial_runs() {
+        let mut stats = StatsLinSol::new();
+        stats.main.solver = solver_display_name(Genie::Iterative(IterativeMethod::Gmres)).to_string();
+        stats.output.effective_faer_method = Some("Supernodal".to_string());
+        stats.output.faer_flop_ratio = Some(2.0);
+        stats.time_nanoseconds.initialize = 10;
+        stats.time_nanoseconds.preprocess = 20;
+        stats.time_nanoseconds.solve = 30;
+        stats.time_nanoseconds.total_ifs = 60;
+        stats.time_nanoseconds.initialize_array = vec![10];
+        stats.time_nanoseconds.preprocess_array = vec![20];
+        stats.time_nanoseconds.solve_array = vec![30];
+        stats.time_nanoseconds.total_ifs_array = vec![60];
+        stats.verify.relative_error = 1e-12;
+
+        finish_on_memory_error(&mut stats, true);
+
+        assert!(stats.main.out_of_memory);
+        assert_eq!(stats.main.solver, "GMRES");
+        assert!(stats.output.effective_faer_method.is_none());
+        assert!(stats.output.faer_flop_ratio.is_none());
+        assert_eq!(stats.time_nanoseconds.total_ifs, 0);
+        assert!(stats.time_nanoseconds.initialize_array.is_empty());
+        assert!(stats.time_nanoseconds.preprocess_array.is_empty());
+        assert!(stats.time_nanoseconds.solve_array.is_empty());
+        assert!(stats.time_nanoseconds.total_ifs_array.is_empty());
+        assert_eq!(stats.verify.relative_error, 0.0);
+    }
 }

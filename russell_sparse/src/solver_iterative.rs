@@ -5,7 +5,7 @@ use super::{
 use crate::StrError;
 use algebra_linear::sparse::amgcl::{
     AggregationParams, Amg, AmgParams, ChebyshevParams, Coarsening, CoarseningParams, Error, Ilu0Params, KrylovMethod, Parallelism,
-    SmoothedAggregationParams, Smoother, SolveReport, SolverParams, amg_setup, krylov_solve,
+    SmoothedAggregationParams, Smoother, SolveReport, SolverParams, amg_setup_owned, krylov_solve,
 };
 use russell_lab::{Stopwatch, Vector};
 
@@ -24,6 +24,10 @@ pub(crate) fn iterative_error(method: KrylovMethod, error: Error) -> StrError {
             KrylovMethod::BiCgStab | KrylovMethod::Gmres => "the iterative solver broke down",
         },
         Error::NonFinite => "the iterative solver encountered a non-finite value",
+        Error::OutOfMemory { .. } => {
+            eprintln!("{error}");
+            "Not enough memory for iterative solver"
+        }
     }
 }
 
@@ -317,6 +321,7 @@ impl LinSolTrait for SolverIterative {
                 threads: iterative.num_threads,
                 min_parallel_len: iterative.min_parallel_len,
             },
+            max_memory_mb: iterative.amg_max_memory_mb,
         };
         let setup_params = match iterative.preconditioner {
             Preconditioner::Identity => None,
@@ -329,20 +334,19 @@ impl LinSolTrait for SolverIterative {
                     threads: iterative.num_threads,
                     min_parallel_len: iterative.min_parallel_len,
                 },
+                max_memory_mb: iterative.amg_max_memory_mb,
                 ..AmgParams::default()
             }),
         };
 
-        // Convert to the CSR arrays required by the AMG setup.
+        // Convert to the CSR arrays required by the AMG setup and drop temporary scratch buffers.
         self.stopwatch.reset();
-        let csr = CsrMatrix::from_coo(mat)?;
-        let row_ptr: Vec<usize> = csr.get_row_pointers().iter().map(|&p| p as usize).collect();
-        let col_idx: Vec<usize> = csr.get_col_indices().iter().map(|&i| i as usize).collect();
+        let (row_ptr, col_idx, values) = CsrMatrix::from_coo(mat)?.into_parts()?;
         self.time_initialize_ns = self.stopwatch.stop();
 
         // Build the AMG hierarchy (or the identity preconditioner).
         self.stopwatch.reset();
-        let amg = amg_setup(&row_ptr, &col_idx, csr.get_values(), setup_params).map_err(|e| iterative_error(self.method, e))?;
+        let amg = amg_setup_owned(row_ptr, col_idx, values, setup_params).map_err(|e| iterative_error(self.method, e))?;
         self.time_preprocess_ns = self.stopwatch.stop();
 
         // Keep the values that describe this run, so update_stats does not have to guess.
@@ -474,10 +478,10 @@ mod tests {
         coo
     }
 
-    /// Solves the system with the Direct solver
-    fn direct_solution(coo: &CooMatrix, rhs: &Vector) -> Vector {
+    /// Solves the system with the Faer solver
+    fn faer_solution(coo: &CooMatrix, rhs: &Vector) -> Vector {
         let mut x = Vector::new(rhs.dim());
-        LinSolver::compute(Genie::Direct, &mut x, coo, rhs, None).unwrap();
+        LinSolver::compute(Genie::Faer, &mut x, coo, rhs, None).unwrap();
         x
     }
 
@@ -611,17 +615,17 @@ mod tests {
     }
 
     #[test]
-    fn cg_with_amg_matches_the_direct_solution() {
+    fn cg_with_amg_matches_the_faer_solution() {
         let n = 100;
         let coo = laplacian_1d(n);
         let rhs = Vector::filled(n, 1.0);
-        let x_direct = direct_solution(&coo, &rhs);
+        let x_faer = faer_solution(&coo, &rhs);
 
         let mut solver = SolverIterative::new(IterativeMethod::Cg).unwrap();
         solver.preprocess(&coo, None).unwrap();
         let mut x = Vector::new(n);
         solver.solve(&mut x, &rhs, false).unwrap();
-        vec_approx_eq(&x, x_direct.as_data(), 1e-8);
+        vec_approx_eq(&x, x_faer.as_data(), 1e-8);
 
         let report = solver.last_report.unwrap();
         assert!(report.converged);
@@ -642,17 +646,17 @@ mod tests {
     }
 
     #[test]
-    fn bicgstab_and_gmres_match_the_direct_solution() {
+    fn bicgstab_and_gmres_match_the_faer_solution() {
         let coo = nonsymmetric_5x5();
         let rhs = Vector::from(&[4.0, 4.0, 5.0, 6.0, 10.0]);
-        let x_direct = direct_solution(&coo, &rhs);
+        let x_faer = faer_solution(&coo, &rhs);
 
         for method in [IterativeMethod::BiCgStab, IterativeMethod::Gmres] {
             let mut solver = SolverIterative::new(method).unwrap();
             solver.preprocess(&coo, None).unwrap();
             let mut x = Vector::new(5);
             solver.solve(&mut x, &rhs, false).unwrap();
-            vec_approx_eq(&x, x_direct.as_data(), 1e-8);
+            vec_approx_eq(&x, x_faer.as_data(), 1e-8);
             assert!(solver.last_report.unwrap().converged);
 
             let mut stats = StatsLinSol::new();
@@ -671,13 +675,13 @@ mod tests {
         let n = 100;
         let coo = laplacian_1d(n);
         let rhs = Vector::filled(n, 1.0);
-        let x_direct = direct_solution(&coo, &rhs);
+        let x_faer = faer_solution(&coo, &rhs);
 
         let mut solver_amg = SolverIterative::new(IterativeMethod::Cg).unwrap();
         solver_amg.preprocess(&coo, None).unwrap();
         let mut x = Vector::new(n);
         solver_amg.solve(&mut x, &rhs, false).unwrap();
-        vec_approx_eq(&x, x_direct.as_data(), 1e-8);
+        vec_approx_eq(&x, x_faer.as_data(), 1e-8);
         let iterations_amg = solver_amg.last_report.unwrap().iterations;
 
         let mut params = LinSolParams::new();
@@ -686,7 +690,7 @@ mod tests {
         solver_identity.preprocess(&coo, Some(params)).unwrap();
         let mut x = Vector::new(n);
         solver_identity.solve(&mut x, &rhs, false).unwrap();
-        vec_approx_eq(&x, x_direct.as_data(), 1e-8);
+        vec_approx_eq(&x, x_faer.as_data(), 1e-8);
         let iterations_identity = solver_identity.last_report.unwrap().iterations;
 
         assert!(iterations_identity > iterations_amg);
@@ -713,11 +717,11 @@ mod tests {
         // first matrix
         let coo = laplacian_1d(6);
         let rhs = Vector::filled(6, 1.0);
-        let x_direct = direct_solution(&coo, &rhs);
+        let x_faer = faer_solution(&coo, &rhs);
         solver.preprocess(&coo, None).unwrap();
         let mut x = Vector::new(6);
         solver.solve(&mut x, &rhs, false).unwrap();
-        vec_approx_eq(&x, x_direct.as_data(), 1e-8);
+        vec_approx_eq(&x, x_faer.as_data(), 1e-8);
 
         // same structure, new values
         let mut other = CooMatrix::new(6, 6, coo.nnz, Sym::YesFull).unwrap();
@@ -727,30 +731,30 @@ mod tests {
             let value = if i == j { 3.0 } else { coo.values[k] };
             other.put(i, j, value).unwrap();
         }
-        let x_direct = direct_solution(&other, &rhs);
+        let x_faer = faer_solution(&other, &rhs);
         solver.preprocess(&other, None).unwrap();
         solver.solve(&mut x, &rhs, false).unwrap();
-        vec_approx_eq(&x, x_direct.as_data(), 1e-8);
+        vec_approx_eq(&x, x_faer.as_data(), 1e-8);
 
         // different structure (dimension and pattern)
         let coo = laplacian_1d(9);
         let rhs = Vector::filled(9, 1.0);
-        let x_direct = direct_solution(&coo, &rhs);
+        let x_faer = faer_solution(&coo, &rhs);
         solver.preprocess(&coo, None).unwrap();
         let mut x = Vector::new(9);
         solver.solve(&mut x, &rhs, false).unwrap();
-        vec_approx_eq(&x, x_direct.as_data(), 1e-8);
+        vec_approx_eq(&x, x_faer.as_data(), 1e-8);
     }
 
     #[test]
     fn iterative_genie_dispatches_through_linsolver() {
         let coo = laplacian_1d(10);
         let rhs = Vector::filled(10, 1.0);
-        let x_direct = direct_solution(&coo, &rhs);
+        let x_faer = faer_solution(&coo, &rhs);
         for method in [IterativeMethod::Cg, IterativeMethod::BiCgStab, IterativeMethod::Gmres] {
             let mut x = Vector::new(10);
             LinSolver::compute(Genie::Iterative(method), &mut x, &coo, &rhs, None).unwrap();
-            vec_approx_eq(&x, x_direct.as_data(), 1e-8);
+            vec_approx_eq(&x, x_faer.as_data(), 1e-8);
         }
     }
 
@@ -801,6 +805,50 @@ mod tests {
             iterative_error(KrylovMethod::Cg, Error::NonFinite),
             "the iterative solver encountered a non-finite value"
         );
+        let oom_msg = iterative_error(
+            KrylovMethod::Cg,
+            Error::OutOfMemory {
+                needed_mb: 12,
+                budget_mb: 8,
+                level: Some(1),
+            },
+        );
+        assert_eq!(oom_msg, "Not enough memory for iterative solver");
+        assert!(crate::is_memory_error(oom_msg));
+    }
+
+    #[test]
+    fn amg_max_memory_mb_enforces_budget_in_preprocess_and_solve() {
+        // 40,000-row tridiagonal matrix: > 1 MiB in AMG setup and > 4 MiB in GMRES(30) workspace.
+        let n = 40_000;
+        let coo = laplacian_1d(n);
+        let rhs = Vector::filled(n, 1.0);
+        let mut x = Vector::new(n);
+
+        // 1) Budget exceeded during AMG preprocess
+        let mut params = LinSolParams::new();
+        params.iterative.amg_max_memory_mb = 1;
+        let mut solver = SolverIterative::new(IterativeMethod::Cg).unwrap();
+        let err = solver.preprocess(&coo, Some(params)).unwrap_err();
+        assert_eq!(err, "Not enough memory for iterative solver");
+        assert!(crate::is_memory_error(err));
+
+        // 2) Budget passed through SolverParams triggers OOM during GMRES solve even with Identity preconditioner
+        let mut solve_oom_params = LinSolParams::new();
+        solve_oom_params.iterative.preconditioner = Preconditioner::Identity;
+        solve_oom_params.iterative.amg_max_memory_mb = 4;
+        let mut gmres = SolverIterative::new(IterativeMethod::Gmres).unwrap();
+        gmres.preprocess(&coo, Some(solve_oom_params)).unwrap();
+        let err = gmres.solve(&mut x, &rhs, false).unwrap_err();
+        assert_eq!(err, "Not enough memory for iterative solver");
+        assert!(crate::is_memory_error(err));
+
+        // 3) Lifting the budget succeeds
+        let mut ok_params = LinSolParams::new();
+        ok_params.iterative.amg_max_memory_mb = 64;
+        let mut solver_ok = SolverIterative::new(IterativeMethod::Cg).unwrap();
+        solver_ok.preprocess(&coo, Some(ok_params)).unwrap();
+        solver_ok.solve(&mut x, &rhs, false).unwrap();
     }
 
     #[test]

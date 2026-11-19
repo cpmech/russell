@@ -6,7 +6,7 @@ fn test_solver(genie: Genie) {
     println!("----------------------------------------------------------------------\n");
     match genie {
         Genie::Mumps => println!("Testing MUMPS solver\n"),
-        Genie::Direct => println!("Testing Direct solver\n"),
+        Genie::Faer => println!("Testing Faer solver\n"),
         Genie::Iterative(_) => println!("Testing iterative solver\n"),
         Genie::Umfpack => println!("Testing UMFPACK solver\n"),
     }
@@ -49,7 +49,7 @@ fn test_complex_solver(genie: Genie) {
     println!("----------------------------------------------------------------------\n");
     match genie {
         Genie::Mumps => println!("Testing Complex MUMPS solver\n"),
-        Genie::Direct => println!("Testing Complex Direct solver\n"),
+        Genie::Faer => println!("Testing Complex Faer solver\n"),
         Genie::Iterative(_) => {
             println!("Skipping the complex iterative solver\n");
             return;
@@ -67,7 +67,7 @@ fn test_complex_solver(genie: Genie) {
 
     let coo = match genie {
         Genie::Mumps => Samples::complex_symmetric_3x3_lower().0,
-        Genie::Direct => Samples::complex_symmetric_3x3_full().0,
+        Genie::Faer => Samples::complex_symmetric_3x3_full().0,
         Genie::Iterative(_) => unreachable!("the complex iterative solver is not supported"),
         Genie::Umfpack => Samples::complex_symmetric_3x3_full().0,
     };
@@ -99,7 +99,7 @@ fn test_solver_singular(genie: Genie) {
     println!("----------------------------------------------------------------------\n");
     match genie {
         Genie::Mumps => println!("Testing MUMPS solver (singular matrix)\n"),
-        Genie::Direct => println!("Testing Direct solver (singular matrix)\n"),
+        Genie::Faer => println!("Testing Faer solver (singular matrix)\n"),
         Genie::Iterative(_) => println!("Testing iterative solver (singular matrix)\n"),
         Genie::Umfpack => println!("Testing UMFPACK solver (singular matrix)\n"),
     }
@@ -132,17 +132,17 @@ fn test_solver_singular(genie: Genie) {
 fn main() {
     // real
     test_solver(Genie::Mumps);
-    test_solver(Genie::Direct);
+    test_solver(Genie::Faer);
     test_solver(Genie::Umfpack);
 
     // complex
     test_complex_solver(Genie::Mumps);
-    test_complex_solver(Genie::Direct);
+    test_complex_solver(Genie::Faer);
     test_complex_solver(Genie::Umfpack);
 
     // singular real
     test_solver_singular(Genie::Mumps);
-    test_solver_singular(Genie::Direct);
+    test_solver_singular(Genie::Faer);
     test_solver_singular(Genie::Umfpack);
 
     println!("----------------------------------------------------------------------\n");

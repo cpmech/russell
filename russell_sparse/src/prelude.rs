@@ -5,18 +5,18 @@
 
 pub use crate::aliases::*;
 pub use crate::complex_lin_solver::*;
-pub use crate::complex_solver_direct::ComplexSolverDirect;
+pub use crate::complex_solver_faer::ComplexSolverFaer;
 #[cfg(feature = "umfpack")]
 pub use crate::complex_solver_umfpack::ComplexSolverUMFPACK;
 pub use crate::coo_matrix::NumCooMatrix;
 pub use crate::csc_matrix::NumCscMatrix;
 pub use crate::csr_matrix::NumCsrMatrix;
 pub use crate::enums::*;
-pub use crate::lin_sol_params::{AmgCoarsening, AmgSmoother, DirectMethod, IterativeParams, LinSolParams, Preconditioner};
+pub use crate::lin_sol_params::{AmgCoarsening, AmgSmoother, FaerMethod, IterativeParams, LinSolParams, Preconditioner};
 pub use crate::lin_solver::*;
 pub use crate::numerical_jacobian::numerical_jacobian;
 pub use crate::read_matrix_market;
-pub use crate::solver_direct::SolverDirect;
+pub use crate::solver_faer::SolverFaer;
 pub use crate::solver_iterative::SolverIterative;
 #[cfg(feature = "umfpack")]
 pub use crate::solver_umfpack::SolverUMFPACK;

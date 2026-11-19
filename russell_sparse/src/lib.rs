@@ -2,10 +2,10 @@
 
 //! Russell - Rust Scientific Library
 //!
-//! `russell_sparse`: Solvers for large sparse linear systems, with a pure-Rust Direct backend and optional MUMPS and UMFPACK
+//! `russell_sparse`: Solvers for large sparse linear systems, with a pure-Rust Faer backend and optional MUMPS and UMFPACK
 //!
 //! **The default build needs no external library:** the sparse solver is pure Rust
-//! (the Direct backend), so the crate builds on every platform, WebAssembly
+//! (the Faer backend), so the crate builds on every platform, WebAssembly
 //! included. The optional `open_blas` and `intel_mkl` features accelerate the dense
 //! kernels, while `umfpack` and `mumps` add the external sparse solvers; see the
 //! [Installation Instructions on the GitHub Repository](https://github.com/cpmech/russell)
@@ -36,7 +36,7 @@
 //!
 //! We call the actual linear system solver implementations [Genie] because they work like "magic" after being "wrapped" via a C-interface. Note that these fantastic solvers are implemented in Fortran and C. You may easily access the linear solvers directly via the following structures:
 //!
-//! * [SolverDirect] -- pure-Rust LU factorization from `algebra_linear` (always available)
+//! * [SolverFaer] -- pure-Rust LU factorization from `algebra_linear` (always available)
 //! * [SolverIterative] -- pure-Rust Krylov solvers with algebraic multigrid (always available)
 //! * **SolverMUMPS** (optional) -- thin wrapper to the MUMPS solver
 //! * `SolverUMFPACK` (optional, behind the `umfpack` feature) -- thin wrapper to the UMFPACK solver
@@ -116,7 +116,7 @@
 //! }
 //! ```
 //!
-//! ## Solving a tiny sparse linear system using LinSolver (Direct)
+//! ## Solving a tiny sparse linear system using LinSolver (Faer)
 //!
 //! ```
 //! use russell_lab::{vec_approx_eq, Vector};
@@ -129,7 +129,7 @@
 //!     let nnz = 5; // number of non-zero values
 //!
 //!     // allocate the linear solver
-//!     let mut solver = LinSolver::new(Genie::Direct)?;
+//!     let mut solver = LinSolver::new(Genie::Faer)?;
 //!
 //!     // allocate the coefficient matrix
 //!     let mut coo = CooMatrix::new(ndim, ndim, nnz, Sym::No)?;
@@ -170,7 +170,7 @@
 //! }
 //! ```
 //!
-//! ## Solving a tiny sparse linear system using SolverDirect
+//! ## Solving a tiny sparse linear system using SolverFaer
 //!
 //! ```
 //! use russell_lab::{vec_approx_eq, Vector};
@@ -183,7 +183,7 @@
 //!     let nnz = 13; // number of non-zero values, including duplicates
 //!
 //!     // allocate solver
-//!     let mut solver = SolverDirect::new()?;
+//!     let mut solver = SolverFaer::new()?;
 //!
 //!     // allocate the coefficient matrix
 //!     // ┌                ┐
@@ -271,7 +271,7 @@
 //! }
 //! ```
 //!
-//! ## Solving a tiny complex sparse linear system using ComplexLinSolver (Direct)
+//! ## Solving a tiny complex sparse linear system using ComplexLinSolver (Faer)
 //!
 //! ```
 //! use russell_lab::{complex_vec_approx_eq, cpx, ComplexVector};
@@ -282,7 +282,7 @@
 //!     let ndim = 3;
 //!     let nnz = 7;
 //!
-//!     let mut solver = ComplexLinSolver::new(Genie::Direct)?;
+//!     let mut solver = ComplexLinSolver::new(Genie::Faer)?;
 //!
 //!     // allocate the coefficient matrix
 //!     //   ┌                      ┐
@@ -312,7 +312,7 @@
 //! }
 //! ```
 //!
-//! ## Solving a tiny complex sparse linear system using ComplexSolverDirect
+//! ## Solving a tiny complex sparse linear system using ComplexSolverFaer
 //!
 //! ```
 //! use russell_lab::{complex_vec_approx_eq, cpx, ComplexVector};
@@ -323,7 +323,7 @@
 //!     let ndim = 5;
 //!     let nnz = 13;
 //!
-//!     let mut solver = ComplexSolverDirect::new()?;
+//!     let mut solver = ComplexSolverFaer::new()?;
 //!
 //!     // allocate the coefficient matrix
 //!     // ┌                                              ┐
@@ -385,7 +385,7 @@ pub type StrError = &'static str;
 mod aliases;
 mod complex_coo_matrix;
 mod complex_lin_solver;
-mod complex_solver_direct;
+mod complex_solver_faer;
 #[cfg(feature = "umfpack")]
 mod complex_solver_umfpack;
 #[cfg_attr(not(any(feature = "umfpack", feature = "mumps")), allow(dead_code))]
@@ -400,7 +400,7 @@ mod numerical_jacobian;
 pub mod prelude;
 mod read_matrix_market;
 mod samples;
-mod solver_direct;
+mod solver_faer;
 mod solver_iterative;
 #[cfg(feature = "umfpack")]
 mod solver_umfpack;
@@ -411,7 +411,7 @@ mod write_matrix_market;
 
 pub use aliases::*;
 pub use complex_lin_solver::*;
-pub use complex_solver_direct::*;
+pub use complex_solver_faer::*;
 #[cfg(feature = "umfpack")]
 pub use complex_solver_umfpack::*;
 use constants::*;
@@ -424,7 +424,7 @@ pub use lin_solver::*;
 pub use numerical_jacobian::*;
 pub use read_matrix_market::*;
 pub use samples::*;
-pub use solver_direct::*;
+pub use solver_faer::*;
 pub use solver_iterative::*;
 #[cfg(feature = "umfpack")]
 pub use solver_umfpack::*;

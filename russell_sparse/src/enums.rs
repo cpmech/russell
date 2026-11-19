@@ -17,10 +17,10 @@ pub enum IterativeMethod {
 /// Specifies the underlying library that does all the magic
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub enum Genie {
-    /// Selects the pure-Rust direct solver
+    /// Selects the pure-Rust Faer LU solver
     ///
     /// Reference: <https://github.com/cpmech/algebra_linear>
-    Direct,
+    Faer,
 
     /// Selects a pure-Rust iterative solver with algebraic multigrid preconditioning
     ///
@@ -91,84 +91,84 @@ pub enum Ordering {
     /// Ordering using the approximate minimum degree
     ///
     /// * MUMPS: ✅ available
-    /// * Direct: ❌ unavailable; defaults to automatic
+    /// * Faer: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ✅ available
     Amd,
 
     /// Ordering using the approximate minimum fill-in
     ///
     /// * MUMPS: ✅ available
-    /// * Direct: ❌ unavailable; defaults to automatic
+    /// * Faer: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     Amf,
 
     /// Automatic ordering method selection (default)
     ///
     /// * MUMPS: ✅ available
-    /// * Direct: ✅ available (Colamd)
+    /// * Faer: ✅ available (Colamd)
     /// * UMFPACK: ✅ available
     Auto,
 
     /// Try three methods and take the best
     ///
     /// * MUMPS: ❌ unavailable; defaults to automatic
-    /// * Direct: ❌ unavailable; defaults to automatic
+    /// * Faer: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ✅ available
     Best,
 
     /// Block triangular form (BTF) combined with COLAMD. Supports global pivoting
     ///
     /// * MUMPS: ❌ unavailable; defaults to automatic
-    /// * Direct: ❌ unavailable; defaults to automatic
+    /// * Faer: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     BtfColamd,
 
     /// Use Amd for symmetric, Colamd for unsymmetric, or Metis
     ///
     /// * MUMPS: ❌ unavailable; defaults to automatic
-    /// * Direct: ❌ unavailable; defaults to automatic
+    /// * Faer: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ✅ available
     Cholmod,
 
     /// Use the column approximate minimum degree ordering algorithm
     ///
     /// * MUMPS: ❌ unavailable; defaults to automatic
-    /// * Direct: ✅ available
+    /// * Faer: ✅ available
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     Colamd,
 
     /// Ordering by Karpis & Kumar from the University of Minnesota
     ///
     /// * MUMPS: ✅ available
-    /// * Direct: ❌ unavailable; defaults to automatic
+    /// * Faer: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ✅ available
     Metis,
 
     /// The matrix is factorized as-is
     ///
     /// * MUMPS: ❌ unavailable; defaults to automatic
-    /// * Direct: ❌ unavailable; defaults to automatic
+    /// * Faer: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ✅ available
     No,
 
     /// Ordering by Schulze from the University of Paderborn
     ///
     /// * MUMPS: ✅ available
-    /// * Direct: ❌ unavailable; defaults to automatic
+    /// * Faer: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     Pord,
 
     /// Ordering using the automatic quasi-dense row detection
     ///
     /// * MUMPS: ✅ available
-    /// * Direct: ❌ unavailable; defaults to automatic
+    /// * Faer: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     Qamd,
 
     /// Ordering using the Scotch package
     ///
     /// * MUMPS: ✅ available
-    /// * Direct: ❌ unavailable; defaults to automatic
+    /// * Faer: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     Scotch,
 }
@@ -179,63 +179,63 @@ pub enum Scaling {
     /// Automatic scaling method selection (default)
     ///
     /// * MUMPS: ✅ available
-    /// * Direct: ✅ available (none)
+    /// * Faer: ✅ available (none)
     /// * UMFPACK: ✅ available (defaults to sum-of-row scaling)
     Auto,
 
     /// Column scaling
     ///
     /// * MUMPS: ✅ available
-    /// * Direct: ❌ unavailable; defaults to automatic
+    /// * Faer: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     Column,
 
     /// Diagonal scaling
     ///
     /// * MUMPS: ✅ available
-    /// * Direct: ❌ unavailable; defaults to automatic
+    /// * Faer: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     Diagonal,
 
     /// Divide each row by the max absolute value in the row
     ///
     /// * MUMPS: ❌ unavailable; defaults to automatic
-    /// * Direct: ❌ unavailable; defaults to automatic
+    /// * Faer: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ✅ available
     Max,
 
     /// No scaling applied or computed
     ///
     /// * MUMPS: ✅ available
-    /// * Direct: ✅ available
+    /// * Faer: ✅ available
     /// * UMFPACK: ✅ available
     No,
 
     /// Row and column scaling based on infinite row/column norms
     ///
     /// * MUMPS: ✅ available
-    /// * Direct: ❌ unavailable; defaults to automatic
+    /// * Faer: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     RowCol,
 
     /// Simultaneous row and column iterative scaling
     ///
     /// * MUMPS: ✅ available
-    /// * Direct: ❌ unavailable; defaults to automatic
+    /// * Faer: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     RowColIter,
 
     /// Similar to RowColIter but more rigorous and expensive to compute
     ///
     /// * MUMPS: ✅ available
-    /// * Direct: ❌ unavailable; defaults to automatic
+    /// * Faer: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     RowColRig,
 
     /// Divide each row by the sum of the absolute values in the row
     ///
     /// * MUMPS: ❌ unavailable; defaults to automatic
-    /// * Direct: ❌ unavailable; defaults to automatic
+    /// * Faer: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ✅ available (also the default)
     Sum,
 }
@@ -243,29 +243,29 @@ pub enum Scaling {
 impl Genie {
     /// Returns the Genie by name
     ///
-    /// The recognized names are `direct`, `cg`, `bicgstab`, `gmres`, `mumps`,
+    /// The recognized names are `faer`, `cg`, `bicgstab`, `gmres`, `mumps`,
     /// and `umfpack`, compared case-insensitively. Any other name yields an
     /// error.
     ///
     /// # Output
     ///
     /// Returns the [`Genie`] matching `genie`, or
-    /// `"genie must be one of: direct, cg, bicgstab, gmres, mumps, umfpack"`.
+    /// `"genie must be one of: faer, cg, bicgstab, gmres, mumps, umfpack"`.
     pub fn from(genie: &str) -> Result<Self, StrError> {
         match genie.to_lowercase().as_str() {
-            "direct" => Ok(Genie::Direct),
+            "faer" => Ok(Genie::Faer),
             "cg" => Ok(Genie::Iterative(IterativeMethod::Cg)),
             "bicgstab" => Ok(Genie::Iterative(IterativeMethod::BiCgStab)),
             "gmres" => Ok(Genie::Iterative(IterativeMethod::Gmres)),
             "mumps" => Ok(Genie::Mumps),
             "umfpack" => Ok(Genie::Umfpack),
-            _ => Err("genie must be one of: direct, cg, bicgstab, gmres, mumps, umfpack"),
+            _ => Err("genie must be one of: faer, cg, bicgstab, gmres, mumps, umfpack"),
         }
     }
 
     /// Tells whether this solver is available in the current build
     ///
-    /// The Direct and Iterative solvers are pure Rust and always available. The
+    /// The Faer and Iterative solvers are pure Rust and always available. The
     /// other two are compiled in only when the crate feature of the same name
     /// is enabled:
     ///
@@ -277,7 +277,7 @@ impl Genie {
     /// an error naming the feature to enable.
     pub fn is_available(&self) -> bool {
         match self {
-            Genie::Direct => true,
+            Genie::Faer => true,
             Genie::Iterative(_) => true,
             Genie::Mumps => cfg!(feature = "mumps"),
             Genie::Umfpack => cfg!(feature = "umfpack"),
@@ -288,7 +288,7 @@ impl Genie {
     pub fn get_sym(&self, symmetric: bool) -> Sym {
         if symmetric {
             match self {
-                Genie::Direct => Sym::YesFull,
+                Genie::Faer => Sym::YesFull,
                 Genie::Iterative(_) => Sym::YesFull,
                 Genie::Mumps => Sym::YesLower,
                 Genie::Umfpack => Sym::YesFull,
@@ -307,7 +307,7 @@ impl Genie {
 impl std::fmt::Display for Genie {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Genie::Direct => write!(f, "direct"),
+            Genie::Faer => write!(f, "faer"),
             Genie::Iterative(IterativeMethod::Cg) => write!(f, "cg"),
             Genie::Iterative(IterativeMethod::BiCgStab) => write!(f, "bicgstab"),
             Genie::Iterative(IterativeMethod::Gmres) => write!(f, "gmres"),
@@ -490,27 +490,29 @@ mod tests {
 
     #[test]
     fn genie_functions_work() {
-        assert_eq!(Genie::from("direct"), Ok(Genie::Direct));
+        assert_eq!(Genie::from("faer"), Ok(Genie::Faer));
         assert_eq!(Genie::from("cg"), Ok(Genie::Iterative(IterativeMethod::Cg)));
         assert_eq!(Genie::from("bicgstab"), Ok(Genie::Iterative(IterativeMethod::BiCgStab)));
         assert_eq!(Genie::from("gmres"), Ok(Genie::Iterative(IterativeMethod::Gmres)));
         assert_eq!(Genie::from("mumps"), Ok(Genie::Mumps));
         assert_eq!(Genie::from("umfpack"), Ok(Genie::Umfpack));
 
-        assert_eq!(Genie::from("Direct"), Ok(Genie::Direct));
+        assert_eq!(Genie::from("Faer"), Ok(Genie::Faer));
         assert_eq!(Genie::from("BiCgStab"), Ok(Genie::Iterative(IterativeMethod::BiCgStab)));
         assert_eq!(Genie::from("GMRES"), Ok(Genie::Iterative(IterativeMethod::Gmres)));
         assert_eq!(Genie::from("Mumps"), Ok(Genie::Mumps));
         assert_eq!(Genie::from("Umfpack"), Ok(Genie::Umfpack));
 
-        // unknown names are errors; there is no fallback and no aliases
-        let message = "genie must be one of: direct, cg, bicgstab, gmres, mumps, umfpack";
+        // unknown names (including the old "direct" name) are errors; there is no fallback and no aliases
+        let message = "genie must be one of: faer, cg, bicgstab, gmres, mumps, umfpack";
+        assert_eq!(Genie::from("direct"), Err(message));
+        assert_eq!(Genie::from("Direct"), Err(message));
         assert_eq!(Genie::from("native"), Err(message));
         assert_eq!(Genie::from("iterative"), Err(message));
         assert_eq!(Genie::from("blah-blah-blah"), Err(message));
 
-        let genie = Genie::Direct;
-        assert_eq!(genie.to_string(), "direct");
+        let genie = Genie::Faer;
+        assert_eq!(genie.to_string(), "faer");
         assert_eq!(genie.get_sym(false), Sym::No);
         assert_eq!(genie.get_sym(true), Sym::YesFull);
         assert!(!genie.is_iterative());
@@ -550,13 +552,14 @@ mod tests {
         let from_json: Genie = serde_json::from_str(&json).unwrap();
         assert_eq!(from_json, genie);
 
-        // the old name is not an alias for Direct
+        // the old names are not aliases for Faer
         assert!(serde_json::from_str::<Genie>("\"Native\"").is_err());
+        assert!(serde_json::from_str::<Genie>("\"Direct\"").is_err());
     }
 
     #[test]
     fn genie_availability_matches_the_features() {
-        assert!(Genie::Direct.is_available());
+        assert!(Genie::Faer.is_available());
         assert!(Genie::Iterative(IterativeMethod::Cg).is_available());
         assert!(Genie::Iterative(IterativeMethod::BiCgStab).is_available());
         assert!(Genie::Iterative(IterativeMethod::Gmres).is_available());

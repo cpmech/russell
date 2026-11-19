@@ -89,22 +89,6 @@ where
     /// ```
     #[serde(bound(deserialize = "Vec<T>: Deserialize<'de>"))]
     pub(crate) values: Vec<T>,
-
-    /// Temporary row form (for COO to CSR conversion)
-    #[serde(skip)]
-    temp_rp: Vec<i32>,
-
-    /// Temporary row form (for COO to CSR conversion)
-    #[serde(skip)]
-    temp_rjx: Vec<(i32, T)>,
-
-    /// Temporary row count (for COO to CSR conversion)
-    #[serde(skip)]
-    temp_rc: Vec<usize>,
-
-    /// Temporary workspace (for COO to CSR conversion)
-    #[serde(skip)]
-    temp_w: Vec<i32>,
 }
 
 impl<T> NumCsrMatrix<T>
@@ -245,10 +229,6 @@ where
             row_pointers,
             col_indices,
             values,
-            temp_rp: Vec::new(),
-            temp_rjx: Vec::new(),
-            temp_rc: Vec::new(),
-            temp_w: Vec::new(),
         })
     }
 
@@ -333,10 +313,6 @@ where
             row_pointers: vec![0; coo.nrow + 1],
             col_indices: vec![0; coo.nnz],
             values: vec![T::zero(); coo.nnz],
-            temp_rp: Vec::new(),
-            temp_rjx: Vec::new(),
-            temp_rc: Vec::new(),
-            temp_w: Vec::new(),
         };
         csr.update_from_coo(coo).unwrap();
         Ok(csr)
@@ -382,21 +358,11 @@ where
         let bj = &mut self.col_indices;
         let bx = &mut self.values;
 
-        // allocate workspaces and get an access to them
-        if self.temp_w.is_empty() {
-            self.temp_rp = vec![0_i32; nrow + 1]; // temporary row form
-            self.temp_rjx = vec![(0_i32, T::zero()); nnz]; // temporary row form
-            self.temp_rc = vec![0_usize; nrow]; // temporary row count
-            self.temp_w = vec![0_i32; ndim]; // temporary workspace
-        } else {
-            for i in 0..nrow {
-                self.temp_w[i] = 0;
-            }
-        }
-        let rp = &mut self.temp_rp;
-        let rjx = &mut self.temp_rjx;
-        let rc = &mut self.temp_rc;
-        let w = &mut self.temp_w;
+        // allocate temporary workspaces locally so they are freed on return
+        let mut rp = vec![0_i32; nrow + 1];
+        let mut rjx = vec![(0_i32, T::zero()); nnz];
+        let mut rc = vec![0_usize; nrow];
+        let mut w = vec![0_i32; ndim];
 
         // count the entries in each row (also counting duplicates)
         // use w as workspace for row counts (including duplicates)
@@ -502,10 +468,6 @@ where
             row_pointers: vec![0; nrow + 1],
             col_indices: vec![0; nnz],
             values: vec![T::zero(); nnz],
-            temp_rp: Vec::new(),
-            temp_rjx: Vec::new(),
-            temp_rc: Vec::new(),
-            temp_w: Vec::new(),
         };
 
         // access the CSR data
@@ -797,6 +759,30 @@ where
     pub fn get_values_mut(&mut self) -> &mut [T] {
         let nnz = self.row_pointers[self.nrow] as usize;
         &mut self.values[..nnz]
+    }
+
+    /// Consumes this CSR matrix and returns `(row_pointers, col_indices, values)` widened to `usize`
+    ///
+    /// Truncates `col_indices` and `values` to `nnz = row_pointers[nrow]` so any duplicate
+    /// slack from [`NumCsrMatrix::from_coo`] is dropped before handing ownership to a solver.
+    pub fn into_parts(self) -> Result<(Vec<usize>, Vec<usize>, Vec<T>), StrError> {
+        let &raw_nnz = self.row_pointers.get(self.nrow).ok_or("row_pointers.len() must be = nrow + 1")?;
+        let nnz = usize::try_from(raw_nnz).map_err(|_| "row pointers must be ≥ 0")?;
+        if self.col_indices.len() < nnz || self.values.len() < nnz {
+            return Err("col_indices and values lengths must be ≥ nnz");
+        }
+        let mut row_ptr = Vec::with_capacity(self.row_pointers.len());
+        for p in self.row_pointers {
+            row_ptr.push(usize::try_from(p).map_err(|_| "row pointers must be ≥ 0")?);
+        }
+        let mut col_idx = Vec::with_capacity(nnz);
+        for j in self.col_indices.into_iter().take(nnz) {
+            col_idx.push(usize::try_from(j).map_err(|_| "column indices must be ≥ 0")?);
+        }
+        let mut values = self.values;
+        values.truncate(nnz);
+        values.shrink_to_fit();
+        Ok((row_ptr, col_idx, values))
     }
 }
 
@@ -1234,10 +1220,6 @@ mod tests {
             values: vec![10.0, 20.0],
             col_indices: vec![0, 1],
             row_pointers: vec![0, 2],
-            temp_rp: Vec::new(),
-            temp_rjx: Vec::new(),
-            temp_rc: Vec::new(),
-            temp_w: Vec::new(),
         };
         let x = csr.get_values_mut();
         x.reverse();
@@ -1248,12 +1230,6 @@ mod tests {
     fn derive_methods_work() {
         let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
         let csr = NumCsrMatrix::<f64>::from_coo(&coo).unwrap();
-        let nrow = coo.nrow;
-        let nnz = coo.nnz; // it must be COO nnz because of (removed) duplicates
-        assert_eq!(csr.temp_rp.len(), nrow + 1);
-        assert_eq!(csr.temp_rjx.len(), nnz);
-        assert_eq!(csr.temp_rc.len(), nrow);
-        assert_eq!(csr.temp_w.len(), nrow);
         let mut clone = csr.clone();
         clone.values[0] *= 2.0;
         assert_eq!(csr.values[0], 2.0);
@@ -1271,9 +1247,51 @@ mod tests {
         assert_eq!(from_json.row_pointers, csr.row_pointers);
         assert_eq!(from_json.col_indices, csr.col_indices);
         assert_eq!(from_json.values, csr.values);
-        assert_eq!(from_json.temp_rp.len(), 0);
-        assert_eq!(from_json.temp_rjx.len(), 0);
-        assert_eq!(from_json.temp_rc.len(), 0);
-        assert_eq!(from_json.temp_w.len(), 0);
+    }
+
+    #[test]
+    fn into_parts_widens_and_truncates_duplicates() {
+        let (coo, _, csr_correct, _) = Samples::umfpack_unsymmetric_5x5();
+        // COO has 13 entries with 1 duplicate -> deduplicated nnz = 12
+        let csr = NumCsrMatrix::<f64>::from_coo(&coo).unwrap();
+        let (row_ptr, col_idx, values) = csr.into_parts().unwrap();
+        assert_eq!(row_ptr, vec![0, 2, 5, 8, 9, 12]);
+        assert_eq!(col_idx.len(), 12);
+        assert_eq!(values.len(), 12);
+        assert_eq!(col_idx, csr_correct.col_indices.iter().map(|&j| j as usize).collect::<Vec<_>>());
+        array_approx_eq(&values, &csr_correct.values, 1e-15);
+    }
+
+    #[test]
+    fn into_parts_rejects_negative_indices_and_short_arrays() {
+        let bad_rp = NumCsrMatrix::<f64> {
+            symmetric: Sym::No,
+            nrow: 1,
+            ncol: 1,
+            row_pointers: vec![-1, 1],
+            col_indices: vec![0],
+            values: vec![1.0],
+        };
+        assert_eq!(bad_rp.into_parts().err(), Some("row pointers must be ≥ 0"));
+
+        let bad_col = NumCsrMatrix::<f64> {
+            symmetric: Sym::No,
+            nrow: 1,
+            ncol: 1,
+            row_pointers: vec![0, 1],
+            col_indices: vec![-1],
+            values: vec![1.0],
+        };
+        assert_eq!(bad_col.into_parts().err(), Some("column indices must be ≥ 0"));
+
+        let short = NumCsrMatrix::<f64> {
+            symmetric: Sym::No,
+            nrow: 1,
+            ncol: 1,
+            row_pointers: vec![0, 2],
+            col_indices: vec![0],
+            values: vec![1.0],
+        };
+        assert_eq!(short.into_parts().err(), Some("col_indices and values lengths must be ≥ nnz"));
     }
 }

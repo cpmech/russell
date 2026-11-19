@@ -17,7 +17,7 @@ fn test_2d_prob03_fdm() -> Result<(), StrError> {
                                          // (101, 1.043e-3), //
                     ] {
                         let (nd, tol) = *nd_tol;
-                        run(bc_case, *helmholtz, *lmm, nd, tol, Genie::Direct, *sym)?;
+                        run(bc_case, *helmholtz, *lmm, nd, tol, Genie::Faer, *sym)?;
                     }
                 }
             }

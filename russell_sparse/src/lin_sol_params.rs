@@ -82,6 +82,9 @@ pub struct IterativeParams {
 
     /// Maximum number of AMG levels, including the finest and coarsest
     pub amg_max_levels: usize,
+
+    /// Maximum working memory budget in MiB (`0` disables the limit)
+    pub amg_max_memory_mb: usize,
 }
 
 impl Default for IterativeParams {
@@ -98,13 +101,14 @@ impl Default for IterativeParams {
             amg_smoother: AmgSmoother::GaussSeidel,
             amg_coarse_enough: 64,
             amg_max_levels: 32,
+            amg_max_memory_mb: 0,
         }
     }
 }
 
-/// Chooses the LU factorization used by the Direct solver
+/// Chooses the LU factorization used by the Faer solver
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum DirectMethod {
+pub enum FaerMethod {
     /// Picks from the fill's flop proxy: supernodal above `flop_ratio_threshold`
     ///
     /// The proxy is `Σ col_counts² / nnz(A)` over the supernode column counts of the
@@ -121,7 +125,7 @@ pub enum DirectMethod {
     Supernodal,
 }
 
-impl DirectMethod {
+impl FaerMethod {
     /// The threshold below which the automatic choice stays simplicial
     ///
     /// Measured on the matrices of this workspace and of pmsim's driver: the supernodal
@@ -130,7 +134,7 @@ impl DirectMethod {
     pub const DEFAULT_FLOP_RATIO_THRESHOLD: f64 = 1.0;
 }
 
-impl Default for DirectMethod {
+impl Default for FaerMethod {
     fn default() -> Self {
         Self::Auto {
             flop_ratio_threshold: Self::DEFAULT_FLOP_RATIO_THRESHOLD,
@@ -188,13 +192,11 @@ pub struct LinSolParams {
     /// Enforces the unsymmetric strategy, even for symmetric matrices (not recommended; UMFPACK only)
     pub umfpack_enforce_unsymmetric_strategy: bool,
 
-    /// Chooses the LU factorization in the Direct solver (Direct only)
+    /// Chooses the LU factorization in the Faer solver (Faer only)
     ///
-    /// `Auto` is the default: it picks from the fill's flop proxy
-    /// (`Σ col_counts² / nnz(A)`), which is what tells the two apart on a given
-    /// matrix far better than its order does. Lower the threshold to prefer the
-    /// supernodal path on smaller problems.
-    pub direct_method: DirectMethod,
+    /// `Auto` picks from the fill's flop proxy (`Σ col_counts² / nnz(A)`),
+    /// while `Simplicial` and `Supernodal` force a single path.
+    pub faer_method: FaerMethod,
 
     /// Show additional messages
     pub verbose: bool,
@@ -217,7 +219,7 @@ impl LinSolParams {
             mumps_max_work_memory: 0,
             mumps_num_threads: 0,
             umfpack_enforce_unsymmetric_strategy: false,
-            direct_method: DirectMethod::default(),
+            faer_method: FaerMethod::default(),
             verbose: false,
             iterative: IterativeParams::default(),
         }
@@ -228,7 +230,7 @@ impl LinSolParams {
 
 #[cfg(test)]
 mod tests {
-    use super::{AmgCoarsening, AmgSmoother, DirectMethod, IterativeParams, LinSolParams, Preconditioner};
+    use super::{AmgCoarsening, AmgSmoother, FaerMethod, IterativeParams, LinSolParams, Preconditioner};
     use crate::{Ordering, Scaling};
 
     #[test]
@@ -251,7 +253,7 @@ mod tests {
         assert_eq!(params.mumps_max_work_memory, 0);
         assert_eq!(params.mumps_num_threads, 0);
         assert!(!params.umfpack_enforce_unsymmetric_strategy);
-        assert!(matches!(params.direct_method, DirectMethod::Auto { .. }));
+        assert_eq!(params.faer_method, FaerMethod::default());
         assert_eq!(params.iterative, IterativeParams::default());
     }
 
@@ -269,5 +271,6 @@ mod tests {
         assert_eq!(params.amg_smoother, AmgSmoother::GaussSeidel);
         assert_eq!(params.amg_coarse_enough, 64);
         assert_eq!(params.amg_max_levels, 32);
+        assert_eq!(params.amg_max_memory_mb, 0);
     }
 }

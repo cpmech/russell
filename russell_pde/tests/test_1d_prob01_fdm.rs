@@ -5,13 +5,13 @@ use russell_sparse::Genie;
 #[test]
 fn test_1d_prob01_fdm() -> Result<(), StrError> {
     // SPS
-    run_fdm(false, 5, 1e-15, Genie::Direct, false)?;
+    run_fdm(false, 5, 1e-15, Genie::Faer, false)?;
     // LMM
-    run_fdm(true, 5, 1e-15, Genie::Direct, false)?;
+    run_fdm(true, 5, 1e-15, Genie::Faer, false)?;
     // SPS symmetric
-    run_fdm(false, 5, 1e-15, Genie::Direct, true)?;
+    run_fdm(false, 5, 1e-15, Genie::Faer, true)?;
     // LMM symmetric
-    run_fdm(true, 5, 1e-15, Genie::Direct, true)?;
+    run_fdm(true, 5, 1e-15, Genie::Faer, true)?;
     Ok(())
 }
 

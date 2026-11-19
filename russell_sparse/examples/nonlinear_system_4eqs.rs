@@ -7,7 +7,7 @@ use structopt::StructOpt;
 #[derive(StructOpt, Debug)]
 #[structopt(name = "nonlinear_system_4equations", about = "Solve a nonlinear system four equations.")]
 struct Options {
-    #[structopt(short = "g", long, default_value = "Direct")]
+    #[structopt(short = "g", long, default_value = "Faer")]
     genie: String,
 }
 
@@ -17,7 +17,7 @@ fn main() -> Result<(), StrError> {
 
     // select linear solver
     let genie = match opt.genie.to_lowercase().as_str() {
-        "direct" => Genie::Direct,
+        "faer" => Genie::Faer,
         "mumps" => Genie::Mumps,
         "umfpack" => Genie::Umfpack,
         _ => return Err("genie is incorrect"),

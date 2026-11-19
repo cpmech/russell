@@ -1,12 +1,12 @@
-use super::{ComplexCooMatrix, ComplexCscMatrix, ComplexLinSolTrait, DirectMethod, LinSolParams, StatsLinSol, Sym};
+use super::{ComplexCooMatrix, ComplexCscMatrix, ComplexLinSolTrait, LinSolParams, StatsLinSol, Sym};
 use crate::StrError;
-use crate::solver_direct::direct_error;
-use algebra_linear::sparse::{LuMethod, SparseLu, SparseLuStats};
+use crate::solver_faer::{faer_error, resolve_faer_method};
+use algebra_linear::sparse::faer::{SparseLu, SparseLuStats};
 use russell_lab::{Complex64, ComplexVector, Stopwatch};
 
-/// Solves complex sparse linear systems with the pure-Rust LU from `algebra_linear`
+/// Solves complex sparse linear systems with the pure-Rust Faer LU port from `algebra_linear`
 ///
-/// Complex twin of [`SolverDirect`](crate::SolverDirect). The supported
+/// Complex twin of [`SolverFaer`](crate::SolverFaer). The supported
 /// parameters, the determinant restriction and the statistics accessor are the
 /// same; see that type for the details.
 ///
@@ -25,7 +25,7 @@ use russell_lab::{Complex64, ComplexVector, Stopwatch};
 ///     coo.put(1, 0, cpx!(1.0, 0.0))?;
 ///     coo.put(1, 1, cpx!(1.0, -1.0))?;
 ///
-///     let mut solver = ComplexSolverDirect::new()?;
+///     let mut solver = ComplexSolverFaer::new()?;
 ///     solver.preprocess(&coo, None)?;
 ///
 ///     let rhs = ComplexVector::from(&[cpx!(1.0, 0.0), cpx!(1.0, 0.0)]);
@@ -34,7 +34,7 @@ use russell_lab::{Complex64, ComplexVector, Stopwatch};
 ///     Ok(())
 /// }
 /// ```
-pub struct ComplexSolverDirect {
+pub struct ComplexSolverFaer {
     /// Holds the CSC matrix used in the last preprocess
     csc: Option<ComplexCscMatrix>,
 
@@ -43,6 +43,9 @@ pub struct ComplexSolverDirect {
 
     /// Indicates whether the solver has been initialized or not
     initialized: bool,
+
+    /// Parameters used by the first `preprocess`, which a refactorization may repeat
+    initialized_params: LinSolParams,
 
     /// Indicates whether the sparse matrix has been preprocessed or not
     preprocessed: bool,
@@ -69,13 +72,14 @@ pub struct ComplexSolverDirect {
     time_solve_ns: u128,
 }
 
-impl ComplexSolverDirect {
+impl ComplexSolverFaer {
     /// Allocates a new instance
     pub fn new() -> Result<Self, StrError> {
-        Ok(ComplexSolverDirect {
+        Ok(ComplexSolverFaer {
             csc: None,
             lu: None,
             initialized: false,
+            initialized_params: LinSolParams::new(),
             preprocessed: false,
             initialized_sym: Sym::No,
             initialized_ndim: 0,
@@ -93,56 +97,9 @@ impl ComplexSolverDirect {
     }
 }
 
-impl ComplexLinSolTrait for ComplexSolverDirect {
+impl ComplexLinSolTrait for ComplexSolverFaer {
     fn preprocess(&mut self, mat: &ComplexCooMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
-        if mat.nrow != mat.ncol {
-            return Err("the matrix must be square");
-        }
-        if mat.nnz < 1 {
-            return Err("the COO matrix must have at least one non-zero value");
-        }
-        if mat.symmetric == Sym::YesLower || mat.symmetric == Sym::YesUpper {
-            return Err("Direct requires Sym::YesFull for symmetric matrices");
-        }
-        if let Some(par) = params {
-            if par.compute_determinant {
-                return Err("determinant evaluation is not available for this Genie");
-            }
-        }
-
-        // Pick the factorization before the first analysis; later calls reuse it.
-        let method = match params {
-            Some(par) => match par.direct_method {
-                DirectMethod::Auto { flop_ratio_threshold } => LuMethod::Auto { flop_ratio_threshold },
-                DirectMethod::Simplicial => LuMethod::Simplicial,
-                DirectMethod::Supernodal => LuMethod::Supernodal,
-            },
-            None => LuMethod::Auto {
-                flop_ratio_threshold: DirectMethod::DEFAULT_FLOP_RATIO_THRESHOLD,
-            },
-        };
-
-        if !self.initialized {
-            self.initialized_sym = mat.symmetric;
-            self.initialized_ndim = mat.nrow;
-            self.initialized_nnz = mat.nnz;
-            self.stopwatch.reset();
-            let csc = ComplexCscMatrix::from_coo(mat)?;
-            let nnz = csc.get_info().2;
-            let col_pointers: Vec<usize> = csc.get_col_pointers()[..=mat.ncol].iter().map(|&p| p as usize).collect();
-            let row_indices: Vec<usize> = csc.get_row_indices()[..nnz].iter().map(|&i| i as usize).collect();
-            let mut lu = SparseLu::analyze(&col_pointers, &row_indices, method).map_err(direct_error)?;
-            self.time_initialize_ns = self.stopwatch.stop();
-
-            self.stopwatch.reset();
-            lu.factorize(&col_pointers, &row_indices, &csc.get_values()[..nnz])
-                .map_err(direct_error)?;
-            self.time_preprocess_ns = self.stopwatch.stop();
-
-            self.csc = Some(csc);
-            self.lu = Some(lu);
-            self.initialized = true;
-        } else {
+        if self.initialized {
             if mat.symmetric != self.initialized_sym {
                 return Err("subsequent factorizations must use the same matrix (symmetric differs)");
             }
@@ -151,6 +108,11 @@ impl ComplexLinSolTrait for ComplexSolverDirect {
             }
             if mat.nnz != self.initialized_nnz {
                 return Err("subsequent factorizations must use the same matrix (nnz differs)");
+            }
+            if let Some(p) = params {
+                if p != self.initialized_params {
+                    return Err("subsequent factorizations must not change LinSolParams");
+                }
             }
             self.stopwatch.reset();
             let csc = ComplexCscMatrix::from_coo(mat)?;
@@ -161,9 +123,43 @@ impl ComplexLinSolTrait for ComplexSolverDirect {
                 .as_mut()
                 .unwrap()
                 .factorize(&col_pointers, &row_indices, &csc.get_values()[..nnz])
-                .map_err(direct_error)?;
+                .map_err(faer_error)?;
             self.time_preprocess_ns = self.stopwatch.stop();
             self.csc = Some(csc);
+        } else {
+            if mat.nrow != mat.ncol {
+                return Err("the matrix must be square");
+            }
+            if mat.nnz < 1 {
+                return Err("the COO matrix must have at least one non-zero value");
+            }
+            if mat.symmetric == Sym::YesLower || mat.symmetric == Sym::YesUpper {
+                return Err("Faer requires Sym::YesFull for symmetric matrices");
+            }
+            let effective_params = params.unwrap_or_else(LinSolParams::new);
+            if effective_params.compute_determinant {
+                return Err("determinant evaluation is not available for this Genie");
+            }
+            let method = resolve_faer_method(effective_params.faer_method)?;
+            self.initialized_params = effective_params;
+            self.initialized_sym = mat.symmetric;
+            self.initialized_ndim = mat.nrow;
+            self.initialized_nnz = mat.nnz;
+            self.stopwatch.reset();
+            let csc = ComplexCscMatrix::from_coo(mat)?;
+            let nnz = csc.get_info().2;
+            let col_pointers: Vec<usize> = csc.get_col_pointers()[..=mat.ncol].iter().map(|&p| p as usize).collect();
+            let row_indices: Vec<usize> = csc.get_row_indices()[..nnz].iter().map(|&i| i as usize).collect();
+            let mut lu = SparseLu::analyze(&col_pointers, &row_indices, method).map_err(faer_error)?;
+            self.time_initialize_ns = self.stopwatch.stop();
+
+            self.stopwatch.reset();
+            lu.factorize(&col_pointers, &row_indices, &csc.get_values()[..nnz]).map_err(faer_error)?;
+            self.time_preprocess_ns = self.stopwatch.stop();
+
+            self.csc = Some(csc);
+            self.lu = Some(lu);
+            self.initialized = true;
         }
 
         self.preprocessed = true;
@@ -182,15 +178,17 @@ impl ComplexLinSolTrait for ComplexSolverDirect {
         }
         x.as_mut_data().copy_from_slice(rhs.as_data());
         self.stopwatch.reset();
-        self.lu.as_ref().unwrap().solve(x.as_mut_data()).map_err(direct_error)?;
+        self.lu.as_ref().unwrap().solve(x.as_mut_data()).map_err(faer_error)?;
         self.time_solve_ns = self.stopwatch.stop();
         Ok(())
     }
 
     fn update_stats(&self, stats: &mut StatsLinSol) {
-        stats.main.solver = "Direct".to_string();
+        stats.main.solver = "Faer".to_string();
         stats.output.effective_ordering = "Colamd".to_string();
         stats.output.effective_scaling = "No".to_string();
+        stats.output.effective_faer_method = self.lu.as_ref().map(|lu| lu.effective_method().as_str().to_string());
+        stats.output.faer_flop_ratio = self.lu.as_ref().and_then(|lu| lu.flop_ratio());
         stats.time_nanoseconds.initialize_array.push(self.time_initialize_ns);
         stats.time_nanoseconds.preprocess_array.push(self.time_preprocess_ns);
         stats.time_nanoseconds.solve_array.push(self.time_solve_ns);
@@ -212,12 +210,12 @@ impl ComplexLinSolTrait for ComplexSolverDirect {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Samples;
+    use crate::{FaerMethod, Samples};
     use russell_lab::{complex_vec_approx_eq, cpx};
 
     #[test]
     fn preprocess_handles_errors() {
-        let mut solver = ComplexSolverDirect::new().unwrap();
+        let mut solver = ComplexSolverFaer::new().unwrap();
         assert!(!solver.preprocessed);
 
         let (coo, _, _, _) = Samples::complex_rectangular_4x3();
@@ -232,7 +230,7 @@ mod tests {
         let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower();
         assert_eq!(
             solver.preprocess(&coo, None).err(),
-            Some("Direct requires Sym::YesFull for symmetric matrices")
+            Some("Faer requires Sym::YesFull for symmetric matrices")
         );
 
         let mut coo = ComplexCooMatrix::new(2, 2, 2, Sym::No).unwrap();
@@ -244,6 +242,16 @@ mod tests {
             solver.preprocess(&coo, Some(params)).err(),
             Some("determinant evaluation is not available for this Genie")
         );
+
+        for bad in [-0.1, f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            let mut bad_params = LinSolParams::new();
+            bad_params.faer_method = FaerMethod::Auto { flop_ratio_threshold: bad };
+            assert_eq!(
+                solver.preprocess(&coo, Some(bad_params)).err(),
+                Some("the Faer flop ratio threshold must be finite and nonnegative")
+            );
+        }
+
         solver.preprocess(&coo, None).unwrap();
 
         // structure changes are refused
@@ -270,7 +278,7 @@ mod tests {
 
     #[test]
     fn preprocess_and_solve_work() {
-        let mut solver = ComplexSolverDirect::new().unwrap();
+        let mut solver = ComplexSolverFaer::new().unwrap();
         let (coo, _, _, _) = Samples::complex_symmetric_3x3_full();
         let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
         let x_correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
@@ -281,34 +289,82 @@ mod tests {
 
         let mut stats = StatsLinSol::new();
         solver.update_stats(&mut stats);
-        assert_eq!(stats.main.solver, "Direct");
+        assert_eq!(stats.main.solver, "Faer");
         assert_eq!(stats.output.effective_ordering, "Colamd");
         assert_eq!(stats.output.effective_scaling, "No");
+        assert!(stats.output.effective_faer_method.is_some());
         assert!(solver.get_ns_init() > 0);
         assert!(solver.get_ns_preprocess() > 0);
         assert!(solver.get_ns_solve() > 0);
         assert!(solver.stats().is_some());
 
-        // second preprocess reuses the analysis and second solve works
+        // second preprocess with None or identical default params reuses the analysis and second solve works
         solver.preprocess(&coo, None).unwrap();
+        solver.preprocess(&coo, Some(LinSolParams::new())).unwrap();
         solver.solve(&mut x, &rhs, false).unwrap();
         complex_vec_approx_eq(&x, x_correct, 1e-13);
     }
 
     #[test]
-    fn preprocess_and_solve_work_supernodal() {
+    fn refactorization_validates_and_rejects_differing_params() {
+        let (coo, _, _, _) = Samples::complex_symmetric_3x3_full();
+        let first_params = LinSolParams {
+            faer_method: FaerMethod::Auto { flop_ratio_threshold: 2.5 },
+            ..LinSolParams::new()
+        };
+        let mut solver = ComplexSolverFaer::new().unwrap();
+        solver.preprocess(&coo, Some(first_params)).unwrap();
+
+        solver.preprocess(&coo, Some(first_params)).unwrap();
+        solver.preprocess(&coo, None).unwrap();
+
+        let diff_threshold = LinSolParams {
+            faer_method: FaerMethod::Auto { flop_ratio_threshold: 3.0 },
+            ..first_params
+        };
+        assert_eq!(
+            solver.preprocess(&coo, Some(diff_threshold)),
+            Err("subsequent factorizations must not change LinSolParams")
+        );
+        assert_eq!(
+            solver.preprocess(&coo, Some(LinSolParams::new())),
+            Err("subsequent factorizations must not change LinSolParams")
+        );
+    }
+
+    #[test]
+    fn preprocess_and_solve_work_supernodal_and_simplicial() {
         let (coo, _, _, _) = Samples::complex_symmetric_3x3_full();
         let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
         let x_correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
+
         let params = LinSolParams {
-            direct_method: DirectMethod::Supernodal,
+            faer_method: FaerMethod::Supernodal,
             ..LinSolParams::new()
         };
-        let mut solver = ComplexSolverDirect::new().unwrap();
+        let mut solver = ComplexSolverFaer::new().unwrap();
         solver.preprocess(&coo, Some(params)).unwrap();
         let mut x = ComplexVector::new(3);
         solver.solve(&mut x, &rhs, false).unwrap();
         complex_vec_approx_eq(&x, x_correct, 1e-13);
+        let mut stats = StatsLinSol::new();
+        solver.update_stats(&mut stats);
+        assert_eq!(stats.output.effective_faer_method.as_deref(), Some("Supernodal"));
+        assert!(stats.output.faer_flop_ratio.is_some());
+
+        let params = LinSolParams {
+            faer_method: FaerMethod::Simplicial,
+            ..LinSolParams::new()
+        };
+        let mut solver = ComplexSolverFaer::new().unwrap();
+        solver.preprocess(&coo, Some(params)).unwrap();
+        let mut x = ComplexVector::new(3);
+        solver.solve(&mut x, &rhs, false).unwrap();
+        complex_vec_approx_eq(&x, x_correct, 1e-13);
+        let mut stats = StatsLinSol::new();
+        solver.update_stats(&mut stats);
+        assert_eq!(stats.output.effective_faer_method.as_deref(), Some("Simplicial"));
+        assert_eq!(stats.output.faer_flop_ratio, None);
     }
 
     #[test]
@@ -316,7 +372,7 @@ mod tests {
         let mut coo = ComplexCooMatrix::new(2, 2, 2, Sym::No).unwrap();
         coo.put(0, 0, cpx!(123.0, 1.0)).unwrap();
         coo.put(1, 1, cpx!(456.0, 2.0)).unwrap();
-        let mut solver = ComplexSolverDirect::new().unwrap();
+        let mut solver = ComplexSolverFaer::new().unwrap();
         let mut x = ComplexVector::new(2);
         let rhs = ComplexVector::new(2);
         assert_eq!(
@@ -350,7 +406,7 @@ mod tests {
         b.put(1, 0, cpx!(1.0, 0.0)).unwrap();
         b.put(1, 1, cpx!(3.0, 0.0)).unwrap();
 
-        let mut solver = ComplexSolverDirect::new().unwrap();
+        let mut solver = ComplexSolverFaer::new().unwrap();
         solver.preprocess(&a, None).unwrap();
         assert_eq!(
             solver.preprocess(&b, None),
@@ -360,7 +416,7 @@ mod tests {
 
     #[test]
     fn singular_matrix_is_reported() {
-        let mut solver = ComplexSolverDirect::new().unwrap();
+        let mut solver = ComplexSolverFaer::new().unwrap();
         let mut coo = ComplexCooMatrix::new(2, 2, 2, Sym::No).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         coo.put(1, 1, cpx!(0.0, 0.0)).unwrap();

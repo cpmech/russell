@@ -3,7 +3,7 @@ use super::ComplexSolverMUMPS;
 
 #[cfg(feature = "umfpack")]
 use super::ComplexSolverUMFPACK;
-use super::{ComplexCooMatrix, ComplexSolverDirect, Genie, LinSolParams, StatsLinSol};
+use super::{ComplexCooMatrix, ComplexSolverFaer, Genie, LinSolParams, StatsLinSol};
 use crate::StrError;
 use russell_lab::ComplexVector;
 
@@ -79,7 +79,7 @@ impl<'a> ComplexLinSolver<'a> {
         // which feature to enable, instead of needing one whole copy of this match
         // per combination of features.
         let actual: Box<dyn Send + ComplexLinSolTrait> = match genie {
-            Genie::Direct => Box::new(ComplexSolverDirect::new()?),
+            Genie::Faer => Box::new(ComplexSolverFaer::new()?),
             Genie::Iterative(_) => return Err("the iterative solvers do not support complex matrices"),
             #[cfg(feature = "mumps")]
             Genie::Mumps => Box::new(ComplexSolverMUMPS::new()?),
@@ -150,7 +150,7 @@ impl<'a> ComplexLinSolver<'a> {
     ///     let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
     ///
     ///     let mut x = ComplexVector::new(ndim);
-    ///     ComplexLinSolver::compute(Genie::Direct, &mut x, &mat, &rhs, None)?;
+    ///     ComplexLinSolver::compute(Genie::Faer, &mut x, &mat, &rhs, None)?;
     ///
     ///     let correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
     ///     complex_vec_approx_eq(&x, correct, 1e-14);
@@ -192,11 +192,11 @@ mod tests {
     }
 
     #[test]
-    fn complex_lin_solver_compute_works_umfpack() {
+    fn complex_lin_solver_compute_works_faer() {
         let (coo, _, _, _) = Samples::complex_symmetric_3x3_full();
         let mut x = ComplexVector::new(3);
         let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
-        ComplexLinSolver::compute(Genie::Direct, &mut x, &coo, &rhs, None).unwrap();
+        ComplexLinSolver::compute(Genie::Faer, &mut x, &coo, &rhs, None).unwrap();
         let x_correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
         complex_vec_approx_eq(&x, x_correct, 1e-15);
     }

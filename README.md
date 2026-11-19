@@ -100,7 +100,7 @@ This project is split into the following crates:
     - Operations & Calculus: Dot/ddot contractions, dyadic products, polar decompositions, principal/deviatoric/octahedral invariants, Lode invariant, first and second derivatives of invariants and tensor functions, linear elasticity / Hooke's law.
 3. [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse) [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) — Sparse matrix structures and solvers:
     - Formats: CooMatrix, CscMatrix, CsrMatrix (both real f64 and Complex64).
-    - Direct Solvers: pure-Rust Direct (`Genie::Direct`, always available), UMFPACK (SuiteSparse), and MUMPS (`mumps`).
+    - Direct Solvers: pure-Rust Faer (`Genie::Faer`, always available), UMFPACK (SuiteSparse), and MUMPS (`mumps`).
     - Iterative Solvers: preconditioned CG, BiCGStab, and restarted GMRES with algebraic multigrid (pure Rust, always available).
     - Utilities: Matrix Market I/O, vismatrix exporter, numerical Jacobian assembly, linear system verification.
 4. [![Crates.io](https://img.shields.io/crates/v/russell_ode.svg)](https://crates.io/crates/russell_ode) [russell_ode](https://github.com/cpmech/russell/tree/main/russell_ode) — ODE and Index-1 DAE solvers:
@@ -150,7 +150,7 @@ The following crates are not part of `russell` but are associated with it and re
 
 This project can use [SuiteSparse](https://github.com/DrTimothyAldenDavis/SuiteSparse) (or [MUMPS](https://mumps-solver.org)) for the solution of large (sparse) linear systems of equations. Dense linear algebra comes from `russell_lab`'s own Rust implementation, and [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) or [Intel MKL](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html) may be selected as accelerators.
 
-**The default build needs no external library.** `russell_lab` ships pure-Rust BLAS/LAPACK kernels and `russell_sparse` has the Direct solver (pure Rust), so `cargo build` works on every platform, WebAssembly included. The external libraries are optional, and each one is selected by a Cargo feature:
+**The default build needs no external library.** `russell_lab` ships pure-Rust BLAS/LAPACK kernels and `russell_sparse` has the Faer solver (pure Rust), so `cargo build` works on every platform, WebAssembly included. The external libraries are optional, and each one is selected by a Cargo feature:
 
 | Feature | What it adds | Linux | macOS | Windows MSVC | Windows GNU |
 | --- | --- | :--: | :--: | :--: | :--: |
@@ -192,7 +192,7 @@ Replace "*" with the desired version. Note that `russell_sparse` (and all other 
 
 ## WebAssembly
 
-The workspace builds for both WebAssembly targets with the default features, i.e. with the Direct solver (pure Rust) and no external libraries:
+The workspace builds for both WebAssembly targets with the default features, i.e. with the Faer solver (pure Rust) and no external libraries:
 
 ```bash
 cargo check --workspace --target wasm32-unknown-unknown
@@ -203,7 +203,7 @@ The browser target has no filesystem: the Matrix Market readers/writers and the 
 
 ## Installation
 
-Every option below is optional: the default build needs no external library, and the `Cargo.toml` snippet under each option lists the features that make the build actually use the libraries installed by it. Without those features, the libraries are present but unused, and the build keeps the Rust kernels and the Direct solver (pure Rust).
+Every option below is optional: the default build needs no external library, and the `Cargo.toml` snippet under each option lists the features that make the build actually use the libraries installed by it. Without those features, the libraries are present but unused, and the build keeps the Rust kernels and the Faer solver (pure Rust).
 
 `RUSSELL_LOCAL_PREFIX` is the single variable that locates locally compiled solvers. With `umfpack` it is optional: when set to a directory containing the UMFPACK layout below, that installation is used; otherwise the build falls back to the system library. With `mumps` it is required. The layout is fixed:
 
@@ -234,7 +234,7 @@ russell_lab = { version = "*", features = ["open_blas"] }
 russell_sparse = { version = "*", features = ["open_blas", "umfpack"] }
 ```
 
-`open_blas` selects the packaged OpenBLAS and `umfpack` the packaged SuiteSparse. Drop `umfpack` if you only want the dense accelerator, or both features for the default Rust kernels and the Direct solver (pure Rust).
+`open_blas` selects the packaged OpenBLAS and `umfpack` the packaged SuiteSparse. Drop `umfpack` if you only want the dense accelerator, or both features for the default Rust kernels and the Faer solver (pure Rust).
 
 #### Option 2: Locally compiled SuiteSparse and MUMPS with OpenBLAS
 
@@ -292,7 +292,7 @@ russell_lab = { version = "*", features = ["open_blas"] }
 russell_sparse = { version = "*", features = ["open_blas", "umfpack"] }
 ```
 
-`open_blas` selects the packaged OpenBLAS and `umfpack` the packaged SuiteSparse. Drop `umfpack` if you only want the dense accelerator, or both features for the default Rust kernels and the Direct solver (pure Rust).
+`open_blas` selects the packaged OpenBLAS and `umfpack` the packaged SuiteSparse. Drop `umfpack` if you only want the dense accelerator, or both features for the default Rust kernels and the Faer solver (pure Rust).
 
 #### Option 2: Locally compiled SuiteSparse and MUMPS with OpenBLAS
 
@@ -399,7 +399,7 @@ The script installs into `$RUSSELL_LOCAL_PREFIX/include/mumps` and `lib/mumps`, 
 
 Two toolchains work on Windows, and the features differ between them:
 
-- **MSVC**, the default Rust toolchain there. The Direct solver (pure Rust) needs nothing installed; add UMFPACK with [vcpkg](https://vcpkg.io) (`vcpkg install suitesparse-umfpack[core]:x64-windows`, with `VCPKG_ROOT` set) and enable `umfpack`. MUMPS, `open_blas` and `intel_mkl` are not available with this toolchain.
+- **MSVC**, the default Rust toolchain there. The Faer solver (pure Rust) needs nothing installed; add UMFPACK with [vcpkg](https://vcpkg.io) (`vcpkg install suitesparse-umfpack[core]:x64-windows`, with `VCPKG_ROOT` set) and enable `umfpack`. MUMPS, `open_blas` and `intel_mkl` are not available with this toolchain.
 - **MSYS2 with the GNU toolchain**, which provides OpenBLAS, SuiteSparse and the MinGW/gfortran build of MUMPS. It supports `open_blas`, `umfpack` and `mumps`; it is the only way to use MUMPS on Windows.
 
 See [windows.md](https://github.com/cpmech/russell/blob/main/windows.md) for step-by-step instructions for both.
@@ -816,7 +816,7 @@ Build-dependencies: `cc`, `pkg-config`.
 `russell_sparse/build.rs` compiles the C shims for the sparse solvers. UMFPACK is optional and off by default (`umfpack`); MUMPS joins it when `mumps` is enabled. The features select which solvers are present, and the build selects the UMFPACK source:
 
 - `umfpack` on: a local install under `$RUSSELL_LOCAL_PREFIX/include/umfpack` and `.../lib/umfpack` is used when `RUSSELL_LOCAL_PREFIX` is set and contains it, with no `pkg-config` lookup in that case; otherwise the build falls back to the package-manager library (`pkg-config`, trying both `UMFPACK` and `umfpack` spellings, then the built-in directory list). If neither answers, the build stops naming the package to install. A prefix that is set but incomplete prints a warning and falls back.
-- `umfpack` off: no UMFPACK shims are compiled and nothing is linked; the Direct solver (pure Rust) remains available.
+- `umfpack` off: no UMFPACK shims are compiled and nothing is linked; the Faer solver (pure Rust) remains available.
 - `mumps` on: MUMPS from `$RUSSELL_LOCAL_PREFIX/include/mumps` and `.../lib/mumps`, independently of UMFPACK, shared on Unix and static on Windows (`dmumps_cpmech`, `zmumps_cpmech`, `mumps_common_cpmech`, `mpiseq_cpmech`, `pord_cpmech`, `metis`, `gfortran`, `gomp`). A missing prefix fails the build naming the exact path it expected.
 - `RUSSELL_LOCAL_PREFIX` is trimmed of trailing separators.
 - The selected UMFPACK is recorded with `cargo:rustc-env`, so `get_library_versions()` reports whether it is the `system` or the `local` one, or that it was not compiled in.

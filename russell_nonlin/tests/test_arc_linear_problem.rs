@@ -7,8 +7,8 @@ const SAVE_FIGURE: bool = false;
 
 #[test]
 fn test_arc_linear_problem() {
-    run_test(Genie::Direct, false, false);
-    run_test(Genie::Direct, true, true);
+    run_test(Genie::Faer, false, false);
+    run_test(Genie::Faer, true, true);
 }
 
 #[cfg(feature = "mumps")]

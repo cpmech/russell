@@ -4,7 +4,7 @@ use super::SolverMUMPS;
 #[cfg(feature = "umfpack")]
 use super::SolverUMFPACK;
 
-use super::{CooMatrix, Genie, LinSolParams, SolverDirect, SolverIterative, StatsLinSol};
+use super::{CooMatrix, Genie, LinSolParams, SolverFaer, SolverIterative, StatsLinSol};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -76,7 +76,7 @@ pub trait LinSolTrait: Send {
 ///     let ndim = 3;
 ///     let nnz = 5;
 ///
-///     let mut solver = LinSolver::new(Genie::Direct)?;
+///     let mut solver = LinSolver::new(Genie::Faer)?;
 ///
 ///     // allocate the coefficient matrix
 ///     // ┌                   ┐
@@ -118,7 +118,7 @@ impl<'a> LinSolver<'a> {
         // which feature to enable, instead of needing one whole copy of this match
         // per combination of features.
         let actual: Box<dyn Send + LinSolTrait> = match genie {
-            Genie::Direct => Box::new(SolverDirect::new()?),
+            Genie::Faer => Box::new(SolverFaer::new()?),
             Genie::Iterative(method) => Box::new(SolverIterative::new(method)?),
             #[cfg(feature = "mumps")]
             Genie::Mumps => Box::new(SolverMUMPS::new()?),
@@ -194,7 +194,7 @@ impl<'a> LinSolver<'a> {
     ///
     ///     // calculate the solution
     ///     let mut x = Vector::new(ndim);
-    ///     LinSolver::compute(Genie::Direct, &mut x, &mat, &rhs, None)?;
+    ///     LinSolver::compute(Genie::Faer, &mut x, &mat, &rhs, None)?;
     ///     let correct = vec![3.0, 2.0, 4.0];
     ///     vec_approx_eq(&x, &correct, 1e-14);
     ///     Ok(())
@@ -229,11 +229,11 @@ mod tests {
     }
 
     #[test]
-    fn lin_solver_compute_works_umfpack() {
+    fn lin_solver_compute_works_faer() {
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_full();
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
-        LinSolver::compute(Genie::Direct, &mut x, &coo, &rhs, None).unwrap();
+        LinSolver::compute(Genie::Faer, &mut x, &coo, &rhs, None).unwrap();
         let x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
         vec_approx_eq(&x, &x_correct, 1e-10);
     }

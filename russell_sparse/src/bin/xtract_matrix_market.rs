@@ -146,7 +146,13 @@ fn parse_record(value: &Value) -> Option<MatrixData> {
         return None;
     }
     let name = value.pointer("/matrix/name")?.as_str()?.to_string();
-    let nnz = value.pointer("/matrix/nnz").and_then(Value::as_u64).unwrap_or(0);
+    // Prefer the actual full-matrix count; `nnz` depends on the solver's
+    // symmetric handling (a triangular storage counts only one triangle).
+    let nnz = value
+        .pointer("/matrix/nnz_actual")
+        .and_then(Value::as_u64)
+        .or_else(|| value.pointer("/matrix/nnz").and_then(Value::as_u64))
+        .unwrap_or(0);
     let symmetric = value
         .pointer("/matrix/symmetric")
         .and_then(Value::as_str)
@@ -242,9 +248,7 @@ fn merge_record(matrices: &mut HashMap<String, MatrixData>, data: MatrixData) {
     if let Some(row) = matrices.get_mut(&data.name) {
         row.symmetric |= data.symmetric;
         row.positive_definite |= data.positive_definite;
-        if row.nnz == 0 {
-            row.nnz = data.nnz;
-        }
+        row.nnz = row.nnz.max(data.nnz);
         for (solver, total_ifs) in data.times {
             if !row.times.contains_key(&solver) {
                 row.times.insert(solver.clone(), total_ifs);
@@ -351,6 +355,14 @@ fn print_table(rows: &[MatrixData], optional: &[String]) {
     }
     let right_aligned: Vec<bool> = (0..headers.len()).map(|i| i == 1 || i >= 3).collect();
 
+    if !optional.is_empty() {
+        println!(
+            "Solver columns other than mumps_time show the total solver time relative to MUMPS: \
+             less than 1.00x is faster and greater than 1.00x is slower."
+        );
+        println!();
+    }
+
     println!("{}", format_row(&headers, &widths, &right_aligned));
     let separator: Vec<String> = widths.iter().map(|width| "-".repeat(*width)).collect();
     println!("{}", separator.join("  "));
@@ -434,6 +446,14 @@ mod tests {
         let data = parse_record(&value).unwrap();
         assert_eq!(data.failures["qdldl"], "only-sym");
         assert!(data.times.is_empty());
+    }
+
+    #[test]
+    fn parse_record_prefers_actual_nnz() {
+        let mut value = sample("Mumps", "mat1", 10, "YesLower", false, 1234);
+        value["matrix"]["nnz_actual"] = json!(19);
+        let data = parse_record(&value).unwrap();
+        assert_eq!(data.nnz, 19);
     }
 
     #[test]

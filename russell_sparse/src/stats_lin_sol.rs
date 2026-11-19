@@ -34,6 +34,9 @@ pub struct StatsLinSolMain {
     /// This flag is `false` for information-only runs, which read the matrix but do not preprocess or solve it.
     pub solved: bool,
 
+    /// Indicates that the run was stopped by the time guard before it could finish
+    pub stopped_by_time_guard: bool,
+
     /// Indicates whether the solver ran out of memory
     pub out_of_memory: bool,
 
@@ -291,6 +294,7 @@ impl StatsLinSol {
                 has_mumps: cfg!(feature = "mumps"),
                 has_umfpack: cfg!(feature = "umfpack"),
                 solved: false,
+                stopped_by_time_guard: false,
                 out_of_memory: false,
                 error_from_solver: None,
             },
@@ -498,6 +502,7 @@ impl StatsLinSol {
     pub fn clear_run_results(&mut self) {
         let blank = StatsLinSol::new();
         self.main.solved = false;
+        self.main.stopped_by_time_guard = false;
         self.output = blank.output;
         self.determinant = blank.determinant;
         self.verify = blank.verify;
@@ -613,14 +618,18 @@ mod tests {
     }
 
     #[test]
-    fn solved_flag_round_trips() {
+    fn run_flags_round_trip() {
         let mut stats = StatsLinSol::new();
         assert!(!stats.main.solved);
+        assert!(!stats.main.stopped_by_time_guard);
         stats.main.solved = true;
+        stats.main.stopped_by_time_guard = true;
         let json = stats.get_json();
         assert!(json.contains("\"solved\": true"));
+        assert!(json.contains("\"stopped_by_time_guard\": true"));
         let parsed: StatsLinSol = serde_json::from_str(&json).unwrap();
         assert!(parsed.main.solved);
+        assert!(parsed.main.stopped_by_time_guard);
     }
 
     #[test]
@@ -747,6 +756,7 @@ mod tests {
         stats.main.solver = "CG".to_string();
         stats.matrix.name = "test_mat".to_string();
         stats.main.solved = true;
+        stats.main.stopped_by_time_guard = true;
         stats.verify.max_abs_diff = 1e-12;
         stats.verify.relative_error = 1e-13;
         stats.iterative_stats = Some(super::StatsLinSolIterative {
@@ -761,6 +771,7 @@ mod tests {
         assert_eq!(stats.main.solver, "CG");
         assert_eq!(stats.matrix.name, "test_mat");
         assert!(!stats.main.solved);
+        assert!(!stats.main.stopped_by_time_guard);
         assert!(stats.main.out_of_memory);
         assert_eq!(stats.time_nanoseconds.read_matrix, ONE_SEC);
         assert_eq!(stats.time_human.read_matrix, "1s");

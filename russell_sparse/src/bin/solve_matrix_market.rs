@@ -1,6 +1,11 @@
 use russell_lab::{ComplexVector, Stopwatch, StrError, Vector, cpx, set_num_threads};
 use russell_sparse::is_memory_error;
 use russell_sparse::prelude::*;
+use std::io::Write;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
+use std::thread;
+use std::time::{Duration, Instant};
 use structopt::StructOpt;
 
 // You may run this binary using cargo as follows:
@@ -17,8 +22,8 @@ struct Options {
     #[structopt(short = "i", long)]
     information: bool,
 
-    /// Solver selection; accepted values: `faer`, `cg`, `bicgstab`, `gmres`, `basiclu`, `qdldl`, `mumps`, or `umfpack`
-    #[structopt(short = "g", long, default_value = "Faer")]
+    /// Solver selection; accepted values: `FAER`, `CG`, `BICGSTAB`, `GMRES`, `BASICLU`, `QDLDL`, `MUMPS`, or `UMFPACK`
+    #[structopt(short = "g", long, default_value = "FAER")]
     genie: String,
 
     /// Ordering strategy
@@ -89,6 +94,10 @@ struct Options {
     /// * The error fields will hold the maximum error among runs
     #[structopt(short = "r", long, default_value = "1")]
     nrun: u32,
+
+    /// Abort the run when it exceeds this many seconds (0 disables the time guard)
+    #[structopt(long, default_value = "90")]
+    time_guard: u64,
 }
 
 // Iterative solver options (ignored by `faer`, `mumps`, and `umfpack`)
@@ -231,6 +240,9 @@ fn main() -> Result<(), StrError> {
         stats.set_matrix_name_from_path(&opt.matrix_market_file);
         stats.set_matrix_info_from_coo(&coo);
 
+        // stop long runs
+        let _time_guard = start_time_guard(opt.time_guard, &stats, opt.hide_json);
+
         // allocate vectors
         let mut x = Vector::new(nrow);
         let rhs = Vector::filled(nrow, 1.0);
@@ -243,7 +255,7 @@ fn main() -> Result<(), StrError> {
             // call preprocess
             if let Err(e) = solver.actual.preprocess(&coo, Some(params)) {
                 if is_memory_error(e) {
-                    finish_on_memory_error(&mut stats, opt.hide_json);
+                    finish_on_memory_error(&mut stats, e, opt.hide_json);
                     return Ok(());
                 }
                 return finish_on_solver_error(&mut stats, e, opt.hide_json);
@@ -252,7 +264,7 @@ fn main() -> Result<(), StrError> {
             // solve linear system
             if let Err(e) = solver.actual.solve(&mut x, &rhs, opt.verbose) {
                 if is_memory_error(e) {
-                    finish_on_memory_error(&mut stats, opt.hide_json);
+                    finish_on_memory_error(&mut stats, e, opt.hide_json);
                     return Ok(());
                 }
                 return finish_on_solver_error(&mut stats, e, opt.hide_json);
@@ -307,6 +319,9 @@ fn main() -> Result<(), StrError> {
         stats.set_matrix_name_from_path(&opt.matrix_market_file);
         stats.set_matrix_info_from_coo(&coo);
 
+        // stop long runs
+        let _time_guard = start_time_guard(opt.time_guard, &stats, opt.hide_json);
+
         // allocate vectors
         let mut x = ComplexVector::new(nrow);
         let rhs = ComplexVector::filled(nrow, cpx!(1.0, 1.0));
@@ -319,7 +334,7 @@ fn main() -> Result<(), StrError> {
             // call preprocess
             if let Err(e) = solver.actual.preprocess(&coo, Some(params)) {
                 if is_memory_error(e) {
-                    finish_on_memory_error(&mut stats, opt.hide_json);
+                    finish_on_memory_error(&mut stats, e, opt.hide_json);
                     return Ok(());
                 }
                 return finish_on_solver_error(&mut stats, e, opt.hide_json);
@@ -328,7 +343,7 @@ fn main() -> Result<(), StrError> {
             // solve linear system
             if let Err(e) = solver.actual.solve(&mut x, &rhs, opt.verbose) {
                 if is_memory_error(e) {
-                    finish_on_memory_error(&mut stats, opt.hide_json);
+                    finish_on_memory_error(&mut stats, e, opt.hide_json);
                     return Ok(());
                 }
                 return finish_on_solver_error(&mut stats, e, opt.hide_json);
@@ -363,11 +378,62 @@ fn main() -> Result<(), StrError> {
     Ok(())
 }
 
+/// Cancels the watchdog when the guarded run finishes
+struct TimeGuard {
+    done: Option<Arc<AtomicBool>>,
+}
+
+impl Drop for TimeGuard {
+    fn drop(&mut self) {
+        if let Some(done) = &self.done {
+            done.store(true, AtomicOrdering::Relaxed);
+        }
+    }
+}
+
+/// Starts a watchdog that emits a timeout result and exits when the run exceeds `seconds`
+///
+/// A value of zero disables the guard.
+fn start_time_guard(seconds: u64, stats: &StatsLinSol, hide_json: bool) -> TimeGuard {
+    if seconds == 0 {
+        return TimeGuard { done: None };
+    }
+    let done = Arc::new(AtomicBool::new(false));
+    let watch = Arc::clone(&done);
+    let mut snapshot = stats.clone();
+    thread::spawn(move || {
+        let start = Instant::now();
+        loop {
+            if watch.load(AtomicOrdering::Relaxed) {
+                return;
+            }
+            if start.elapsed() >= Duration::from_secs(seconds) {
+                mark_time_guard(&mut snapshot, seconds);
+                if !hide_json {
+                    println!("{}", snapshot.get_json());
+                    let _ = std::io::stdout().flush();
+                }
+                std::process::exit(124);
+            }
+            thread::sleep(Duration::from_millis(50));
+        }
+    });
+    TimeGuard { done: Some(done) }
+}
+
+/// Marks the statistics as stopped by the time guard
+fn mark_time_guard(stats: &mut StatsLinSol, seconds: u64) {
+    stats.main.solved = false;
+    stats.main.stopped_by_time_guard = true;
+    stats.main.error_from_solver = Some(format!("time guard exceeded ({} s)", seconds));
+}
+
 /// Clears partial run results and emits the OOM JSON when requested
-fn finish_on_memory_error(stats: &mut StatsLinSol, hide_json: bool) {
+fn finish_on_memory_error(stats: &mut StatsLinSol, error: StrError, hide_json: bool) {
     stats.clear_run_results();
     stats.main.solved = false;
     stats.main.out_of_memory = true;
+    stats.main.error_from_solver = Some(error.to_string());
     if !hide_json {
         println!("{}", stats.get_json());
     }
@@ -526,7 +592,7 @@ fn get_bfwb62_correct_x() -> Vector {
 
 #[cfg(test)]
 mod tests {
-    use super::{finish_on_memory_error, finish_on_solver_error, parse_faer_method};
+    use super::{finish_on_memory_error, finish_on_solver_error, mark_time_guard, parse_faer_method};
     use russell_sparse::prelude::*;
 
     #[test]
@@ -575,6 +641,16 @@ mod tests {
     }
 
     #[test]
+    fn mark_time_guard_sets_flags() {
+        let mut stats = StatsLinSol::new();
+        stats.main.solved = true;
+        mark_time_guard(&mut stats, 7);
+        assert!(!stats.main.solved);
+        assert!(stats.main.stopped_by_time_guard);
+        assert_eq!(stats.main.error_from_solver.as_deref(), Some("time guard exceeded (7 s)"));
+    }
+
+    #[test]
     fn finish_on_solver_error_fills_stats() {
         let mut stats = StatsLinSol::new();
         let res = finish_on_solver_error(&mut stats, "solver failed", true);
@@ -602,10 +678,11 @@ mod tests {
         stats.time_nanoseconds.total_ifs_array = vec![60];
         stats.verify.relative_error = 1e-12;
 
-        finish_on_memory_error(&mut stats, true);
+        finish_on_memory_error(&mut stats, "not enough memory", true);
 
         assert!(!stats.main.solved);
         assert!(stats.main.out_of_memory);
+        assert_eq!(stats.main.error_from_solver.as_deref(), Some("not enough memory"));
         assert_eq!(stats.main.solver, "GMRES");
         assert!(stats.output.faer_effective_method.is_empty());
         assert_eq!(stats.output.faer_flop_ratio, 0.0);

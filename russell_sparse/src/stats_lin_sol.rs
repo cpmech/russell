@@ -79,6 +79,12 @@ pub struct StatsLinSolOutput {
     /// Symbolic flop-ratio proxy `Σ col_counts² / nnz(A)` computed by the Faer solver, when applicable
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub faer_flop_ratio: Option<f64>,
+    /// Numerical rank achieved by the BasicLU factorization, when applicable
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub basiclu_rank: Option<usize>,
+    /// Number of positive diagonal pivots reported by the QDLDL factorization (the positive inertia), when applicable
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub qdldl_positive_inertia: Option<usize>,
 }
 
 /// Holds the determinant of the coefficient matrix (if requested)
@@ -241,6 +247,8 @@ impl StatsLinSol {
                 umfpack_rcond_estimate: 0.0,
                 effective_faer_method: None,
                 faer_flop_ratio: None,
+                basiclu_rank: None,
+                qdldl_positive_inertia: None,
             },
             determinant: StatsLinSolDeterminant {
                 mantissa_real: 0.0,
@@ -661,6 +669,8 @@ mod tests {
         stats.matrix.name = "test_mat".to_string();
         stats.output.effective_faer_method = Some("Supernodal".to_string());
         stats.output.faer_flop_ratio = Some(12.5);
+        stats.output.basiclu_rank = Some(4);
+        stats.output.qdldl_positive_inertia = Some(3);
         stats.verify.max_abs_diff = 1e-12;
         stats.verify.relative_error = 1e-13;
         stats.iterative = Some(super::StatsLinSolIterative {
@@ -691,6 +701,8 @@ mod tests {
         assert_eq!(stats.verify.relative_error, 0.0);
         assert_eq!(stats.output.effective_faer_method, None);
         assert_eq!(stats.output.faer_flop_ratio, None);
+        assert_eq!(stats.output.basiclu_rank, None);
+        assert_eq!(stats.output.qdldl_positive_inertia, None);
         assert!(stats.iterative.is_none());
         assert!(!json.contains("\"iterative\""));
     }

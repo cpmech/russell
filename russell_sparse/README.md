@@ -24,9 +24,11 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 ## Introduction
 
-This library implements tools for handling sparse matrices and functions to solve sparse linear systems with four backends:
+This library implements tools for handling sparse matrices and functions to solve sparse linear systems with six backends:
 * **Faer** - pure-Rust sparse LU (always available)
 * **Iterative** - pure-Rust Krylov solvers with algebraic multigrid (limited; see below)
+* **BasicLU** - pure-Rust LU with rank-1 updates for square general systems, written for LP bases (always available)
+* **QDLDL** - pure-Rust `L D L^T` factorization of the upper triangle for symmetric quasi-definite systems (always available)
 * [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) - Highly recommended for general sequential use
 * [MUMPS](https://mumps-solver.org) - For very large systems, supporting multithreaded execution
 
@@ -294,7 +296,7 @@ If the method does not converge within the iteration limit, `solve` returns `"th
 
 ## Tools
 
-This crate includes a tool named `solve_matrix_market` to study the performance of the available sparse solvers (Faer, the iterative solvers, MUMPS, and UMFPACK).
+This crate includes a tool named `solve_matrix_market` to study the performance of the available sparse solvers (Faer, BasicLU, QDLDL, the iterative solvers, MUMPS, and UMFPACK).
 
 `solve_matrix_market` reads a [Matrix Market file](https://math.nist.gov/MatrixMarket/formats.html) and solves the linear system:
 
@@ -320,7 +322,7 @@ cargo run --release --bin solve_matrix_market -- --help
 
 to see the options.
 
-The default solver of `solve_matrix_market` is Faer. Use the `--genie` (`-g`) flag to select another backend: `faer`, `cg`, `bicgstab`, `gmres`, `mumps`, or `umfpack`:
+The default solver of `solve_matrix_market` is Faer. Use the `--genie` (`-g`) flag to select another backend: `faer`, `cg`, `bicgstab`, `gmres`, `basiclu`, `qdldl`, `mumps`, or `umfpack`:
 
 ```bash
 cargo run --release --bin solve_matrix_market -- -g mumps ~/Downloads/matrix-market/bfwb62.mtx
@@ -328,7 +330,7 @@ cargo run --release --bin solve_matrix_market -- -g mumps ~/Downloads/matrix-mar
 
 Use `--faer-method <auto|simplicial|supernodal>` (and `--faer-flop-ratio <f>` with `auto`) to select the Faer LU strategy.
 
-The iterative solvers are configured with the following options, which `faer`, `mumps`, and `umfpack` ignore (`--help` prints the defaults, which live in the binary):
+The iterative solvers are configured with the following options, which `faer`, `basiclu`, `qdldl`, `mumps`, and `umfpack` ignore (`--help` prints the defaults, which live in the binary):
 
 | Option | Meaning |
 | --- | --- |

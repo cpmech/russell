@@ -9,6 +9,11 @@ fn test_solver(genie: Genie) {
         Genie::Faer => println!("Testing Faer solver\n"),
         Genie::Iterative(_) => println!("Testing iterative solver\n"),
         Genie::Umfpack => println!("Testing UMFPACK solver\n"),
+        Genie::BasicLu => println!("Testing BasicLU solver\n"),
+        Genie::Qdldl => {
+            println!("Skipping QDLDL (a symmetric sample is needed)\n");
+            return;
+        }
     }
 
     let mut solver = match LinSolver::new(genie) {
@@ -55,6 +60,10 @@ fn test_complex_solver(genie: Genie) {
             return;
         }
         Genie::Umfpack => println!("Testing Complex UMFPACK solver\n"),
+        Genie::BasicLu | Genie::Qdldl => {
+            println!("Skipping the solvers without a complex variant\n");
+            return;
+        }
     }
 
     let mut solver = match ComplexLinSolver::new(genie) {
@@ -70,6 +79,7 @@ fn test_complex_solver(genie: Genie) {
         Genie::Faer => Samples::complex_symmetric_3x3_full().0,
         Genie::Iterative(_) => unreachable!("the complex iterative solver is not supported"),
         Genie::Umfpack => Samples::complex_symmetric_3x3_full().0,
+        Genie::BasicLu | Genie::Qdldl => unreachable!("this solver has no complex variant"),
     };
 
     if let Err(e) = solver.actual.preprocess(&coo, None) {
@@ -102,6 +112,11 @@ fn test_solver_singular(genie: Genie) {
         Genie::Faer => println!("Testing Faer solver (singular matrix)\n"),
         Genie::Iterative(_) => println!("Testing iterative solver (singular matrix)\n"),
         Genie::Umfpack => println!("Testing UMFPACK solver (singular matrix)\n"),
+        Genie::BasicLu => println!("Testing BasicLU solver (singular matrix)\n"),
+        Genie::Qdldl => {
+            println!("Skipping QDLDL (a symmetric singular sample is needed)\n");
+            return;
+        }
     }
 
     let (ndim, nnz) = (2, 2);

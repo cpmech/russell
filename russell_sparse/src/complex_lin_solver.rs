@@ -81,6 +81,8 @@ impl<'a> ComplexLinSolver<'a> {
         let actual: Box<dyn Send + ComplexLinSolTrait> = match genie {
             Genie::Faer => Box::new(ComplexSolverFaer::new()?),
             Genie::Iterative(_) => return Err("the iterative solvers do not support complex matrices"),
+            Genie::BasicLu => return Err("the BasicLU solver does not support complex matrices (no complex variant exists)"),
+            Genie::Qdldl => return Err("the QDLDL solver does not support complex matrices (no complex variant exists)"),
             #[cfg(feature = "mumps")]
             Genie::Mumps => Box::new(ComplexSolverMUMPS::new()?),
             #[cfg(not(feature = "mumps"))]
@@ -207,6 +209,18 @@ mod tests {
         assert_eq!(
             ComplexLinSolver::new(Genie::Umfpack).err(),
             Some("UMFPACK is not available; enable the `umfpack` feature")
+        );
+    }
+
+    #[test]
+    fn basiclu_and_qdldl_do_not_support_complex_matrices() {
+        assert_eq!(
+            ComplexLinSolver::new(Genie::BasicLu).err(),
+            Some("the BasicLU solver does not support complex matrices (no complex variant exists)")
+        );
+        assert_eq!(
+            ComplexLinSolver::new(Genie::Qdldl).err(),
+            Some("the QDLDL solver does not support complex matrices (no complex variant exists)")
         );
     }
 }

@@ -1,6 +1,6 @@
 [package]
 name = "russell_sparse"
-version = "5.5.0"
+version = "5.5.1"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"
@@ -26,7 +26,7 @@ umfpack = []
 mumps = []
 
 [dependencies]
-algebra_linear = "3"
+algebra_linear = "3.1"
 num-traits = "0.2"
 russell_lab = { path = "../russell_lab", version = "5.5" }
 structopt = "0.3"

@@ -13,7 +13,7 @@ struct Options {
     /// Matrix-market file
     matrix_market_file: String,
 
-    /// Solver selection; accepted values: `faer`, `cg`, `bicgstab`, `gmres`, `mumps`, or `umfpack`
+    /// Solver selection; accepted values: `faer`, `cg`, `bicgstab`, `gmres`, `basiclu`, `qdldl`, `mumps`, or `umfpack`
     #[structopt(short = "g", long, default_value = "Faer")]
     genie: String,
 
@@ -157,6 +157,8 @@ fn main() -> Result<(), StrError> {
         Genie::Faer => MMsym::MakeItFull,
         Genie::Iterative(_) => MMsym::MakeItFull,
         Genie::Umfpack => MMsym::MakeItFull,
+        Genie::BasicLu => MMsym::MakeItFull,
+        Genie::Qdldl => MMsym::SwapToUpper,
     };
 
     // configuration parameters
@@ -259,6 +261,8 @@ fn main() -> Result<(), StrError> {
                     Genie::Faer => 1e-10,
                     Genie::Iterative(_) => 1e-10,
                     Genie::Umfpack => 1e-10,
+                    Genie::BasicLu => 1e-10,
+                    Genie::Qdldl => 1e-10,
                 };
                 let correct_x = get_bfwb62_correct_x();
                 for i in 0..nrow {
@@ -346,6 +350,8 @@ fn solver_display_name(genie: Genie) -> &'static str {
         Genie::Iterative(IterativeMethod::Gmres) => "GMRES",
         Genie::Mumps => "MUMPS",
         Genie::Umfpack => "UMFPACK",
+        Genie::BasicLu => "BasicLU",
+        Genie::Qdldl => "QDLDL",
     }
 }
 
@@ -512,6 +518,8 @@ mod tests {
         assert_eq!(solver_display_name(Genie::Iterative(IterativeMethod::Gmres)), "GMRES");
         assert_eq!(solver_display_name(Genie::Mumps), "MUMPS");
         assert_eq!(solver_display_name(Genie::Umfpack), "UMFPACK");
+        assert_eq!(solver_display_name(Genie::BasicLu), "BasicLU");
+        assert_eq!(solver_display_name(Genie::Qdldl), "QDLDL");
     }
 
     #[test]

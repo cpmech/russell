@@ -1,12 +1,27 @@
-# Russell Sparse - Sparse matrix calculations and solvers for linear systems <!-- omit from toc --> 
+# Russell Sparse — Sparse matrices and linear solvers <!-- omit from toc -->
 
-[![documentation](https://docs.rs/russell_sparse/badge.svg)](https://docs.rs/russell_sparse/)
+<p align="left">
+  <a href="https://docs.rs/russell_sparse/"><img alt="documentation" src="https://docs.rs/russell_sparse/badge.svg"></a>
+  <a href="https://crates.io/crates/russell_sparse"><img alt="crates.io" src="https://img.shields.io/crates/v/russell_sparse.svg"></a>
+  <a href="https://github.com/cpmech/matrix-market"><img alt="matrix assets" src="https://img.shields.io/badge/assets-cpmech%2Fmatrix--market-1f425f"></a>
+  <a href="https://doi.org/10.1002/nme.7545"><img alt="DOI" src="https://img.shields.io/badge/DOI-10.1002%2Fnme.7545-blue"></a>
+</p>
 
-_This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
+`russell_sparse` provides sparse matrix storage (COO, CSC, CSR), six solver backends,
+Matrix Market I/O, and the benchmark tools used to compare them. It is part of the
+[Russell - Rust Scientific Library](https://github.com/cpmech/russell).
 
-## Contents <!-- omit from toc --> 
+> **Benchmark assets:** the 44 Matrix Market matrices used by the tools in
+> [`src/bin`](https://github.com/cpmech/russell/tree/main/russell_sparse/src/bin)
+> are hosted separately in [cpmech/matrix-market](https://github.com/cpmech/matrix-market).
+> That repository contains seven compressed archives, SHA-256 checksums, and
+> extraction instructions.
 
+## Contents <!-- omit from toc -->
+
+- [References](#references)
 - [Introduction](#introduction)
+  - [Solver backends](#solver-backends)
   - [Complex Numbers Support](#complex-numbers-support)
   - [Documentation](#documentation)
 - [Installation](#installation)
@@ -18,30 +33,41 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Solve a complex sparse linear system using the Faer solver](#solve-a-complex-sparse-linear-system-using-the-faer-solver)
   - [Iterative solvers](#iterative-solvers)
 - [Tools](#tools)
-- [MUMPS + OpenBLAS issue](#mumps--openblas-issue)
-  - [References](#references)
+  - [Matrix Market assets](#matrix-market-assets)
+  - [solve_matrix_market](#solve_matrix_market)
+  - [xtract_matrix_market](#xtract_matrix_market)
+  - [Benchmark runner](#benchmark-runner)
 - [For developers](#for-developers)
+
+## References
+
+1. Pedroso DM (2024) [Caveats of three direct linear solvers for finite element analyses](https://onlinelibrary.wiley.com/doi/10.1002/nme.7545), _International Journal for Numerical Methods in Engineering_, doi.org/10.1002/nme.7545.
 
 ## Introduction
 
 This library implements tools for handling sparse matrices and functions to solve sparse linear systems with six backends:
-* **Faer** - pure-Rust sparse LU (always available)
-* **Iterative** - pure-Rust Krylov solvers with algebraic multigrid (limited; see below)
-* **BasicLU** - pure-Rust LU with rank-1 updates for square general systems, written for LP bases (always available)
-* **QDLDL** - pure-Rust `L D L^T` factorization of the upper triangle for symmetric quasi-definite systems (always available)
-* [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) - Highly recommended for general sequential use
-* [MUMPS](https://mumps-solver.org) - For very large systems, supporting multithreaded execution
+
+### Solver backends
+
+| Backend | Kind | Availability | Notes |
+|---|---|---|---|
+| **Faer** | Sparse LU | Pure Rust, always available | The default backend; `FaerMethod` selects simplicial or supernodal |
+| **BasicLU** | Sparse LU with rank-1 updates | Pure Rust, always available | Square general systems; written for LP bases |
+| **QDLDL** | `L D Lᵀ` factorization | Pure Rust, always available | Symmetric quasi-definite systems; upper triangle |
+| **Iterative** | Krylov + AMG | Pure Rust, always available | CG, BiCGStab, and restarted GMRES |
+| [**UMFPACK**](https://github.com/DrTimothyAldenDavis/SuiteSparse) | Unsymmetric multifrontal LU | `umfpack` feature | Recommended for general sequential use |
+| [**MUMPS**](https://mumps-solver.org) | Multifrontal LU | `mumps` feature | Very large systems; supports multithreaded execution |
 
 > **The native iterative solvers are limited.** With the default algebraic-multigrid settings they
 > reach a relative error of 1e-6 on a minority of the real SuiteSparse matrices measured in
 > [benchmark-russell](https://github.com/cpmech/benchmark-russell): BiCGStab on 12 of 33, GMRES on 7,
 > and CG on 1, since CG requires a symmetric positive definite matrix. The setup and the kernels are
-> tested -- what is limited is how often the preconditioner makes the iteration converge. For
-> production work use **Faer**, **UMFPACK** or **MUMPS**, and use the iterative path where it has
+> tested — what is limited is how often the preconditioner makes the iteration converge. For
+> production work use **Faer**, **UMFPACK**, or **MUMPS**, and use the iterative path where it has
 > been measured to converge on your own matrix.
 
-Some performance benchmarks are available here:
-- [benchmark-russell](https://github.com/cpmech/benchmark-russell) Performance benchmarks for the `Russell` project
+Performance benchmarks and the comparison harness are available in
+[benchmark-russell](https://github.com/cpmech/benchmark-russell).
 
 ### Complex Numbers Support
 
@@ -296,165 +322,178 @@ If the method does not converge within the iteration limit, `solve` returns `"th
 
 ## Tools
 
-This crate includes a tool named `solve_matrix_market` to study the performance of the available sparse solvers (Faer, BasicLU, QDLDL, the iterative solvers, MUMPS, and UMFPACK).
+The [`src/bin`](https://github.com/cpmech/russell/tree/main/russell_sparse/src/bin)
+directory contains command-line tools for testing and comparing the sparse solvers:
 
-`solve_matrix_market` reads a [Matrix Market file](https://math.nist.gov/MatrixMarket/formats.html) and solves the linear system:
+| Tool | Purpose |
+|---|---|
+| `solve_matrix_market` | Solves one Matrix Market system with a selected backend and writes JSON statistics |
+| `xtract_matrix_market` | Reads a directory of result JSON files and prints a solver comparison table |
+| `run_solve_matrix_market.bash` | Runs the benchmark suite over the standard matrix set, one result per matrix and solver |
+
+### Matrix Market assets
+
+The 44 matrices used by these tools (34 real and 10 complex, 13.565 GB uncompressed)
+are not stored in this repository. They live in
+[**cpmech/matrix-market**](https://github.com/cpmech/matrix-market), split into seven
+`tar.xz` archives with SHA-256 checksums and extraction instructions.
+
+Download the archives from the latest release, extract them, and flatten the files
+into one directory:
+
+```bash
+# Follow the instructions in cpmech/matrix-market first.
+export INPUT_DIR="$HOME/Downloads/matrix-market"
+```
+
+The benchmark runner expects that single flat directory. You can also use a single
+matrix directly with `solve_matrix_market`; the crate includes a small example at
+`russell_sparse/data/matrix_market/bfwb62.mtx`.
+
+### solve_matrix_market
+
+`solve_matrix_market` reads a [Matrix Market file](https://math.nist.gov/MatrixMarket/formats.html)
+and solves:
 
 ```text
 A ⋅ x = b
 ```
 
-where the right-hand side (b) is a vector containing only ones.
-
-The data directory contains an example of a Matrix Market file named `bfwb62.mtx`, and you may download more matrices from https://sparse.tamu.edu/
-
-For example, run the command:
+with a right-hand side `b` containing only ones.
 
 ```bash
 cargo run --release --bin solve_matrix_market -- ~/Downloads/matrix-market/bfwb62.mtx
-```
-
-Or
-
-```bash
 cargo run --release --bin solve_matrix_market -- --help
 ```
 
-to see the options.
-
-The default solver of `solve_matrix_market` is Faer. Use the `--genie` (`-g`) flag to select another backend: `faer`, `cg`, `bicgstab`, `gmres`, `basiclu`, `qdldl`, `mumps`, or `umfpack`:
+The default backend is Faer. Use `--genie` (`-g`) to select another one:
+`faer`, `cg`, `bicgstab`, `gmres`, `basiclu`, `qdldl`, `mumps`, or `umfpack`.
 
 ```bash
 cargo run --release --bin solve_matrix_market -- -g mumps ~/Downloads/matrix-market/bfwb62.mtx
 ```
 
-Use `--faer-method <auto|simplicial|supernodal>` (and `--faer-flop-ratio <f>` with `auto`) to select the Faer LU strategy.
-
-The iterative solvers are configured with the following options, which `faer`, `basiclu`, `qdldl`, `mumps`, and `umfpack` ignore (`--help` prints the defaults, which live in the binary):
+Useful options:
 
 | Option | Meaning |
-| --- | --- |
+|---|---|
+| `-g, --genie <name>` | Solver backend |
+| `--faer-method` | Faer LU strategy: `auto`, `simplicial`, or `supernodal` |
+| `--faer-flop-ratio <f>` | Threshold for `--faer-method auto` |
+| `-r, --nrun <n>` | Number of runs; timing statistics are averaged |
+| `--time-guard <seconds>` | Abort a run after this many seconds (`0` disables it) |
+| `--information` | Read the matrix, print its metadata, and exit |
+| `--hide-json` | Suppress the JSON output |
+| `--vismatrix` | Also write a Vismatrix `.smat` file |
+
+The iterative solvers are configured with the following options, which `faer`,
+`basiclu`, `qdldl`, `mumps`, and `umfpack` ignore (`--help` prints the defaults):
+
+| Option | Meaning |
+|---|---|
 | `--iter-tol` | Relative residual tolerance |
 | `--iter-abs-tol` | Absolute residual tolerance |
 | `--iter-max` | Maximum number of Krylov iterations |
 | `--iter-precond` | Preconditioner: `amg` or `identity` |
-| `--iter-restart` | GMRES restart dimension (GMRES only) |
-| `--iter-threads` | Number of threads for the Krylov and AMG kernels |
+| `--iter-restart` | GMRES restart dimension |
+| `--iter-threads` | Threads for the Krylov and AMG kernels |
 | `--iter-min-parallel-len` | Minimum vector length before threads are used |
 | `--amg-coarsening` | `ruge-stuben`, `aggregation`, or `smoothed-aggregation` |
 | `--amg-smoother` | `gauss-seidel`, `damped-jacobi`, `ilu0`, `chebyshev`, `spai0`, or `spai1` |
 | `--amg-coarse-enough` | AMG size at which the coarsest level is solved directly |
 | `--amg-max-levels` | Maximum number of AMG levels |
-| `--amg-max-memory-mb` | Maximum memory budget in MiB for AMG and Krylov (`0` = unlimited) |
+| `--amg-max-memory-mb` | Memory budget in MiB for AMG and Krylov (`0` = unlimited) |
 
-The output looks like this:
+<details>
+<summary><b>Example JSON output (abridged)</b></summary>
 
 ```json
 {
   "main": {
     "platform": "Russell",
     "blas_lib": "OpenBLAS",
-    "solver": "MUMPS-local"
+    "solver": "MUMPS",
+    "has_mumps": true,
+    "has_umfpack": true,
+    "solved": true,
+    "stopped_by_time_guard": false,
+    "out_of_memory": false,
+    "error_from_solver": null
   },
   "matrix": {
     "name": "bfwb62",
     "nrow": 62,
     "ncol": 62,
     "nnz": 202,
+    "nnz_actual": 342,
     "complex": false,
     "symmetric": "YesLower"
   },
-  "requests": {
-    "ordering": "Auto",
-    "scaling": "Auto",
-    "mumps_num_threads": 0
-  },
-  "output": {
-    "effective_ordering": "Amf",
-    "effective_scaling": "RowColIter",
-    "effective_mumps_num_threads": 1,
-    "openmp_num_threads": 24,
-    "umfpack_strategy": "Unknown",
-    "umfpack_rcond_estimate": 0.0
-  },
-  "determinant": {
-    "mantissa_real": 0.0,
-    "mantissa_imag": 0.0,
-    "base": 2.0,
-    "exponent": 0.0
-  },
-  "verify": {
-    "max_abs_a": 0.0001,
-    "max_abs_ax": 1.0000000000000004,
-    "max_abs_diff": 5.551115123125783e-16,
-    "relative_error": 5.550560067119071e-16
-  },
   "time_human": {
-    "read_matrix": "43.107µs",
-    "initialize": "266.59µs",
-    "preprocess": "196.81µs",
-    "solve": "166.87µs",
-    "total_ifs": "630.27µs",
-    "verify": "2.234µs"
-  },
-  "time_nanoseconds": {
-    "read_matrix": 43107,
-    "initialize": 266590,
-    "preprocess": 196810,
-    "solve": 166870,
-    "total_ifs": 630270,
-    "verify": 2234
-  },
-  "mumps_stats": {
-    "inf_norm_a": 0.0,
-    "inf_norm_x": 0.0,
-    "scaled_residual": 0.0,
-    "backward_error_omega1": 0.0,
-    "backward_error_omega2": 0.0,
-    "normalized_delta_x": 0.0,
-    "condition_number1": 0.0,
-    "condition_number2": 0.0
+    "read_matrix": "43.1µs",
+    "initialize": "266.6µs",
+    "preprocess": "196.8µs",
+    "solve": "166.9µs",
+    "total_ifs": "630.3µs",
+    "verify": "2.2µs"
   }
 }
 ```
 
+</details>
 
+### xtract_matrix_market
 
-## MUMPS + OpenBLAS issue (retired in 5.4.0)
+`xtract_matrix_market` reads the JSON files produced by `solve_matrix_market`
+(recursively) and prints a comparison table:
 
-Older OpenBLAS builds made MUMPS "very, very slow" when the number of OpenMP threads was left automatic,
-so `russell_sparse` used to force `ICNTL(16) = 1` whenever Intel MKL was not detected (References #1 and
-#2, the latter stating on page 72: _"We have observed that multi-threading of OpenBLAS library in MUMPS
-leads to multiple thread conflicts which sometimes result in significant slow-down of the solver."_).
+```bash
+cargo run --release --bin xtract_matrix_market -- [results_dir]
+```
 
-That guard was removed in **5.4.0**, together with `LinSolParams::mumps_override_prevent_nt_issue_with_openblas`
-and the `--override-prevent-issue` flag: with the thread-safe MUMPS build the combination is measured, not
-assumed. On a 62 500-unknown 2-D Laplacian, pinned to eight cores, gfortran + OpenBLAS MUMPS (median of
-three runs each):
+With no argument it uses `$OUTPUT_DIR` when set, otherwise
+`/tmp/russell_sparse/results/$SYSTEM` (`SYSTEM` defaults to `arch`).
 
-| `ICNTL(16)` | `OPENBLAS_NUM_THREADS` | time |
-|---|---|---|
-| 1 (what the guard enforced) | 8 | 0.206 s |
-| 1 | 1 | 0.205 s |
-| 0 (automatic, what removal gives) | 8 | 0.193 s |
-| 8 | 8 | 0.191 s |
-| 8 | 1 | 0.191 s |
+- MUMPS is the baseline and its column is the absolute `mumps_time`.
+- Other solver columns show total solver time relative to MUMPS. Values below
+  `1.00x` are faster and values above `1.00x` are slower.
+- Failed runs appear as keys such as `stop-time`, `no-mem`, `only-sym`,
+  `only-spd`, `no-conv`, `singular`, and `not-avail`; the key descriptions are
+  printed after the table.
+- MUMPS data is required for every matrix included in the table.
 
-Correctness was checked on the same build: the internal team is right at `ICNTL(16)` = 2, 4 and 8; 32 plain
-OS caller threads run 20 lifecycles each cleanly at `OMP=8` and `16` with the internal team on; and `pmsim`'s
-driver specifications agree with the guarded build to `1.2e-11` relative on the physical columns (bit-identical
-at one thread).
+### Benchmark runner
 
-If an OpenBLAS build on another machine still shows the old slow-down, the workaround needs no special
-field: set `LinSolParams.mumps_num_threads = 1`, or `OPENBLAS_NUM_THREADS=1`, so that only one of the two
-libraries threads at a time.
+`run_solve_matrix_market.bash` runs the standard matrix set and stores one JSON file
+per matrix and solver under `$OUTPUT_DIR/<solver>/`:
 
-## References
+```bash
+cd russell_sparse/src/bin
+export INPUT_DIR="$HOME/Downloads/matrix-market"
 
-1. Pedroso DM (2024) [Caveats of three direct linear solvers for finite element analyses](https://onlinelibrary.wiley.com/doi/10.1002/nme.7545), _International Journal for Numerical Methods in Engineering_, doi.org/10.1002/nme.7545.
-2. Dorozhinskii R (2019) [Configuration of a linear solver for linearly implicit time integration and efficient data transfer in parallel thermo-hydraulic computations](https://mediatum.ub.tum.de/doc/1486743/1486743.pdf). _Master's Thesis in Computational Science and Engineering._ Department of Informatics Technical University of Munich.
+# One solver:
+./run_solve_matrix_market.bash -s -g mumps -f 10
 
+# Every available genie, solving the systems:
+./run_solve_matrix_market.bash -s -G -f 10
 
+# Compare the results:
+cargo run --release --bin xtract_matrix_market
+```
+
+| Option | Meaning |
+|---|---|
+| `-i, --information` | Only print matrix metadata (default) |
+| `-s, --solve` | Solve the systems |
+| `-g, --genie <name>` | Run one solver |
+| `-G, --all-genies` | Run every available solver |
+| `-f, --first <n>` | First `n` real matrices |
+| `-F, --first-complex <n>` | First `n` complex matrices |
+| `-1` … `-5` | Number of runs per matrix |
+
+The default `OUTPUT_DIR` is `/tmp/russell_sparse/results/$SYSTEM`. Results are split
+by solver, so a MUMPS run, an UMFPACK run, and a Faer run can coexist and then be
+combined by `xtract_matrix_market`.
 
 ## For developers
 

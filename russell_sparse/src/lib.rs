@@ -37,6 +37,8 @@
 //! We call the actual linear system solver implementations [Genie] because they work like "magic" after being "wrapped" via a C-interface. Note that these fantastic solvers are implemented in Fortran and C. You may easily access the linear solvers directly via the following structures:
 //!
 //! * [SolverFaer] -- pure-Rust LU factorization from `algebra_linear` (always available)
+//! * [SolverBasicLu] -- pure-Rust LU factorization with rank-1 updates for square general systems (always available)
+//! * [SolverQdldl] -- pure-Rust `L D L^T` factorization of the upper triangle for symmetric quasi-definite systems (always available)
 //! * [SolverIterative] -- pure-Rust Krylov solvers with algebraic multigrid (always available)
 //! * **SolverMUMPS** (optional) -- thin wrapper to the MUMPS solver
 //! * `SolverUMFPACK` (optional, behind the `umfpack` feature) -- thin wrapper to the UMFPACK solver
@@ -400,8 +402,10 @@ mod numerical_jacobian;
 pub mod prelude;
 mod read_matrix_market;
 mod samples;
+mod solver_basiclu;
 mod solver_faer;
 mod solver_iterative;
+mod solver_qdldl;
 #[cfg(feature = "umfpack")]
 mod solver_umfpack;
 mod stats_lin_sol;
@@ -424,8 +428,10 @@ pub use lin_solver::*;
 pub use numerical_jacobian::*;
 pub use read_matrix_market::*;
 pub use samples::*;
+pub use solver_basiclu::*;
 pub use solver_faer::*;
 pub use solver_iterative::*;
+pub use solver_qdldl::*;
 #[cfg(feature = "umfpack")]
 pub use solver_umfpack::*;
 pub use stats_lin_sol::*;

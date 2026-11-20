@@ -5,6 +5,26 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.5.1] - 2026-11-19
+
+### Added
+
+- `russell_sparse` gains two pure-Rust sparse direct solvers from `algebra_linear` 3.1, selectable
+  like any other backend: `Genie::BasicLu` (`-g basiclu`) for square general systems — an LP-basis
+  LU with rank-1 updates — and `Genie::Qdldl` (`-g qdldl`) for symmetric quasi-definite systems,
+  an unpivoted `L D L^T` factorization of the upper triangle. Both are always available and need
+  no external library; only `russell_sparse` is versioned 5.5.1 (the other six crates stay 5.5.0).
+- `StatsLinSolOutput::basiclu_rank` and `StatsLinSolOutput::qdldl_positive_inertia`, both optional
+  (`#[serde(default, skip_serializing_if = "Option::is_none")]`), with explicit
+  `effective_ordering` / `effective_scaling` reporting for the two solvers.
+- `LinSolParams::basiclu: BasicLuParams` (defaults to `BasicLuParams::default()`), re-exported from
+  the crate root and `prelude`. `solve_matrix_market` uses the defaults in 5.5.1.
+- **Source break:** `Genie` is still a plain enum and gained two variants, so downstream exhaustive
+  `match`es stop compiling — keep a wildcard arm. The new `LinSolParams` field and the two new
+  `StatsLinSolOutput` fields also break struct-literal construction without
+  `..LinSolParams::new()` / `..Default::default()`. Under strict SemVer this is 5.6.0; the break is
+  documented here rather than hidden behind `#[non_exhaustive]` or aliases.
+
 ## [5.5.0] - 2026-11-19
 
 ### Changed (breaking)

@@ -1,5 +1,7 @@
 use super::{Ordering, Scaling};
 
+pub use algebra_linear::sparse::basiclu::BasicLuParams;
+
 /// Selects the preconditioner used by the iterative solvers
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Preconditioner {
@@ -209,6 +211,9 @@ pub struct LinSolParams {
 
     /// Configuration parameters for the iterative solvers
     pub iterative: IterativeParams,
+
+    /// Configuration parameters for the BasicLU solver
+    pub basiclu: BasicLuParams,
 }
 
 impl LinSolParams {
@@ -228,6 +233,7 @@ impl LinSolParams {
             faer_method: FaerMethod::default(),
             verbose: false,
             iterative: IterativeParams::default(),
+            basiclu: BasicLuParams::default(),
         }
     }
 }
@@ -236,7 +242,7 @@ impl LinSolParams {
 
 #[cfg(test)]
 mod tests {
-    use super::{AmgCoarsening, AmgSmoother, FaerMethod, IterativeParams, LinSolParams, Preconditioner};
+    use super::{AmgCoarsening, AmgSmoother, BasicLuParams, FaerMethod, IterativeParams, LinSolParams, Preconditioner};
     use crate::{Ordering, Scaling};
 
     #[test]
@@ -262,6 +268,7 @@ mod tests {
         assert_eq!(params.faer_method, FaerMethod::Simplicial);
         assert_eq!(params.faer_method, FaerMethod::default());
         assert_eq!(params.iterative, IterativeParams::default());
+        assert_eq!(params.basiclu, BasicLuParams::default());
     }
 
     #[test]

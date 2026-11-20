@@ -405,7 +405,7 @@ impl LinSolTrait for SolverIterative {
             stats.time_nanoseconds.solve_array.push(self.time_solve_ns);
         }
 
-        let iterative = stats.iterative.get_or_insert_with(StatsLinSolIterative::default);
+        let iterative = stats.iterative_stats.get_or_insert_with(StatsLinSolIterative::default);
         iterative.method = method_name(self.method).to_string();
         iterative.preconditioner = self.preconditioner_name.to_string();
         iterative.tolerance = self.tolerance;

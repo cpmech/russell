@@ -258,7 +258,8 @@ fn main() -> Result<(), StrError> {
                     finish_on_memory_error(&mut stats, e, opt.hide_json);
                     return Ok(());
                 }
-                return finish_on_solver_error(&mut stats, e, opt.hide_json);
+                finish_on_solver_error(&mut stats, e, opt.hide_json);
+                return Ok(());
             }
 
             // solve linear system
@@ -267,7 +268,8 @@ fn main() -> Result<(), StrError> {
                     finish_on_memory_error(&mut stats, e, opt.hide_json);
                     return Ok(());
                 }
-                return finish_on_solver_error(&mut stats, e, opt.hide_json);
+                finish_on_solver_error(&mut stats, e, opt.hide_json);
+                return Ok(());
             }
 
             // update stats
@@ -337,7 +339,8 @@ fn main() -> Result<(), StrError> {
                     finish_on_memory_error(&mut stats, e, opt.hide_json);
                     return Ok(());
                 }
-                return finish_on_solver_error(&mut stats, e, opt.hide_json);
+                finish_on_solver_error(&mut stats, e, opt.hide_json);
+                return Ok(());
             }
 
             // solve linear system
@@ -346,7 +349,8 @@ fn main() -> Result<(), StrError> {
                     finish_on_memory_error(&mut stats, e, opt.hide_json);
                     return Ok(());
                 }
-                return finish_on_solver_error(&mut stats, e, opt.hide_json);
+                finish_on_solver_error(&mut stats, e, opt.hide_json);
+                return Ok(());
             }
 
             // update stats
@@ -458,13 +462,15 @@ fn finish_on_memory_error(stats: &mut StatsLinSol, error: StrError, hide_json: b
 }
 
 /// Records a solver error in the statistics and emits the JSON when requested
-fn finish_on_solver_error(stats: &mut StatsLinSol, error: StrError, hide_json: bool) -> Result<(), StrError> {
+///
+/// The caller stops the current matrix and exits successfully: a solver failure
+/// is a recorded result, not a failure of the study.
+fn finish_on_solver_error(stats: &mut StatsLinSol, error: StrError, hide_json: bool) {
     stats.main.solved = false;
     stats.main.error_from_solver = Some(error.to_string());
     if !hide_json {
         println!("{}", stats.get_json());
     }
-    Err(error)
 }
 
 /// Parses `--faer-method` and `--faer-flop-ratio`
@@ -671,8 +677,7 @@ mod tests {
     #[test]
     fn finish_on_solver_error_fills_stats() {
         let mut stats = StatsLinSol::new();
-        let res = finish_on_solver_error(&mut stats, "solver failed", true);
-        assert_eq!(res.err(), Some("solver failed"));
+        finish_on_solver_error(&mut stats, "solver failed", true);
         assert!(!stats.main.solved);
         assert_eq!(stats.main.error_from_solver.as_deref(), Some("solver failed"));
         let json = stats.get_json();

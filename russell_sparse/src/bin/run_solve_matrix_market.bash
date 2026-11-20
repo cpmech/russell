@@ -66,6 +66,7 @@ usage() {
     echo "  -i, --information  only print the matrix information (default)"
     echo "  -s, --solve        solve the linear systems"
     echo "  -g, --genie <name> solver (default FAER)"
+    echo "  -G, --all-genies   run all available solvers"
     echo "  -f, --first <n>    only run the first <n> REAL_MATS"
     echo "  -F, --first-complex <n>  only run the first <n> COMPLEX_MATS"
     echo "  -1 ... -5          number of runs (default 1)"
@@ -74,6 +75,7 @@ usage() {
 }
 
 INFORMATION=1
+ALL_GENIES=0
 FIRST_N=0
 FIRST_COMPLEX_N=0
 NRUN=1
@@ -89,6 +91,7 @@ while (($# > 0)); do
             SOLVER=$2
             shift
             ;;
+        -G | --all-genies) ALL_GENIES=1 ;;
         -f | --first)
             if (($# < 2)); then
                 echo "option $1 requires a number" >&2
@@ -131,12 +134,24 @@ while (($# > 0)); do
     shift
 done
 
-shopt -s nocasematch
-if [[ ! "$SOLVER" =~ ^(faer|cg|bicgstab|gmres|mumps|umfpack|basiclu|qdldl)$ ]]; then
-    echo "invalid solver: $SOLVER (choose one of: faer, cg, bicgstab, gmres, mumps, umfpack, basiclu, qdldl)" >&2
-    exit 1
+if ((ALL_GENIES)); then
+    GENIES=()
+    if [[ "$FEATURES" == *mumps* ]]; then
+        GENIES+=(mumps)
+    fi
+    if [[ "$FEATURES" == *umfpack* ]]; then
+        GENIES+=(umfpack)
+    fi
+    GENIES+=(faer qdldl basiclu cg bicgstab gmres)
+else
+    shopt -s nocasematch
+    if [[ ! "$SOLVER" =~ ^(faer|cg|bicgstab|gmres|mumps|umfpack|basiclu|qdldl)$ ]]; then
+        echo "invalid solver: $SOLVER (choose one of: faer, cg, bicgstab, gmres, mumps, umfpack, basiclu, qdldl)" >&2
+        exit 1
+    fi
+    shopt -u nocasematch
+    GENIES=("$SOLVER")
 fi
-shopt -u nocasematch
 
 if [[ ! -d "$INPUT_DIR" ]]; then
     echo "input directory not found: $INPUT_DIR" >&2
@@ -150,8 +165,6 @@ fi
 mkdir -p "$OUTPUT_DIR"
 INPUT_DIR=$(cd "$INPUT_DIR" && pwd)
 OUTPUT_DIR=$(cd "$OUTPUT_DIR" && pwd)
-SOLVER_DIR="$OUTPUT_DIR/$SOLVER"
-mkdir -p "$SOLVER_DIR"
 
 RUN_MATS=("${REAL_MATS[@]}" "${COMPLEX_MATS[@]}")
 if ((FIRST_N > 0 || FIRST_COMPLEX_N > 0)); then
@@ -165,11 +178,6 @@ if ((FIRST_N > 0 || FIRST_COMPLEX_N > 0)); then
 fi
 TOTAL_MATS=${#RUN_MATS[@]}
 CURRENT_MAT=0
-
-ARGS=(-g "$SOLVER" --nrun "$NRUN")
-if ((INFORMATION)); then
-    ARGS+=(--information)
-fi
 
 FEATURE_ARGS=()
 if [[ -n "$FEATURES" ]]; then
@@ -205,9 +213,25 @@ run_matrix() {
 
 TIMEFORMAT='total time: %3R s'
 time {
-    for name in "${RUN_MATS[@]}"; do
-        run_matrix "$name"
+    for SOLVER in "${GENIES[@]}"; do
+        SOLVER_DIR="$OUTPUT_DIR/$SOLVER"
+        mkdir -p "$SOLVER_DIR"
+        ARGS=(-g "$SOLVER" --nrun "$NRUN")
+        if ((INFORMATION)); then
+            ARGS+=(--information)
+        fi
+        if ((ALL_GENIES)); then
+            echo "=== Genie: $SOLVER ===" >&2
+        fi
+        CURRENT_MAT=0
+        for name in "${RUN_MATS[@]}"; do
+            run_matrix "$name"
+        done
     done
 }
 
-echo "results written to $SOLVER_DIR" >&2
+if ((ALL_GENIES)); then
+    echo "results written to $OUTPUT_DIR" >&2
+else
+    echo "results written to $SOLVER_DIR" >&2
+fi

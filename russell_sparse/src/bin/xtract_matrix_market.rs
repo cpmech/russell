@@ -124,6 +124,13 @@ fn main() -> Result<(), String> {
     print_table("Complex-valued matrices", &complex_rows, &complex_solvers);
 
     println!();
+    println!("Relative-time columns show solver total time / MUMPS total time; rows without a MUMPS time are blank.");
+    println!();
+    print_relative_table("Relative times: real-valued matrices", &real_rows, &real_solvers);
+    println!();
+    print_relative_table("Relative times: complex-valued matrices", &complex_rows, &complex_solvers);
+
+    println!();
     print_key_descriptions(&used_keys);
 
     println!();
@@ -203,13 +210,13 @@ fn parse_record(value: &Value) -> Option<MatrixData> {
         positive_definite,
         ..Default::default()
     };
-    if let Some(accuracy) = parse_accuracy(value, complex) {
-        data.accuracy.insert(solver.clone(), accuracy);
-    }
     if solved {
         let total_ifs = value.pointer("/time_nanoseconds/total_ifs").and_then(Value::as_u64).unwrap_or(0);
         if total_ifs == 0 {
             return None;
+        }
+        if let Some(accuracy) = parse_accuracy(value, complex) {
+            data.accuracy.insert(solver.clone(), accuracy);
         }
         data.times.insert(solver, total_ifs);
     } else {
@@ -419,6 +426,59 @@ fn print_table(title: &str, rows: &[MatrixData], solvers: &[String]) {
     }
 }
 
+/// Builds one row of a relative-time table
+fn relative_row(row: &MatrixData, solvers: &[String]) -> Vec<String> {
+    let mut line = vec![display_name(&row.name).to_string(), row.nnz.to_string(), sym_label(row).to_string()];
+    let Some(mumps_ns) = row.times.get("mumps").copied().filter(|ns| *ns > 0) else {
+        line.extend(solvers.iter().map(|_| String::new()));
+        return line;
+    };
+    for solver in solvers {
+        let cell = if let Some(ns) = row.times.get(solver) {
+            relative_time(*ns, mumps_ns)
+        } else if let Some(key) = row.failures.get(solver) {
+            (*key).to_string()
+        } else {
+            String::new()
+        };
+        line.push(cell);
+    }
+    line
+}
+
+/// Formats a time relative to MUMPS
+fn relative_time(nanoseconds: u64, mumps_nanoseconds: u64) -> String {
+    format!("{:.2}x", nanoseconds as f64 / mumps_nanoseconds as f64)
+}
+
+/// Prints one relative-time table
+fn print_relative_table(title: &str, rows: &[MatrixData], solvers: &[String]) {
+    println!("{title}");
+    if rows.is_empty() {
+        println!("(no matrices)");
+        return;
+    }
+
+    let mut headers: Vec<String> = vec!["matrix".to_string(), "nnz".to_string(), "sym".to_string()];
+    headers.extend(solvers.iter().cloned());
+
+    let cells: Vec<Vec<String>> = rows.iter().map(|row| relative_row(row, solvers)).collect();
+    let mut widths: Vec<usize> = headers.iter().map(|header| header.chars().count()).collect();
+    for line in &cells {
+        for (i, cell) in line.iter().enumerate() {
+            widths[i] = widths[i].max(cell.chars().count());
+        }
+    }
+    let right_aligned: Vec<bool> = (0..headers.len()).map(|i| i == 1 || i >= 3).collect();
+
+    println!("{}", format_row(&headers, &widths, &right_aligned));
+    let separator: Vec<String> = widths.iter().map(|width| "-".repeat(*width)).collect();
+    println!("{}", separator.join("  "));
+    for line in &cells {
+        println!("{}", format_row(line, &widths, &right_aligned));
+    }
+}
+
 /// Prints one accuracy table
 fn print_accuracy_table(title: &str, rows: &[MatrixData], solvers: &[String]) {
     let mut cells: Vec<Vec<String>> = Vec::new();
@@ -521,7 +581,8 @@ fn print_usage() {
     println!("Usage: xtract_matrix_market [results_dir]");
     println!();
     println!("Reads the JSON files written by solve_matrix_market and prints solver timing and accuracy tables.");
-    println!("Every solver timing column shows its absolute total time; no MUMPS baseline is required.");
+    println!("Absolute-time tables show total time; relative-time tables show solver time / MUMPS time.");
+    println!("Rows without a MUMPS time are blank in the relative-time tables.");
     println!("Accuracy columns are rel_error, rel_res_b, rel_res_ax, and the pass/warn/fail tier.");
     println!("Failure keys are printed after the tables; blank cells mean no result was found.");
     println!("Default directory: $OUTPUT_DIR when set, otherwise /tmp/russell_sparse/results/$SYSTEM.");
@@ -570,6 +631,21 @@ mod tests {
     }
 
     #[test]
+    fn failed_runs_do_not_add_accuracy() {
+        let mut value = sample("Faer", "mat1", 10, "No", false, 0);
+        value["main"]["solved"] = json!(false);
+        value["main"]["error_from_solver"] = json!("time guard exceeded (100 s)");
+        value["verify"] = json!({
+            "relative_error": 0.0,
+            "max_abs_ax": 0.0,
+            "max_abs_diff": 0.0,
+        });
+        let data = parse_record(&value).unwrap();
+        assert!(data.accuracy.is_empty());
+        assert_eq!(data.failures["faer"], "stop-time");
+    }
+
+    #[test]
     fn parse_accuracy_uses_complex_rhs_norm() {
         let mut value = sample("Faer", "mat1", 10, "No", false, 1234);
         value["matrix"]["complex"] = json!(true);
@@ -590,6 +666,45 @@ mod tests {
         assert_eq!(classify_accuracy(1e-3, 0.2, 0.2), AccuracyTier::Fail);
         assert_eq!(classify_accuracy(f64::NAN, 1e-5, 1e-5), AccuracyTier::Fail);
         assert_eq!(classify_accuracy(1e-5, f64::INFINITY, 1e-5), AccuracyTier::Fail);
+    }
+
+    #[test]
+    fn relative_time_has_two_digits() {
+        assert_eq!(relative_time(500, 1000), "0.50x");
+        assert_eq!(relative_time(1234, 1000), "1.23x");
+        assert_eq!(relative_time(1000, 1000), "1.00x");
+    }
+
+    #[test]
+    fn relative_row_uses_mumps_as_baseline() {
+        let mut row = MatrixData {
+            name: "mat1".to_string(),
+            nnz: 10,
+            ..Default::default()
+        };
+        row.times.insert("mumps".to_string(), 1000);
+        row.times.insert("faer".to_string(), 500);
+        row.failures.insert("umfpack".to_string(), "no-mem");
+        let solvers: Vec<String> = ["mumps", "umfpack", "faer"].iter().map(|s| s.to_string()).collect();
+        let cells = relative_row(&row, &solvers);
+        assert_eq!(cells[3], "1.00x");
+        assert_eq!(cells[4], "no-mem");
+        assert_eq!(cells[5], "0.50x");
+    }
+
+    #[test]
+    fn relative_row_is_blank_without_mumps() {
+        let mut row = MatrixData {
+            name: "mat1".to_string(),
+            nnz: 10,
+            ..Default::default()
+        };
+        row.times.insert("faer".to_string(), 500);
+        row.failures.insert("umfpack".to_string(), "no-mem");
+        let solvers: Vec<String> = ["mumps", "umfpack", "faer"].iter().map(|s| s.to_string()).collect();
+        let cells = relative_row(&row, &solvers);
+        assert_eq!(cells.len(), 6);
+        assert!(cells[3..].iter().all(|cell| cell.is_empty()));
     }
 
     #[test]

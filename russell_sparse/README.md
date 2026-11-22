@@ -457,6 +457,9 @@ With no argument it uses `$OUTPUT_DIR` when set, otherwise
 
 - Every solver column shows its absolute total time (initialize + preprocess +
   solve); no MUMPS baseline is required.
+- The relative-time tables show `time_solver / time_mumps`: values below `1.00x`
+  are faster than MUMPS, and the MUMPS column is `1.00x`. Matrices without a
+  MUMPS time have blank solver cells in these tables.
 - Failed runs appear as keys such as `stop-time`, `no-mem`, `only-sym`,
   `only-spd`, `no-conv`, `singular`, and `not-avail`; the key descriptions are
   printed after the tables.
@@ -469,6 +472,31 @@ With no argument it uses `$OUTPUT_DIR` when set, otherwise
   `rel_error > 2.5e-6`.
 - The accuracy columns are computed from the existing `verify` object, so no
   rerun is needed.
+
+### xcompare_matrix_market
+
+`xcompare_matrix_market` compares solver times across CPU-labelled result
+directories and reports speedup statistics:
+
+```bash
+cargo run --release --bin xcompare_matrix_market -- \
+  /home/dorival/07-Storage/benchmark-sparse/arch
+```
+
+The path may be a base name (`.../arch`), one CPU directory (`.../arch-i7`), or
+a parent containing CPU directories. CPU labels are detected from trailing
+`-i<number>` suffixes, such as `arch-i7` and `arch-i9`. The lowest-numbered CPU
+is the baseline.
+
+For each target CPU, the tool prints:
+
+- an overall/by-scope table with the number of paired cells, geometric mean,
+  median, and arithmetic mean of `time_baseline / time_target`
+- a by-solver table with the same statistics
+- real/complex and `nnz >= 1M` / `nnz < 1M` strata
+
+Times are read directly from the JSON files as
+`time_nanoseconds.total_ifs`. Values above `1.00x` mean the target CPU is faster.
 
 ### sys_info
 

@@ -12,11 +12,8 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// Solvers whose time is required for every matrix.
-const REQUIRED: [&str; 1] = ["mumps"];
-
-/// Optional solver columns with a preferred position in the table.
-const NAMED_OPTIONAL: [&str; 4] = ["umfpack", "faer", "qdldl", "basiclu"];
+/// Preferred solver column order; columns are discovered from the result files.
+const SOLVER_ORDER: [&str; 5] = ["mumps", "umfpack", "faer", "qdldl", "basiclu"];
 
 /// Descriptions of the failure keys used in the solver columns.
 const KEY_DESCRIPTIONS: &[(&str, &str)] = &[
@@ -93,20 +90,9 @@ fn main() -> Result<(), String> {
     let mut rows: Vec<MatrixData> = matrices.into_values().collect();
     rows.sort_by(|aa, bb| aa.nnz.cmp(&bb.nnz).then_with(|| aa.name.cmp(&bb.name)));
 
-    for row in &rows {
-        for solver in REQUIRED {
-            if let Some(key) = row.failures.get(solver) {
-                return Err(format!("matrix {} has no valid {} time ({})", row.name, solver, key));
-            }
-            if !row.times.contains_key(solver) {
-                return Err(format!("matrix {} has no valid {} time", row.name, solver));
-            }
-        }
-    }
-
-    let optional = optional_solvers(&rows);
+    let solvers = solver_columns(&rows);
     let used_keys = used_failure_keys(&rows);
-    print_table(&rows, &optional);
+    print_table(&rows, &solvers);
     print_key_descriptions(&used_keys);
     Ok(())
 }
@@ -265,24 +251,22 @@ fn merge_record(matrices: &mut HashMap<String, MatrixData>, data: MatrixData) {
     }
 }
 
-/// Returns the optional solver columns, with the named ones first
-fn optional_solvers(rows: &[MatrixData]) -> Vec<String> {
+/// Returns the solver columns, with the common solvers first
+fn solver_columns(rows: &[MatrixData]) -> Vec<String> {
     let mut found = BTreeSet::new();
     for row in rows {
         for solver in row.times.keys().chain(row.failures.keys()) {
-            if !REQUIRED.contains(&solver.as_str()) {
-                found.insert(solver.clone());
-            }
+            found.insert(solver.clone());
         }
     }
-    let mut optional = Vec::new();
-    for solver in NAMED_OPTIONAL {
+    let mut solvers = Vec::new();
+    for solver in SOLVER_ORDER {
         if found.remove(solver) {
-            optional.push(solver.to_string());
+            solvers.push(solver.to_string());
         }
     }
-    optional.extend(found);
-    optional
+    solvers.extend(found);
+    solvers
 }
 
 /// Returns the failure keys that appear in the table
@@ -311,32 +295,17 @@ fn sym_label(row: &MatrixData) -> &'static str {
     }
 }
 
-/// Formats a time relative to MUMPS with two decimal digits
-fn relative_time(nanoseconds: u64, mumps_nanoseconds: u64) -> String {
-    format!("{:.2}x", nanoseconds as f64 / mumps_nanoseconds as f64)
-}
-
 /// Prints the comparison table
-fn print_table(rows: &[MatrixData], optional: &[String]) {
+fn print_table(rows: &[MatrixData], solvers: &[String]) {
     let mut headers: Vec<String> = vec!["matrix".to_string(), "nnz".to_string(), "sym".to_string()];
-    for solver in REQUIRED {
-        headers.push(format!("{}_time", solver));
-    }
-    for solver in optional {
-        headers.push(solver.clone());
-    }
+    headers.extend(solvers.iter().cloned());
 
     let mut cells: Vec<Vec<String>> = Vec::with_capacity(rows.len());
     for row in rows {
-        let mumps_ns = row.times.get("mumps").copied().unwrap_or(0);
         let mut line = vec![display_name(&row.name).to_string(), row.nnz.to_string(), sym_label(row).to_string()];
-        for solver in REQUIRED {
-            let time = row.times.get(solver).map(|ns| fmt_nano(*ns as u128, 2)).unwrap_or_default();
-            line.push(time);
-        }
-        for solver in optional {
+        for solver in solvers {
             let cell = if let Some(ns) = row.times.get(solver) {
-                if mumps_ns > 0 { relative_time(*ns, mumps_ns) } else { String::new() }
+                fmt_nano(*ns as u128, 2)
             } else if let Some(key) = row.failures.get(solver) {
                 (*key).to_string()
             } else {
@@ -355,13 +324,8 @@ fn print_table(rows: &[MatrixData], optional: &[String]) {
     }
     let right_aligned: Vec<bool> = (0..headers.len()).map(|i| i == 1 || i >= 3).collect();
 
-    if !optional.is_empty() {
-        println!(
-            "Solver columns other than mumps_time show the total solver time relative to MUMPS: \
-             less than 1.00x is faster and greater than 1.00x is slower."
-        );
-        println!();
-    }
+    println!("All solver columns show total time (initialize + preprocess + solve).");
+    println!();
 
     println!("{}", format_row(&headers, &widths, &right_aligned));
     let separator: Vec<String> = widths.iter().map(|width| "-".repeat(*width)).collect();
@@ -406,9 +370,8 @@ fn print_usage() {
     println!("Usage: xtract_matrix_market [results_dir]");
     println!();
     println!("Reads the JSON files written by solve_matrix_market and prints a solver timing table.");
-    println!("MUMPS times are required for every matrix; the other solvers are optional.");
-    println!("Optional solver columns show the time relative to MUMPS (for example, 1.25x),");
-    println!("or a failure key whose description is printed after the table.");
+    println!("Every solver column shows its absolute total time; no MUMPS baseline is required.");
+    println!("Failure keys are printed after the table; blank cells mean no result was found.");
     println!("Default directory: $OUTPUT_DIR when set, otherwise /tmp/russell_sparse/results/$SYSTEM.");
 }
 
@@ -548,19 +511,20 @@ mod tests {
     }
 
     #[test]
-    fn optional_solvers_include_failures_and_are_ordered() {
+    fn solver_columns_include_failures_and_are_ordered() {
         let mut row = MatrixData::default();
         for solver in ["gmres", "basiclu", "faer", "mumps", "qdldl"] {
             row.times.insert(solver.to_string(), 1);
         }
         row.failures.insert("umfpack".to_string(), "only-sym");
-        assert_eq!(optional_solvers(&[row]), ["umfpack", "faer", "qdldl", "basiclu", "gmres"]);
+        assert_eq!(solver_columns(&[row]), ["mumps", "umfpack", "faer", "qdldl", "basiclu", "gmres"]);
     }
 
     #[test]
-    fn relative_time_has_two_digits() {
-        assert_eq!(relative_time(500, 1000), "0.50x");
-        assert_eq!(relative_time(1234, 1000), "1.23x");
+    fn solver_columns_work_without_mumps() {
+        let mut row = MatrixData::default();
+        row.times.insert("faer".to_string(), 1);
+        assert_eq!(solver_columns(&[row]), ["faer"]);
     }
 
     #[test]

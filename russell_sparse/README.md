@@ -445,7 +445,8 @@ The iterative solvers are configured with the following options, which `faer`,
 ### xtract_matrix_market
 
 `xtract_matrix_market` reads the JSON files produced by `solve_matrix_market`
-(recursively) and prints a comparison table:
+(recursively) and prints two comparison tables: one for real-valued matrices and
+one for complex-valued matrices:
 
 ```bash
 cargo run --release --bin xtract_matrix_market -- [results_dir]
@@ -454,13 +455,12 @@ cargo run --release --bin xtract_matrix_market -- [results_dir]
 With no argument it uses `$OUTPUT_DIR` when set, otherwise
 `/tmp/russell_sparse/results/$SYSTEM` (`SYSTEM` defaults to `arch`).
 
-- MUMPS is the baseline and its column is the absolute `mumps_time`.
-- Other solver columns show total solver time relative to MUMPS. Values below
-  `1.00x` are faster and values above `1.00x` are slower.
+- Every solver column shows its absolute total time (initialize + preprocess +
+  solve); no MUMPS baseline is required.
 - Failed runs appear as keys such as `stop-time`, `no-mem`, `only-sym`,
   `only-spd`, `no-conv`, `singular`, and `not-avail`; the key descriptions are
-  printed after the table.
-- MUMPS data is required for every matrix included in the table.
+  printed after the tables.
+- Blank cells mean no result file was found for that matrix/solver.
 
 ### Benchmark runner
 

@@ -36,6 +36,7 @@ const KEY_DESCRIPTIONS: &[(&str, &str)] = &[
 struct MatrixData {
     name: String,
     nnz: u64,
+    complex: bool,
     symmetric: bool,
     positive_definite: bool,
     times: HashMap<String, u64>,
@@ -90,9 +91,19 @@ fn main() -> Result<(), String> {
     let mut rows: Vec<MatrixData> = matrices.into_values().collect();
     rows.sort_by(|aa, bb| aa.nnz.cmp(&bb.nnz).then_with(|| aa.name.cmp(&bb.name)));
 
-    let solvers = solver_columns(&rows);
-    let used_keys = used_failure_keys(&rows);
-    print_table(&rows, &solvers);
+    let (complex_rows, real_rows): (Vec<MatrixData>, Vec<MatrixData>) = rows.into_iter().partition(|row| row.complex);
+    let real_solvers = solver_columns(&real_rows);
+    let complex_solvers = solver_columns(&complex_rows);
+    let used_keys = used_failure_keys(&real_rows)
+        .into_iter()
+        .chain(used_failure_keys(&complex_rows))
+        .collect();
+
+    println!("All solver columns show total time (initialize + preprocess + solve).");
+    println!();
+    print_table("Real-valued matrices", &real_rows, &real_solvers);
+    println!();
+    print_table("Complex-valued matrices", &complex_rows, &complex_solvers);
     print_key_descriptions(&used_keys);
     Ok(())
 }
@@ -139,6 +150,7 @@ fn parse_record(value: &Value) -> Option<MatrixData> {
         .and_then(Value::as_u64)
         .or_else(|| value.pointer("/matrix/nnz").and_then(Value::as_u64))
         .unwrap_or(0);
+    let complex = value.pointer("/matrix/complex").and_then(Value::as_bool).unwrap_or(false);
     let symmetric = value
         .pointer("/matrix/symmetric")
         .and_then(Value::as_str)
@@ -153,6 +165,7 @@ fn parse_record(value: &Value) -> Option<MatrixData> {
     let mut data = MatrixData {
         name,
         nnz,
+        complex,
         symmetric,
         positive_definite,
         ..Default::default()
@@ -232,6 +245,7 @@ fn classify_message(message: &str) -> &'static str {
 /// Merges one solver record into the matrix map
 fn merge_record(matrices: &mut HashMap<String, MatrixData>, data: MatrixData) {
     if let Some(row) = matrices.get_mut(&data.name) {
+        row.complex |= data.complex;
         row.symmetric |= data.symmetric;
         row.positive_definite |= data.positive_definite;
         row.nnz = row.nnz.max(data.nnz);
@@ -295,8 +309,14 @@ fn sym_label(row: &MatrixData) -> &'static str {
     }
 }
 
-/// Prints the comparison table
-fn print_table(rows: &[MatrixData], solvers: &[String]) {
+/// Prints one comparison table
+fn print_table(title: &str, rows: &[MatrixData], solvers: &[String]) {
+    println!("{title}");
+    if rows.is_empty() {
+        println!("(no matrices)");
+        return;
+    }
+
     let mut headers: Vec<String> = vec!["matrix".to_string(), "nnz".to_string(), "sym".to_string()];
     headers.extend(solvers.iter().cloned());
 
@@ -323,9 +343,6 @@ fn print_table(rows: &[MatrixData], solvers: &[String]) {
         }
     }
     let right_aligned: Vec<bool> = (0..headers.len()).map(|i| i == 1 || i >= 3).collect();
-
-    println!("All solver columns show total time (initialize + preprocess + solve).");
-    println!();
 
     println!("{}", format_row(&headers, &widths, &right_aligned));
     let separator: Vec<String> = widths.iter().map(|width| "-".repeat(*width)).collect();
@@ -409,6 +426,13 @@ mod tests {
         let data = parse_record(&value).unwrap();
         assert_eq!(data.failures["qdldl"], "only-sym");
         assert!(data.times.is_empty());
+    }
+
+    #[test]
+    fn parse_record_reads_the_complex_flag() {
+        let mut value = sample("Faer", "mat1", 10, "No", false, 1234);
+        value["matrix"]["complex"] = json!(true);
+        assert!(parse_record(&value).unwrap().complex);
     }
 
     #[test]

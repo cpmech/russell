@@ -481,7 +481,7 @@ directories and reports speedup statistics:
 
 ```bash
 cargo run --release --bin xcompare_matrix_market -- \
-  /home/dorival/07-Storage/benchmark-sparse/arch
+  ~/07-Storage/benchmark-sparse/arch
 ```
 
 The path may be a base name (`.../arch`), one CPU directory (`.../arch-i7`), or
@@ -517,7 +517,10 @@ the build, so `--features umfpack,mumps` reports those libraries as compiled in.
 `run_solve_matrix_market.bash` runs the standard matrix set and stores one JSON file
 per matrix and solver under `$OUTPUT_DIR/<solver>/`. Before running, it writes the
 benchmark configuration and the `sys_info` report to
-`$OUTPUT_DIR/system-information.txt` (override with `INFO_FILE`):
+`$OUTPUT_DIR/system-information.txt` (override with `INFO_FILE`). The provenance
+header records the date, Russell version and commit, system, features, solvers,
+`nrun`, `time_guard`, CPU pinning, input/output paths, solver arguments, selected
+matrices, SPD matrices, and the solver/matrix skip policy.
 
 ```bash
 cd russell_sparse/src/bin
@@ -542,6 +545,8 @@ cargo run --release --bin xtract_matrix_market
 | `-f, --first <n>` | First `n` real matrices |
 | `-F, --first-complex <n>` | First `n` complex matrices |
 | `-1` … `-5` | Number of runs per matrix |
+
+Set `TIME_GUARD` to override the per-run time guard (default `200` seconds).
 
 The default `OUTPUT_DIR` is `/tmp/russell_sparse/results/$SYSTEM`. Results are split
 by solver, so a MUMPS run, an UMFPACK run, and a Faer run can coexist and then be

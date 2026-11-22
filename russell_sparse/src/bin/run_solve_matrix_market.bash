@@ -200,7 +200,7 @@ usage() {
     echo "  Iterative solvers and BasicLU/QDLDL skip the complex matrices."
     echo "  QDLDL also skips non-symmetric matrices."
     echo ""
-    echo "Environment: RUSSELL_DIR, INPUT_DIR, OUTPUT_DIR, INFO_FILE, SYSTEM, FEATURES, PIN_SINGLE_THREAD, P_CORES"
+    echo "Environment: RUSSELL_DIR, INPUT_DIR, OUTPUT_DIR, INFO_FILE, SYSTEM, FEATURES, TIME_GUARD, PIN_SINGLE_THREAD, P_CORES"
 }
 
 INFORMATION=1
@@ -208,6 +208,7 @@ ALL_GENIES=0
 FIRST_N=0
 FIRST_COMPLEX_N=0
 NRUN=1
+TIME_GUARD=${TIME_GUARD:-200}
 while (($# > 0)); do
     case "$1" in
         -i | --information) INFORMATION=1 ;;
@@ -263,6 +264,11 @@ while (($# > 0)); do
     shift
 done
 
+if [[ ! "$TIME_GUARD" =~ ^[0-9]+$ ]]; then
+    echo "invalid TIME_GUARD: $TIME_GUARD (expected a non-negative integer)" >&2
+    exit 1
+fi
+
 if ((ALL_GENIES)); then
     GENIES=()
     if [[ "$FEATURES" == *mumps* ]]; then
@@ -315,6 +321,21 @@ if [[ -n "$FEATURES" ]]; then
     FEATURE_ARGS=(--features "$FEATURES")
 fi
 
+RUSSELL_VERSION=$(sed -n 's/^version = "\([^"]*\)"/\1/p' "$RUSSELL_DIR/russell_sparse/Cargo.toml" | head -n 1)
+RUSSELL_VERSION=${RUSSELL_VERSION:-unknown}
+RUSSELL_COMMIT=$(git -C "$RUSSELL_DIR" rev-parse --short HEAD 2>/dev/null || true)
+RUSSELL_COMMIT=${RUSSELL_COMMIT:-unknown}
+if [[ "$RUSSELL_COMMIT" != "unknown" ]] && [[ -n "$(git -C "$RUSSELL_DIR" status --porcelain --untracked-files=no 2>/dev/null)" ]]; then
+    RUSSELL_COMMIT="${RUSSELL_COMMIT}-dirty"
+fi
+
+SELECTED_SPD=()
+for name in "${REAL_RUN_MATS[@]}" "${COMPLEX_RUN_MATS[@]}"; do
+    if is_spd "$name"; then
+        SELECTED_SPD+=("$name")
+    fi
+done
+
 echo "=== Building solve_matrix_market and sys_info (features: ${FEATURES:-none}) ===" >&2
 cargo build --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
     --package russell_sparse "${FEATURE_ARGS[@]}" --bin solve_matrix_market --bin sys_info
@@ -322,12 +343,49 @@ cargo build --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
 {
     echo "Benchmark configuration"
     echo "date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    echo "russell version: $RUSSELL_VERSION"
+    echo "russell commit: $RUSSELL_COMMIT"
     echo "system: $SYSTEM"
     echo "features: ${FEATURES:-none}"
     echo "solvers: ${GENIES[*]}"
-    echo "runs: $NRUN"
+    echo "nrun: $NRUN"
+    echo "time_guard: $TIME_GUARD"
+    echo "information_only: $INFORMATION"
+    echo "pin_single_thread: $PIN_SINGLE_THREAD"
+    echo "p_cores: ${P_CORES:-none}"
     echo "input: $INPUT_DIR"
     echo "output: $OUTPUT_DIR"
+    echo
+    echo "solver arguments:"
+    for solver in "${GENIES[@]}"; do
+        printf '  -g %s --nrun %s --time-guard %s' "$solver" "$NRUN" "$TIME_GUARD"
+        if ((INFORMATION)); then
+            printf ' --information'
+        fi
+        printf '\n'
+    done
+    echo
+    echo "matrix arguments: --positive-definite for the SPD matrices listed below"
+    echo "skip policy: complex matrices for iterative, BasicLU, and QDLDL; non-symmetric matrices for QDLDL"
+    echo
+    echo "real matrices (${#REAL_RUN_MATS[@]}):"
+    if ((${#REAL_RUN_MATS[@]} > 0)); then
+        printf '  %s\n' "${REAL_RUN_MATS[@]}"
+    else
+        echo "  (none)"
+    fi
+    echo "complex matrices (${#COMPLEX_RUN_MATS[@]}):"
+    if ((${#COMPLEX_RUN_MATS[@]} > 0)); then
+        printf '  %s\n' "${COMPLEX_RUN_MATS[@]}"
+    else
+        echo "  (none)"
+    fi
+    echo "spd matrices (${#SELECTED_SPD[@]}):"
+    if ((${#SELECTED_SPD[@]} > 0)); then
+        printf '  %s\n' "${SELECTED_SPD[@]}"
+    else
+        echo "  (none)"
+    fi
     echo
     cargo run -q --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
         --package russell_sparse "${FEATURE_ARGS[@]}" --bin sys_info
@@ -375,7 +433,7 @@ time {
     for SOLVER in "${GENIES[@]}"; do
         SOLVER_DIR="$OUTPUT_DIR/$SOLVER"
         mkdir -p "$SOLVER_DIR"
-        ARGS=(-g "$SOLVER" --nrun "$NRUN")
+        ARGS=(-g "$SOLVER" --nrun "$NRUN" --time-guard "$TIME_GUARD")
         if ((INFORMATION)); then
             ARGS+=(--information)
         fi

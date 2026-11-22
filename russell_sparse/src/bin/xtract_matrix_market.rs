@@ -31,6 +31,23 @@ const KEY_DESCRIPTIONS: &[(&str, &str)] = &[
     ("error", "other error; read the logs"),
 ];
 
+/// Accuracy tier used by the two-tier gate
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AccuracyTier {
+    Pass,
+    Warn,
+    Fail,
+}
+
+/// Holds the accuracy metrics of one solver/matrix record
+#[derive(Debug, Clone, Copy)]
+struct Accuracy {
+    relative_error: f64,
+    rel_res_b: f64,
+    rel_res_ax: f64,
+    tier: AccuracyTier,
+}
+
 /// Holds one row of the comparison table.
 #[derive(Debug, Default)]
 struct MatrixData {
@@ -41,6 +58,7 @@ struct MatrixData {
     positive_definite: bool,
     times: HashMap<String, u64>,
     failures: HashMap<String, &'static str>,
+    accuracy: HashMap<String, Accuracy>,
 }
 
 fn main() -> Result<(), String> {
@@ -104,7 +122,22 @@ fn main() -> Result<(), String> {
     print_table("Real-valued matrices", &real_rows, &real_solvers);
     println!();
     print_table("Complex-valued matrices", &complex_rows, &complex_solvers);
+
+    println!();
     print_key_descriptions(&used_keys);
+
+    println!();
+    println!("Accuracy columns:");
+    println!("  rel_error   max_abs_diff / (max_abs_a + 1)");
+    println!("  rel_res_b   max_abs_diff / ||b||∞");
+    println!("  rel_res_ax  max_abs_diff / max(max_abs_ax, ||b||∞)");
+    println!("  ||b||∞ = 1        real");
+    println!("  ||b||∞ = sqrt(2)  complex");
+    println!("  tiers       fail: rel_res_b > 0.1; warn: rel_res_b > 1e-4 or rel_error > 2.5e-6");
+    println!();
+    print_accuracy_table("Accuracy: real-valued matrices", &real_rows, &real_solvers);
+    println!();
+    print_accuracy_table("Accuracy: complex-valued matrices", &complex_rows, &complex_solvers);
     Ok(())
 }
 
@@ -170,6 +203,9 @@ fn parse_record(value: &Value) -> Option<MatrixData> {
         positive_definite,
         ..Default::default()
     };
+    if let Some(accuracy) = parse_accuracy(value, complex) {
+        data.accuracy.insert(solver.clone(), accuracy);
+    }
     if solved {
         let total_ifs = value.pointer("/time_nanoseconds/total_ifs").and_then(Value::as_u64).unwrap_or(0);
         if total_ifs == 0 {
@@ -180,6 +216,34 @@ fn parse_record(value: &Value) -> Option<MatrixData> {
         data.failures.insert(solver, failure_key(value)?);
     }
     Some(data)
+}
+
+/// Extracts the three accuracy metrics and the two-tier classification
+fn parse_accuracy(value: &Value, complex: bool) -> Option<Accuracy> {
+    let relative_error = value.pointer("/verify/relative_error")?.as_f64()?;
+    let max_abs_ax = value.pointer("/verify/max_abs_ax")?.as_f64()?;
+    let max_abs_diff = value.pointer("/verify/max_abs_diff")?.as_f64()?;
+    let b_norm = if complex { std::f64::consts::SQRT_2 } else { 1.0 };
+    let rel_res_b = max_abs_diff / b_norm;
+    let rel_res_ax = max_abs_diff / max_abs_ax.max(b_norm);
+    let tier = classify_accuracy(relative_error, rel_res_b, rel_res_ax);
+    Some(Accuracy {
+        relative_error,
+        rel_res_b,
+        rel_res_ax,
+        tier,
+    })
+}
+
+/// Applies the two-tier accuracy gate
+fn classify_accuracy(relative_error: f64, rel_res_b: f64, rel_res_ax: f64) -> AccuracyTier {
+    if !relative_error.is_finite() || !rel_res_b.is_finite() || !rel_res_ax.is_finite() || rel_res_b > 0.1 {
+        return AccuracyTier::Fail;
+    }
+    if rel_res_b > 1e-4 || relative_error > 2.5e-6 {
+        return AccuracyTier::Warn;
+    }
+    AccuracyTier::Pass
 }
 
 /// Classifies a failed run into one of the keys shown in the table
@@ -260,6 +324,9 @@ fn merge_record(matrices: &mut HashMap<String, MatrixData>, data: MatrixData) {
                 row.failures.entry(solver).or_insert(key);
             }
         }
+        for (solver, accuracy) in data.accuracy {
+            row.accuracy.entry(solver).or_insert(accuracy);
+        }
     } else {
         matrices.insert(data.name.clone(), data);
     }
@@ -269,7 +336,7 @@ fn merge_record(matrices: &mut HashMap<String, MatrixData>, data: MatrixData) {
 fn solver_columns(rows: &[MatrixData]) -> Vec<String> {
     let mut found = BTreeSet::new();
     for row in rows {
-        for solver in row.times.keys().chain(row.failures.keys()) {
+        for solver in row.times.keys().chain(row.failures.keys()).chain(row.accuracy.keys()) {
             found.insert(solver.clone());
         }
     }
@@ -352,6 +419,73 @@ fn print_table(title: &str, rows: &[MatrixData], solvers: &[String]) {
     }
 }
 
+/// Prints one accuracy table
+fn print_accuracy_table(title: &str, rows: &[MatrixData], solvers: &[String]) {
+    let mut cells: Vec<Vec<String>> = Vec::new();
+    for row in rows {
+        for solver in solvers {
+            if let Some(accuracy) = row.accuracy.get(solver) {
+                cells.push(vec![
+                    display_name(&row.name).to_string(),
+                    solver.clone(),
+                    fmt_accuracy(accuracy.relative_error),
+                    fmt_accuracy(accuracy.rel_res_b),
+                    fmt_accuracy(accuracy.rel_res_ax),
+                    tier_label(accuracy.tier).to_string(),
+                ]);
+            }
+        }
+    }
+    if cells.is_empty() {
+        return;
+    }
+
+    let headers: Vec<String> = ["matrix", "solver", "rel_error", "rel_res_b", "rel_res_ax", "tier"]
+        .iter()
+        .map(|header| (*header).to_string())
+        .collect();
+    let mut widths: Vec<usize> = headers.iter().map(|header| header.chars().count()).collect();
+    for line in &cells {
+        for (i, cell) in line.iter().enumerate() {
+            widths[i] = widths[i].max(cell.chars().count());
+        }
+    }
+    let right_aligned = [false, false, true, true, true, false];
+
+    println!("{title}");
+    println!("{}", format_row(&headers, &widths, &right_aligned));
+    let separator: Vec<String> = widths.iter().map(|width| "-".repeat(*width)).collect();
+    println!("{}", separator.join("  "));
+    for line in &cells {
+        println!("{}", format_row(line, &widths, &right_aligned));
+    }
+}
+
+/// Formats an accuracy value
+fn fmt_accuracy(value: f64) -> String {
+    if !value.is_finite() {
+        return format!("{value}");
+    }
+    if value == 0.0 {
+        return "0".to_string();
+    }
+    let abs = value.abs();
+    if (1e-2..1e4).contains(&abs) {
+        format!("{value:.3}")
+    } else {
+        format!("{value:.2e}")
+    }
+}
+
+/// Returns the label used for an accuracy tier
+fn tier_label(tier: AccuracyTier) -> &'static str {
+    match tier {
+        AccuracyTier::Pass => "pass",
+        AccuracyTier::Warn => "warn",
+        AccuracyTier::Fail => "fail",
+    }
+}
+
 /// Prints the descriptions of the failure keys that were used
 fn print_key_descriptions(keys: &BTreeSet<&'static str>) {
     if keys.is_empty() {
@@ -386,9 +520,10 @@ fn format_row(cells: &[String], widths: &[usize], right_aligned: &[bool]) -> Str
 fn print_usage() {
     println!("Usage: xtract_matrix_market [results_dir]");
     println!();
-    println!("Reads the JSON files written by solve_matrix_market and prints a solver timing table.");
-    println!("Every solver column shows its absolute total time; no MUMPS baseline is required.");
-    println!("Failure keys are printed after the table; blank cells mean no result was found.");
+    println!("Reads the JSON files written by solve_matrix_market and prints solver timing and accuracy tables.");
+    println!("Every solver timing column shows its absolute total time; no MUMPS baseline is required.");
+    println!("Accuracy columns are rel_error, rel_res_b, rel_res_ax, and the pass/warn/fail tier.");
+    println!("Failure keys are printed after the tables; blank cells mean no result was found.");
     println!("Default directory: $OUTPUT_DIR when set, otherwise /tmp/russell_sparse/results/$SYSTEM.");
 }
 
@@ -416,6 +551,53 @@ mod tests {
         assert!(data.positive_definite);
         assert_eq!(data.times["faer"], 1234);
         assert!(data.failures.is_empty());
+    }
+
+    #[test]
+    fn parse_record_adds_accuracy() {
+        let mut value = sample("Faer", "mat1", 10, "No", false, 1234);
+        value["verify"] = json!({
+            "relative_error": 1e-6,
+            "max_abs_ax": 4.0,
+            "max_abs_diff": 2.0,
+        });
+        let data = parse_record(&value).unwrap();
+        let accuracy = data.accuracy["faer"];
+        assert_eq!(accuracy.relative_error, 1e-6);
+        assert_eq!(accuracy.rel_res_b, 2.0);
+        assert_eq!(accuracy.rel_res_ax, 0.5);
+        assert_eq!(accuracy.tier, AccuracyTier::Fail);
+    }
+
+    #[test]
+    fn parse_accuracy_uses_complex_rhs_norm() {
+        let mut value = sample("Faer", "mat1", 10, "No", false, 1234);
+        value["matrix"]["complex"] = json!(true);
+        value["verify"] = json!({
+            "relative_error": 1e-12,
+            "max_abs_ax": 10.0,
+            "max_abs_diff": 1e-6 * std::f64::consts::SQRT_2,
+        });
+        let accuracy = parse_accuracy(&value, true).unwrap();
+        assert!((accuracy.rel_res_b - 1e-6).abs() < 1e-18);
+        assert_eq!(accuracy.tier, AccuracyTier::Pass);
+    }
+
+    #[test]
+    fn classify_accuracy_works() {
+        assert_eq!(classify_accuracy(1e-15, 1e-15, 1e-15), AccuracyTier::Pass);
+        assert_eq!(classify_accuracy(1e-5, 1e-5, 1e-5), AccuracyTier::Warn);
+        assert_eq!(classify_accuracy(1e-3, 0.2, 0.2), AccuracyTier::Fail);
+        assert_eq!(classify_accuracy(f64::NAN, 1e-5, 1e-5), AccuracyTier::Fail);
+        assert_eq!(classify_accuracy(1e-5, f64::INFINITY, 1e-5), AccuracyTier::Fail);
+    }
+
+    #[test]
+    fn fmt_accuracy_works() {
+        assert_eq!(fmt_accuracy(21.42), "21.420");
+        assert_eq!(fmt_accuracy(0.006124), "6.12e-3");
+        assert_eq!(fmt_accuracy(0.0), "0");
+        assert_eq!(fmt_accuracy(f64::NAN), "NaN");
     }
 
     #[test]

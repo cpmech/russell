@@ -445,8 +445,8 @@ The iterative solvers are configured with the following options, which `faer`,
 ### xtract_matrix_market
 
 `xtract_matrix_market` reads the JSON files produced by `solve_matrix_market`
-(recursively) and prints two comparison tables: one for real-valued matrices and
-one for complex-valued matrices:
+(recursively) and prints timing tables for real and complex matrices, followed
+by accuracy tables for the same groups:
 
 ```bash
 cargo run --release --bin xtract_matrix_market -- [results_dir]
@@ -461,6 +461,14 @@ With no argument it uses `$OUTPUT_DIR` when set, otherwise
   `only-spd`, `no-conv`, `singular`, and `not-avail`; the key descriptions are
   printed after the tables.
 - Blank cells mean no result file was found for that matrix/solver.
+- The accuracy tables show `rel_error`, `rel_res_b`, `rel_res_ax`, and a
+  `pass`/`warn`/`fail` tier. `rel_res_b` is `max_abs_diff / ||b||∞` and
+  `rel_res_ax` is `max_abs_diff / max(max_abs_ax, ||b||∞)`, with
+  `||b||∞ = 1` for real systems and `sqrt(2)` for complex ones. `fail` means
+  `rel_res_b > 0.1`; `warn` means `rel_res_b > 1e-4` or
+  `rel_error > 2.5e-6`.
+- The accuracy columns are computed from the existing `verify` object, so no
+  rerun is needed.
 
 ### sys_info
 

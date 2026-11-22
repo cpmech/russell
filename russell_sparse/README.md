@@ -35,6 +35,9 @@ Matrix Market I/O, and the benchmark tools used to compare them. It is part of t
   - [Matrix Market assets](#matrix-market-assets)
   - [solve_matrix_market](#solve_matrix_market)
   - [xtract_matrix_market](#xtract_matrix_market)
+  - [xcompare_matrix_market](#xcompare_matrix_market)
+  - [Matrix metadata](#matrix-metadata)
+  - [sys_info](#sys_info)
   - [Benchmark runner](#benchmark-runner)
 - [For developers](#for-developers)
 
@@ -321,3 +324,155 @@ Useful options:
 | `--information` | Read the matrix, print its metadata, and exit |
 | `--hide-json` | Suppress the JSON output |
 | `--vismatrix` | Also write a Vismatrix `.smat` file |
+
+### xtract_matrix_market
+
+`xtract_matrix_market` reads the JSON files produced by `solve_matrix_market`
+(recursively) and prints timing tables for real and complex matrices, followed
+by accuracy tables for the same groups:
+
+```bash
+cargo run --release --bin xtract_matrix_market -- [results_dir]
+```
+
+With no argument it uses `$OUTPUT_DIR` when set, otherwise
+`/tmp/russell_sparse/results/$SYSTEM` (`SYSTEM` defaults to `arch`).
+
+- Every solver column shows the median total time (initialize + preprocess +
+  solve) over the runs; no MUMPS baseline is required. The median comes from
+  `total_ifs_array`, with `total_ifs` as the fallback.
+- The relative-time tables show `median_solver_time / median_mumps_time`:
+  values below `1.00x` are faster than MUMPS, and the MUMPS column is `1.00x`.
+  Matrices without a MUMPS time have blank solver cells in these tables.
+- Failed runs appear as keys such as `stop-time`, `no-mem`, `not-pd`,
+  `singular`, `bad-input`, `not-avail`, and `too-big`; the key descriptions are
+  printed after the tables.
+- Blank cells mean no result file was found for that matrix/solver.
+- The accuracy tables show `rel_error`, `rel_res_b`, `rel_res_ax`, and a
+  `pass`/`warn`/`fail` tier. `rel_res_b` is `max_abs_diff / ||b||∞` and
+  `rel_res_ax` is `max_abs_diff / max(max_abs_ax, ||b||∞)`, with
+  `||b||∞ = 1` for real systems and `sqrt(2)` for complex ones. `fail` means
+  `rel_res_b > 0.1`; `warn` means `rel_res_b > 1e-4` or
+  `rel_error > 2.5e-6`.
+- The accuracy columns are computed from the existing `verify` object, so no
+  rerun is needed.
+- The `sym` column uses the canonical metadata embedded from
+  `russell_sparse/data/matrix_market/matrices.json`. It provides the real/complex
+  type, symmetry, Hermitian flag, SPD flag, stored entries, and full pattern
+  entries. The JSON `requests.positive_definite` field is only a request flag,
+  not the mathematical classification.
+
+### xcompare_matrix_market
+
+`xcompare_matrix_market` compares solver times across CPU-labelled result
+directories and reports speedup statistics:
+
+```bash
+cargo run --release --bin xcompare_matrix_market -- \
+  ~/07-Storage/benchmark-sparse/arch
+```
+
+The path may be a base name (`.../arch`), one CPU directory (`.../arch-i7`), or
+a parent containing CPU directories. CPU labels are detected from trailing
+`-i<number>` suffixes, such as `arch-i7` and `arch-i9`. The lowest-numbered CPU
+is the baseline.
+
+For each target CPU, the tool prints:
+
+- an overall/by-scope table with the number of paired cells, geometric mean,
+  median, and arithmetic mean of `time_baseline / time_target`
+- a by-solver table with the same statistics
+- real/complex and `nnz >= 1M` / `nnz < 1M` strata
+
+Times are the median of `time_nanoseconds.total_ifs_array`, with
+`time_nanoseconds.total_ifs` as the fallback. Values above `1.00x` mean the
+target CPU is faster.
+
+### Matrix metadata
+
+The canonical benchmark metadata is stored at
+`russell_sparse/data/matrix_market/matrices.json` and embedded into the binaries
+at build time. It is a snapshot of
+[`cpmech/matrix-market`](https://github.com/cpmech/matrix-market) and contains 44
+entries with dimensions, stored entries, full pattern entries, real/complex type,
+symmetry, Hermitian and positive-definite flags, kind, and description.
+
+`Pattern Entries` is the full-pattern size; `Stored Entries` is the smaller count
+in the `.mtx` header when only one triangle is stored. `xtract` uses the metadata
+for its `sym`/`spd` labels instead of the per-run `requests.positive_definite`
+flag. `run_solve_matrix_market.bash` reads the same file with `jq` to build its
+real/complex and SPD matrix lists.
+
+### sys_info
+
+`sys_info` exports the OS, GPU, CPU, memory, and solver-library versions:
+
+```bash
+cargo run --release --bin sys_info
+cargo run --release --bin sys_info -- system-information.txt
+```
+
+With no file argument it prints to stdout. The report uses the same features as
+the build, so `--features umfpack,mumps` reports those libraries as compiled in.
+
+### Benchmark runner
+
+`run_solve_matrix_market.bash` runs the standard matrix set and stores one JSON file
+per matrix and solver under `$OUTPUT_DIR/<solver>/`. Before running, it writes the
+benchmark configuration and the `sys_info` report to
+`$OUTPUT_DIR/system-information.txt` (override with `INFO_FILE`). The provenance
+header records the date, Russell version and commit, system, features, solvers,
+`nrun`, `time_guard`, detected CPU topology, thread settings, input/output paths,
+solver arguments, selected matrices, and SPD matrices.
+
+```bash
+cd russell_sparse/src/bin
+export INPUT_DIR="$HOME/Downloads/matrix-market"
+
+# One solver:
+./run_solve_matrix_market.bash -s -g mumps -f 10
+
+# Every available genie, solving the systems:
+./run_solve_matrix_market.bash -s -G -f 10
+
+# Compare the results:
+cargo run --release --bin xtract_matrix_market
+```
+
+| Option | Meaning |
+|---|---|
+| `-i, --information` | Only print matrix metadata (default) |
+| `-s, --solve` | Solve the systems |
+| `-g, --genie <name>` | Run one solver |
+| `-G, --all-genies` | Run every available solver |
+| `-f, --first <n>` | First `n` real matrices |
+| `-F, --first-complex <n>` | First `n` complex matrices |
+| `-1` … `-5` | Number of runs per matrix |
+
+The runner requires `jq` and reads
+`russell_sparse/data/matrix_market/matrices.json` to build its matrix lists. Set
+`MATRICES_JSON` to use another metadata file, and set `TIME_GUARD` to override the
+per-run time guard (default `200` seconds).
+
+The default `OUTPUT_DIR` is `/tmp/russell_sparse/results/$SYSTEM`. Results are split
+by solver, so a MUMPS run, an UMFPACK run, and a Faer run can coexist and then be
+combined by `xtract_matrix_market`.
+
+The runner auto-detects the Linux CPU topology:
+
+- **MUMPS** uses one thread per physical core, including P-cores and E-cores.
+- **Faer and UMFPACK** are pinned to the P-core logical CPUs.
+- Their BLAS work uses one thread per physical P-core.
+
+Overrides are available through `P_CORES`, `E_CORES`, `MUMPS_THREADS`, and
+`BLAS_THREADS`. A non-hybrid CPU falls back to all available logical CPUs and no
+pinning.
+
+## For developers
+
+* The `c_code` directory contains a thin wrapper to the sparse solvers (MUMPS, UMFPACK)
+* The `build.rs` file uses the crate `cc` to build the C-wrappers
+* The `zscripts` directory also contains the following:
+    * `memcheck.bash`: Checks for memory leaks on the C-code using Valgrind
+    * `run-examples`: Runs all examples in the `examples` directory
+    * `run-solve-matrix-market.bash`: Runs the solve-matrix-market tool from the `bin` directory

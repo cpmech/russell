@@ -14,6 +14,29 @@ is_spd() {
     return 1
 }
 
+# Counts the CPUs in a Linux CPU list such as 0-15 or 0-7,16-19
+cpu_list_count() {
+    local list=$1
+    local count=0
+    local part first last
+    for part in ${list//,/ }; do
+        if [[ "$part" == *-* ]]; then
+            first=${part%-*}
+            last=${part#*-}
+            count=$((count + last - first + 1))
+        else
+            count=$((count + 1))
+        fi
+    done
+    echo "$count"
+}
+
+# Returns the first CPU in a Linux CPU list
+cpu_list_first() {
+    local list=${1%%,*}
+    echo "${list%%-*}"
+}
+
 HERE=$(cd "$(dirname "$0")" && pwd)
 RUSSELL_DIR=${RUSSELL_DIR:-$(cd "$HERE/../../.." && pwd)}
 INPUT_DIR=${INPUT_DIR:-$HOME/Downloads/matrix-market}
@@ -22,6 +45,84 @@ OUTPUT_DIR=${OUTPUT_DIR:-/tmp/russell_sparse/results/$SYSTEM}
 FEATURES=${FEATURES-intel_mkl,umfpack,mumps}
 MATRICES_JSON=${MATRICES_JSON:-"$RUSSELL_DIR/russell_sparse/data/matrix_market/matrices.json"}
 SOLVER=FAER
+
+# Detect the CPU topology and choose representative performance settings.
+#
+# - MUMPS uses all physical cores: P-cores plus E-cores.
+# - Faer and UMFPACK run pinned to the P-core logical CPUs.
+# - Their BLAS work uses one thread per physical P-core.
+# - A non-hybrid CPU falls back to all available logical CPUs without pinning.
+P_CORES=${P_CORES:-}
+E_CORES=${E_CORES:-}
+if [[ -z "$P_CORES" && -r /sys/devices/cpu_core/cpus ]]; then
+    P_CORES=$(cat /sys/devices/cpu_core/cpus)
+fi
+if [[ -z "$E_CORES" && -r /sys/devices/cpu_atom/cpus ]]; then
+    E_CORES=$(cat /sys/devices/cpu_atom/cpus)
+fi
+
+P_LOGICAL=0
+E_LOGICAL=0
+P_PHYSICAL=0
+E_PHYSICAL=0
+if [[ -n "$P_CORES" ]]; then
+    P_LOGICAL=$(cpu_list_count "$P_CORES")
+    P_FIRST=$(cpu_list_first "$P_CORES")
+    P_SIBLINGS=""
+    if [[ -r "/sys/devices/system/cpu/cpu$P_FIRST/topology/thread_siblings_list" ]]; then
+        P_SIBLINGS=$(cat "/sys/devices/system/cpu/cpu$P_FIRST/topology/thread_siblings_list")
+    fi
+    if [[ -n "$P_SIBLINGS" ]]; then
+        P_SIBLING_COUNT=$(cpu_list_count "$P_SIBLINGS")
+        if ((P_SIBLING_COUNT > 0)); then
+            P_PHYSICAL=$((P_LOGICAL / P_SIBLING_COUNT))
+        fi
+    fi
+    if ((P_PHYSICAL == 0)); then
+        P_PHYSICAL=$P_LOGICAL
+    fi
+fi
+if [[ -n "$E_CORES" ]]; then
+    E_LOGICAL=$(cpu_list_count "$E_CORES")
+    E_FIRST=$(cpu_list_first "$E_CORES")
+    E_SIBLINGS=""
+    if [[ -r "/sys/devices/system/cpu/cpu$E_FIRST/topology/thread_siblings_list" ]]; then
+        E_SIBLINGS=$(cat "/sys/devices/system/cpu/cpu$E_FIRST/topology/thread_siblings_list")
+    fi
+    if [[ -n "$E_SIBLINGS" ]]; then
+        E_SIBLING_COUNT=$(cpu_list_count "$E_SIBLINGS")
+        if ((E_SIBLING_COUNT > 0)); then
+            E_PHYSICAL=$((E_LOGICAL / E_SIBLING_COUNT))
+        fi
+    fi
+    if ((E_PHYSICAL == 0)); then
+        E_PHYSICAL=$E_LOGICAL
+    fi
+fi
+
+MUMPS_THREADS=${MUMPS_THREADS:-0}
+BLAS_THREADS=${BLAS_THREADS:-0}
+if ((MUMPS_THREADS == 0)); then
+    MUMPS_THREADS=$((P_PHYSICAL + E_PHYSICAL))
+    if ((MUMPS_THREADS == 0)); then
+        MUMPS_THREADS=$(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN)
+    fi
+fi
+if ((BLAS_THREADS == 0)); then
+    BLAS_THREADS=$P_PHYSICAL
+    if ((BLAS_THREADS == 0)); then
+        BLAS_THREADS=$(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN)
+    fi
+fi
+
+PIN_SINGLE=()
+CPU_AFFINITY="none"
+if [[ -n "$P_CORES" ]] && command -v taskset >/dev/null 2>&1; then
+    PIN_SINGLE=(taskset -c "$P_CORES")
+    CPU_AFFINITY=$P_CORES
+fi
+CPU_MODEL=$(sed -n 's/^model name[[:space:]]*: //p' /proc/cpuinfo 2>/dev/null | head -n 1)
+CPU_MODEL=${CPU_MODEL:-unknown}
 
 usage() {
     echo "Usage: $0 [--information | --solve] [-g <name>] [-f <n>] [-F <n>] [-1..-5]"
@@ -34,7 +135,8 @@ usage() {
     echo "  -F, --first-complex <n>  only run the first <n> COMPLEX_MATS"
     echo "  -1 ... -5          number of runs (default 1)"
     echo ""
-    echo "Environment: RUSSELL_DIR, INPUT_DIR, OUTPUT_DIR, INFO_FILE, MATRICES_JSON, SYSTEM, FEATURES, TIME_GUARD"
+    echo "Environment: RUSSELL_DIR, INPUT_DIR, OUTPUT_DIR, INFO_FILE, MATRICES_JSON, SYSTEM, FEATURES,"
+    echo "             TIME_GUARD, P_CORES, E_CORES, MUMPS_THREADS, BLAS_THREADS"
 }
 
 INFORMATION=1
@@ -216,12 +318,26 @@ cargo build --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
     echo "nrun: $NRUN"
     echo "time_guard: $TIME_GUARD"
     echo "information_only: $INFORMATION"
+    echo "cpu_model: $CPU_MODEL"
+    echo "p_cores: ${P_CORES:-none}"
+    echo "e_cores: ${E_CORES:-none}"
+    echo "p_physical: $P_PHYSICAL"
+    echo "e_physical: $E_PHYSICAL"
+    echo "mumps_threads: $MUMPS_THREADS"
+    echo "blas_threads: $BLAS_THREADS"
+    echo "cpu_affinity: $CPU_AFFINITY"
     echo "input: $INPUT_DIR"
     echo "output: $OUTPUT_DIR"
     echo
     echo "solver arguments:"
     for solver in "${GENIES[@]}"; do
         printf '  -g %s --nrun %s --time-guard %s' "$solver" "$NRUN" "$TIME_GUARD"
+        solver_key=$(printf '%s' "$solver" | tr '[:upper:]' '[:lower:]')
+        if [[ "$solver_key" == "mumps" ]]; then
+            printf ' --nt %s --mumps-nt %s' "$MUMPS_THREADS" "$MUMPS_THREADS"
+        else
+            printf ' --nt %s' "$BLAS_THREADS"
+        fi
         if ((INFORMATION)); then
             printf ' --information'
         fi
@@ -277,7 +393,7 @@ run_matrix() {
         echo "=== $CURRENT_MAT/$TOTAL_MATS $name$spd_label ===" >&2
     fi
     # A failed solve is a result, not a script failure; the JSON records it.
-    if ! cargo run -q --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
+    if ! "${PIN[@]}" cargo run -q --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
         --package russell_sparse "${FEATURE_ARGS[@]}" \
         --bin solve_matrix_market -- "${run_args[@]}" "$file" >"$out"; then
         # Do not leave an empty result behind when the program failed before writing JSON.
@@ -291,6 +407,14 @@ time {
         SOLVER_DIR="$OUTPUT_DIR/$SOLVER"
         mkdir -p "$SOLVER_DIR"
         ARGS=(-g "$SOLVER" --nrun "$NRUN" --time-guard "$TIME_GUARD")
+        solver_key=$(printf '%s' "$SOLVER" | tr '[:upper:]' '[:lower:]')
+        if [[ "$solver_key" == "mumps" ]]; then
+            ARGS+=(--nt "$MUMPS_THREADS" --mumps-nt "$MUMPS_THREADS")
+            PIN=()
+        else
+            ARGS+=(--nt "$BLAS_THREADS")
+            PIN=("${PIN_SINGLE[@]}")
+        fi
         if ((INFORMATION)); then
             ARGS+=(--information)
         fi

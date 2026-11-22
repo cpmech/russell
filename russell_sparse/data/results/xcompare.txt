@@ -1,0 +1,25 @@
+Detected CPU datasets:
+  i7   ~/07-Storage/benchmark-sparse/arch-i7 (132 JSON files, 94 timed cells)
+  i9   ~/07-Storage/benchmark-sparse/arch-i9 (132 JSON files, 94 timed cells)
+
+Baseline: i7
+
+=== i7 -> i9 ===
+Speedup = time_i7 / time_i9; values above 1.00x mean i9 is faster.
+Paired numeric cells: 94
+
+By scope
+scope      cells  geo mean  median  arithmetic
+---------  -----  --------  ------  ----------
+Overall       94     1.23x   1.21x       1.25x
+real          74     1.22x   1.21x       1.24x
+complex       20     1.26x   1.24x       1.28x
+nnz >= 1M     70     1.26x   1.21x       1.28x
+nnz < 1M      24     1.14x   1.21x       1.16x
+
+By solver
+solver   cells  geo mean  median  arithmetic
+-------  -----  --------  ------  ----------
+umfpack     27     1.26x   1.25x       1.26x
+mumps       44     1.24x   1.21x       1.28x
+faer        23     1.16x   1.19x       1.17x

@@ -79,7 +79,7 @@ fn print_report(datasets: &[Dataset]) {
         println!(
             "  {:<4} {} ({} JSON files, {} timed cells)",
             dataset.label,
-            dataset.path.display(),
+            display_path(&dataset.path),
             dataset.json_count,
             dataset.runs.len()
         );
@@ -115,7 +115,7 @@ fn detect_dataset_paths(input: &Path) -> Result<Vec<(String, PathBuf)>, String> 
         let name = input
             .file_name()
             .and_then(|name| name.to_str())
-            .ok_or_else(|| format!("cannot determine the name of {}", input.display()))?;
+            .ok_or_else(|| format!("cannot determine the name of {}", display_path(input)))?;
         let base = cpu_suffix(name).map(|(base, _)| base).unwrap_or(name);
         let parent = non_empty_parent(input);
         (parent, Some(base.to_string()))
@@ -125,15 +125,15 @@ fn detect_dataset_paths(input: &Path) -> Result<Vec<(String, PathBuf)>, String> 
         let raw_prefix = input
             .file_name()
             .and_then(|name| name.to_str())
-            .ok_or_else(|| format!("cannot determine the name of {}", input.display()))?;
+            .ok_or_else(|| format!("cannot determine the name of {}", display_path(input)))?;
         let base = cpu_suffix(raw_prefix).map(|(base, _)| base).unwrap_or(raw_prefix);
         (non_empty_parent(input), Some(base.to_string()))
     };
 
     let mut candidates: Vec<(String, String, PathBuf)> = Vec::new();
-    let entries = fs::read_dir(parent).map_err(|e| format!("cannot read {}: {e}", parent.display()))?;
+    let entries = fs::read_dir(parent).map_err(|e| format!("cannot read {}: {e}", display_path(parent)))?;
     for entry in entries {
-        let path = entry.map_err(|e| format!("cannot read {}: {e}", parent.display()))?.path();
+        let path = entry.map_err(|e| format!("cannot read {}: {e}", display_path(parent)))?.path();
         if !path.is_dir() {
             continue;
         }
@@ -160,14 +160,14 @@ fn detect_dataset_paths(input: &Path) -> Result<Vec<(String, PathBuf)>, String> 
         let bases: BTreeSet<String> = candidates.iter().map(|(base, _, _)| base.clone()).collect();
         match bases.len() {
             0 => {
-                return Err(format!("no CPU-labelled result directories found in {}", parent.display()));
+                return Err(format!("no CPU-labelled result directories found in {}", display_path(parent)));
             }
             1 => bases.into_iter().next().unwrap(),
             _ => {
                 let list: Vec<String> = bases.into_iter().collect();
                 return Err(format!(
                     "multiple dataset families found in {}: {}; pass one base path",
-                    parent.display(),
+                    display_path(parent),
                     list.join(", ")
                 ));
             }
@@ -246,7 +246,7 @@ fn is_json(path: &Path) -> bool {
 /// Loads all solver results below one CPU directory
 fn load_dataset(label: &str, path: &Path) -> Result<Dataset, String> {
     let mut files = Vec::new();
-    collect_json_files(path, &mut files).map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+    collect_json_files(path, &mut files).map_err(|e| format!("cannot read {}: {e}", display_path(path)))?;
     let json_count = files.len();
 
     let mut runs = HashMap::new();
@@ -254,14 +254,14 @@ fn load_dataset(label: &str, path: &Path) -> Result<Dataset, String> {
         let text = match fs::read_to_string(&file) {
             Ok(text) => text,
             Err(e) => {
-                eprintln!("warning: skipping {}: {e}", file.display());
+                eprintln!("warning: skipping {}: {e}", display_path(&file));
                 continue;
             }
         };
         let value: Value = match serde_json::from_str(&text) {
             Ok(value) => value,
             Err(e) => {
-                eprintln!("warning: skipping {}: {e}", file.display());
+                eprintln!("warning: skipping {}: {e}", display_path(&file));
                 continue;
             }
         };
@@ -270,7 +270,7 @@ fn load_dataset(label: &str, path: &Path) -> Result<Dataset, String> {
         }
     }
     if runs.is_empty() {
-        return Err(format!("no timed solver results found in {}", path.display()));
+        return Err(format!("no timed solver results found in {}", display_path(path)));
     }
     Ok(Dataset {
         label: label.to_string(),
@@ -474,6 +474,29 @@ fn fmt_ratio(value: f64) -> String {
     format!("{value:.2}x")
 }
 
+/// Formats a path with the home directory shortened to `~`
+fn display_path(path: &Path) -> String {
+    let home = env::var("HOME").unwrap_or_default();
+    tilde_path(path, &home)
+}
+
+/// Replaces a home-directory prefix with `~`
+fn tilde_path(path: &Path, home: &str) -> String {
+    let path = path.display().to_string();
+    if home.is_empty() {
+        return path;
+    }
+    if path == home {
+        return "~".to_string();
+    }
+    if let Some(rest) = path.strip_prefix(home) {
+        if rest.starts_with('/') {
+            return format!("~{rest}");
+        }
+    }
+    path
+}
+
 /// Formats one table row with the given column widths and alignment
 fn format_row(cells: &[String], widths: &[usize], right_aligned: &[bool]) -> String {
     cells
@@ -515,6 +538,13 @@ mod tests {
         assert_eq!(cpu_suffix("arch-2026-11-19"), None);
         assert_eq!(cpu_suffix("arch"), None);
         assert_eq!(cpu_suffix("arch-i"), None);
+    }
+
+    #[test]
+    fn tilde_path_works() {
+        assert_eq!(tilde_path(Path::new("/home/user/results/arch"), "/home/user"), "~/results/arch");
+        assert_eq!(tilde_path(Path::new("/home/user"), "/home/user"), "~");
+        assert_eq!(tilde_path(Path::new("/tmp/results/arch"), "/home/user"), "/tmp/results/arch");
     }
 
     #[test]

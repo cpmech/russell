@@ -95,8 +95,8 @@ struct Options {
     #[structopt(short = "r", long, default_value = "1")]
     nrun: u32,
 
-    /// Abort the run when it exceeds this many seconds (0 disables the time guard)
-    #[structopt(long, default_value = "100")]
+    /// Abort each run when it exceeds this many seconds (0 disables the time guard)
+    #[structopt(long, default_value = "200")]
     time_guard: u64,
 }
 
@@ -240,15 +240,15 @@ fn main() -> Result<(), StrError> {
         stats.set_matrix_name_from_path(&opt.matrix_market_file);
         stats.set_matrix_info_from_coo(&coo);
 
-        // stop long runs
-        let _time_guard = start_time_guard(opt.time_guard, &stats, opt.hide_json);
-
         // allocate vectors
         let mut x = Vector::new(nrow);
         let rhs = Vector::filled(nrow, 1.0);
 
         // run a number of times
         for _i_run in 0..opt.nrun {
+            // stop a long run
+            let _time_guard = start_time_guard(opt.time_guard, &stats, opt.hide_json);
+
             // allocate and configure the solver
             let mut solver = LinSolver::new(genie)?;
 
@@ -321,15 +321,15 @@ fn main() -> Result<(), StrError> {
         stats.set_matrix_name_from_path(&opt.matrix_market_file);
         stats.set_matrix_info_from_coo(&coo);
 
-        // stop long runs
-        let _time_guard = start_time_guard(opt.time_guard, &stats, opt.hide_json);
-
         // allocate vectors
         let mut x = ComplexVector::new(nrow);
         let rhs = ComplexVector::filled(nrow, cpx!(1.0, 1.0));
 
         // run a number of times
         for i_run in 0..opt.nrun {
+            // stop a long run
+            let _time_guard = start_time_guard(opt.time_guard, &stats, opt.hide_json);
+
             // allocate and configure the solver
             let mut solver = ComplexLinSolver::new(genie)?;
 
@@ -395,9 +395,10 @@ impl Drop for TimeGuard {
     }
 }
 
-/// Starts a watchdog that emits a timeout result and exits when the run exceeds `seconds`
+/// Starts a watchdog that emits a timeout result and exits when a single run exceeds `seconds`
 ///
-/// A value of zero disables the guard.
+/// A value of zero disables the guard. The guard is created inside the `nrun` loop,
+/// so each repetition gets its own time budget.
 fn start_time_guard(seconds: u64, stats: &StatsLinSol, hide_json: bool) -> TimeGuard {
     if seconds == 0 {
         return TimeGuard { done: None };

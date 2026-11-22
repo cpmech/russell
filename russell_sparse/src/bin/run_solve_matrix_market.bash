@@ -125,7 +125,7 @@ usage() {
     echo "  -F, --first-complex <n>  only run the first <n> COMPLEX_MATS"
     echo "  -1 ... -5          number of runs (default 1)"
     echo ""
-    echo "Environment: RUSSELL_DIR, INPUT_DIR, OUTPUT_DIR, SYSTEM, FEATURES, PIN_SINGLE_THREAD, P_CORES"
+    echo "Environment: RUSSELL_DIR, INPUT_DIR, OUTPUT_DIR, INFO_FILE, SYSTEM, FEATURES, PIN_SINGLE_THREAD, P_CORES"
 }
 
 INFORMATION=1
@@ -219,6 +219,7 @@ fi
 mkdir -p "$OUTPUT_DIR"
 INPUT_DIR=$(cd "$INPUT_DIR" && pwd)
 OUTPUT_DIR=$(cd "$OUTPUT_DIR" && pwd)
+INFO_FILE=${INFO_FILE:-"$OUTPUT_DIR/system-information.txt"}
 
 RUN_MATS=("${REAL_MATS[@]}" "${COMPLEX_MATS[@]}")
 if ((FIRST_N > 0 || FIRST_COMPLEX_N > 0)); then
@@ -238,9 +239,24 @@ if [[ -n "$FEATURES" ]]; then
     FEATURE_ARGS=(--features "$FEATURES")
 fi
 
-echo "=== Building solve_matrix_market (features: ${FEATURES:-none}) ===" >&2
+echo "=== Building solve_matrix_market and sys_info (features: ${FEATURES:-none}) ===" >&2
 cargo build --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
-    --package russell_sparse "${FEATURE_ARGS[@]}" --bin solve_matrix_market
+    --package russell_sparse "${FEATURE_ARGS[@]}" --bin solve_matrix_market --bin sys_info
+
+{
+    echo "Benchmark configuration"
+    echo "date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    echo "system: $SYSTEM"
+    echo "features: ${FEATURES:-none}"
+    echo "solvers: ${GENIES[*]}"
+    echo "runs: $NRUN"
+    echo "input: $INPUT_DIR"
+    echo "output: $OUTPUT_DIR"
+    echo
+    cargo run -q --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
+        --package russell_sparse "${FEATURE_ARGS[@]}" --bin sys_info
+} >"$INFO_FILE"
+echo "system information written to $INFO_FILE" >&2
 
 run_matrix() {
     local name=$1

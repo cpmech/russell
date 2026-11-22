@@ -381,7 +381,7 @@ Useful options:
 | `--faer-method` | Faer LU strategy: `auto`, `simplicial`, or `supernodal` |
 | `--faer-flop-ratio <f>` | Threshold for `--faer-method auto` |
 | `-r, --nrun <n>` | Number of runs; timing statistics are averaged |
-| `--time-guard <seconds>` | Abort a run after this many seconds (`0` disables it) |
+| `--time-guard <seconds>` | Abort each run after this many seconds; every repetition gets its own budget. Default `200`; `0` disables it |
 | `--information` | Read the matrix, print its metadata, and exit |
 | `--hide-json` | Suppress the JSON output |
 | `--vismatrix` | Also write a Vismatrix `.smat` file |
@@ -462,10 +462,24 @@ With no argument it uses `$OUTPUT_DIR` when set, otherwise
   printed after the tables.
 - Blank cells mean no result file was found for that matrix/solver.
 
+### sys_info
+
+`sys_info` exports the OS, GPU, CPU, memory, and solver-library versions:
+
+```bash
+cargo run --release --bin sys_info
+cargo run --release --bin sys_info -- system-information.txt
+```
+
+With no file argument it prints to stdout. The report uses the same features as
+the build, so `--features umfpack,mumps` reports those libraries as compiled in.
+
 ### Benchmark runner
 
 `run_solve_matrix_market.bash` runs the standard matrix set and stores one JSON file
-per matrix and solver under `$OUTPUT_DIR/<solver>/`:
+per matrix and solver under `$OUTPUT_DIR/<solver>/`. Before running, it writes the
+benchmark configuration and the `sys_info` report to
+`$OUTPUT_DIR/system-information.txt` (override with `INFO_FILE`):
 
 ```bash
 cd russell_sparse/src/bin

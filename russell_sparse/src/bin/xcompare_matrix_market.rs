@@ -9,8 +9,8 @@
 //! - a parent directory containing CPU-labelled result directories.
 //!
 //! The CPU label is the trailing `-i<number>` in a directory name. The lowest
-//! numbered CPU is used as the baseline. Times are read directly from the JSON
-//! files as `time_nanoseconds.total_ifs`.
+//! numbered CPU is used as the baseline. Times are the median of
+//! `time_nanoseconds.total_ifs_array`, falling back to `total_ifs`.
 
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -309,7 +309,7 @@ fn parse_run(value: &Value, root: &Path, file: &Path) -> Option<((String, String
     } else {
         solver_from_json
     };
-    let time_ns = value.pointer("/time_nanoseconds/total_ifs")?.as_u64()?;
+    let time_ns = median_time(value)?;
     if time_ns == 0 {
         return None;
     }
@@ -320,6 +320,28 @@ fn parse_run(value: &Value, root: &Path, file: &Path) -> Option<((String, String
         .unwrap_or(0);
     let complex = value.pointer("/matrix/complex").and_then(Value::as_bool).unwrap_or(false);
     Some(((matrix, solver), Run { time_ns, nnz, complex }))
+}
+
+/// Returns the median of the per-run total times, falling back to the stored mean
+fn median_time(value: &Value) -> Option<u64> {
+    let mut values: Vec<u64> = value
+        .pointer("/time_nanoseconds/total_ifs_array")
+        .and_then(Value::as_array)
+        .map(|array| array.iter().filter_map(Value::as_u64).filter(|time| *time > 0).collect())
+        .unwrap_or_default();
+    if values.is_empty() {
+        return value
+            .pointer("/time_nanoseconds/total_ifs")
+            .and_then(Value::as_u64)
+            .filter(|time| *time > 0);
+    }
+    values.sort_unstable();
+    let count = values.len();
+    Some(if count % 2 == 0 {
+        ((values[count / 2 - 1] as u128 + values[count / 2] as u128) / 2) as u64
+    } else {
+        values[count / 2]
+    })
 }
 
 /// Pairs the numeric times of the baseline and target datasets
@@ -477,7 +499,7 @@ fn print_usage() {
     println!("(e.g. .../arch-i7), or a parent containing CPU directories.");
     println!("CPU labels are detected from trailing `-i<number>` suffixes.");
     println!("The lowest-numbered CPU is the baseline; speedup = baseline / target.");
-    println!("Times are read directly from `time_nanoseconds.total_ifs`.");
+    println!("Times are medians of `time_nanoseconds.total_ifs_array`, falling back to `total_ifs`.");
 }
 
 #[cfg(test)]
@@ -508,6 +530,26 @@ mod tests {
         assert_eq!(stats.median, 2.0);
         assert_eq!(stats.arithmetic_mean, 7.0 / 3.0);
         assert!((stats.geometric_mean - 2.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn median_time_works() {
+        let value = json!({
+            "time_nanoseconds": {
+                "total_ifs": 999,
+                "total_ifs_array": [5, 1, 3, 9, 7],
+            }
+        });
+        assert_eq!(median_time(&value), Some(5));
+        let value = json!({
+            "time_nanoseconds": {
+                "total_ifs": 999,
+                "total_ifs_array": [4, 1, 3, 2],
+            }
+        });
+        assert_eq!(median_time(&value), Some(2));
+        let value = json!({"time_nanoseconds": {"total_ifs": 1234}});
+        assert_eq!(median_time(&value), Some(1234));
     }
 
     #[test]

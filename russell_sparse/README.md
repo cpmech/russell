@@ -455,11 +455,12 @@ cargo run --release --bin xtract_matrix_market -- [results_dir]
 With no argument it uses `$OUTPUT_DIR` when set, otherwise
 `/tmp/russell_sparse/results/$SYSTEM` (`SYSTEM` defaults to `arch`).
 
-- Every solver column shows its absolute total time (initialize + preprocess +
-  solve); no MUMPS baseline is required.
-- The relative-time tables show `time_solver / time_mumps`: values below `1.00x`
-  are faster than MUMPS, and the MUMPS column is `1.00x`. Matrices without a
-  MUMPS time have blank solver cells in these tables.
+- Every solver column shows the median total time (initialize + preprocess +
+  solve) over the runs; no MUMPS baseline is required. The median comes from
+  `total_ifs_array`, with `total_ifs` as the fallback.
+- The relative-time tables show `median_solver_time / median_mumps_time`:
+  values below `1.00x` are faster than MUMPS, and the MUMPS column is `1.00x`.
+  Matrices without a MUMPS time have blank solver cells in these tables.
 - Failed runs appear as keys such as `stop-time`, `no-mem`, `only-sym`,
   `only-spd`, `no-conv`, `singular`, and `not-avail`; the key descriptions are
   printed after the tables.
@@ -495,8 +496,9 @@ For each target CPU, the tool prints:
 - a by-solver table with the same statistics
 - real/complex and `nnz >= 1M` / `nnz < 1M` strata
 
-Times are read directly from the JSON files as
-`time_nanoseconds.total_ifs`. Values above `1.00x` mean the target CPU is faster.
+Times are the median of `time_nanoseconds.total_ifs_array`, with
+`time_nanoseconds.total_ifs` as the fallback. Values above `1.00x` mean the
+target CPU is faster.
 
 ### sys_info
 

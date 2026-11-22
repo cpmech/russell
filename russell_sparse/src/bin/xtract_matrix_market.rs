@@ -117,14 +117,14 @@ fn main() -> Result<(), String> {
         .chain(used_failure_keys(&complex_rows))
         .collect();
 
-    println!("All solver columns show total time (initialize + preprocess + solve).");
+    println!("All solver columns show the median total time (initialize + preprocess + solve) over the runs.");
     println!();
     print_table("Real-valued matrices", &real_rows, &real_solvers);
     println!();
     print_table("Complex-valued matrices", &complex_rows, &complex_solvers);
 
     println!();
-    println!("Relative-time columns show solver total time / MUMPS total time; rows without a MUMPS time are blank.");
+    println!("Relative-time columns show median solver time / median MUMPS time; rows without a MUMPS time are blank.");
     println!();
     print_relative_table("Relative times: real-valued matrices", &real_rows, &real_solvers);
     println!();
@@ -211,18 +211,37 @@ fn parse_record(value: &Value) -> Option<MatrixData> {
         ..Default::default()
     };
     if solved {
-        let total_ifs = value.pointer("/time_nanoseconds/total_ifs").and_then(Value::as_u64).unwrap_or(0);
-        if total_ifs == 0 {
-            return None;
-        }
+        let time = median_time(value)?;
         if let Some(accuracy) = parse_accuracy(value, complex) {
             data.accuracy.insert(solver.clone(), accuracy);
         }
-        data.times.insert(solver, total_ifs);
+        data.times.insert(solver, time);
     } else {
         data.failures.insert(solver, failure_key(value)?);
     }
     Some(data)
+}
+
+/// Returns the median of the per-run total times, falling back to the stored mean
+fn median_time(value: &Value) -> Option<u64> {
+    let mut values: Vec<u64> = value
+        .pointer("/time_nanoseconds/total_ifs_array")
+        .and_then(Value::as_array)
+        .map(|array| array.iter().filter_map(Value::as_u64).filter(|time| *time > 0).collect())
+        .unwrap_or_default();
+    if values.is_empty() {
+        return value
+            .pointer("/time_nanoseconds/total_ifs")
+            .and_then(Value::as_u64)
+            .filter(|time| *time > 0);
+    }
+    values.sort_unstable();
+    let count = values.len();
+    Some(if count % 2 == 0 {
+        ((values[count / 2 - 1] as u128 + values[count / 2] as u128) / 2) as u64
+    } else {
+        values[count / 2]
+    })
 }
 
 /// Extracts the three accuracy metrics and the two-tier classification
@@ -581,7 +600,7 @@ fn print_usage() {
     println!("Usage: xtract_matrix_market [results_dir]");
     println!();
     println!("Reads the JSON files written by solve_matrix_market and prints solver timing and accuracy tables.");
-    println!("Absolute-time tables show total time; relative-time tables show solver time / MUMPS time.");
+    println!("Absolute-time tables show median total time; relative-time tables show median solver time / median MUMPS time.");
     println!("Rows without a MUMPS time are blank in the relative-time tables.");
     println!("Accuracy columns are rel_error, rel_res_b, rel_res_ax, and the pass/warn/fail tier.");
     println!("Failure keys are printed after the tables; blank cells mean no result was found.");
@@ -612,6 +631,36 @@ mod tests {
         assert!(data.positive_definite);
         assert_eq!(data.times["faer"], 1234);
         assert!(data.failures.is_empty());
+    }
+
+    #[test]
+    fn median_time_uses_the_middle_run() {
+        let value = json!({
+            "time_nanoseconds": {
+                "total_ifs": 999,
+                "total_ifs_array": [5, 1, 3, 9, 7],
+            }
+        });
+        assert_eq!(median_time(&value), Some(5));
+    }
+
+    #[test]
+    fn median_time_averages_the_two_middle_runs() {
+        let value = json!({
+            "time_nanoseconds": {
+                "total_ifs": 999,
+                "total_ifs_array": [4, 1, 3, 2],
+            }
+        });
+        assert_eq!(median_time(&value), Some(2));
+    }
+
+    #[test]
+    fn median_time_falls_back_to_total_ifs() {
+        let value = json!({"time_nanoseconds": {"total_ifs": 1234}});
+        assert_eq!(median_time(&value), Some(1234));
+        let value = json!({"time_nanoseconds": {"total_ifs": 0}});
+        assert_eq!(median_time(&value), None);
     }
 
     #[test]

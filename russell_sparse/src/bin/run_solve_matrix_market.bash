@@ -80,6 +80,78 @@ is_spd() {
     return 1
 }
 
+# Symmetric matrices
+#
+# Source: the Sym column of the archived arch-performance-tables.pdf.
+# QDLDL requires a symmetric matrix; the other direct solvers do not.
+SYMMETRIC_MATS=(
+    boyd2
+    darcy003
+    dielFilterV2real
+    Emilia_923
+    Flan_1565
+    helm2d03
+    inline_1
+    oilpan
+    PFlow_742
+    pmsim-hex8-27
+    pres-cylin-3d-tet10-coarse
+    pres-cylin-3d-tet10-fine
+    mplate
+    dielFilterV3clx
+)
+
+# Returns "matrix" or "matrices" for a count
+matrix_word() {
+    if (($1 == 1)); then
+        echo "matrix"
+    else
+        echo "matrices"
+    fi
+}
+
+# Returns true when the matrix is symmetric
+is_symmetric() {
+    local name=$1
+    local candidate
+    for candidate in "${SYMMETRIC_MATS[@]}"; do
+        if [[ "$candidate" == "$name" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Returns true for iterative solvers
+is_iterative() {
+    local solver
+    solver=$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')
+    case "$solver" in
+        CG | BICGSTAB | GMRES) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# Returns true for solvers without a complex-valued implementation
+is_real_only() {
+    local solver
+    solver=$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')
+    case "$solver" in
+        CG | BICGSTAB | GMRES | BASICLU | QDLDL) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# Returns true for solvers that require a symmetric matrix
+is_symmetric_only() {
+    local solver
+    solver=$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')
+    case "$solver" in
+        QDLDL) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 # Returns true for solvers that run single-threaded by default
 is_single_threaded() {
     local solver
@@ -124,6 +196,9 @@ usage() {
     echo "  -f, --first <n>    only run the first <n> REAL_MATS"
     echo "  -F, --first-complex <n>  only run the first <n> COMPLEX_MATS"
     echo "  -1 ... -5          number of runs (default 1)"
+    echo ""
+    echo "  Iterative solvers and BasicLU/QDLDL skip the complex matrices."
+    echo "  QDLDL also skips non-symmetric matrices."
     echo ""
     echo "Environment: RUSSELL_DIR, INPUT_DIR, OUTPUT_DIR, INFO_FILE, SYSTEM, FEATURES, PIN_SINGLE_THREAD, P_CORES"
 }
@@ -221,18 +296,19 @@ INPUT_DIR=$(cd "$INPUT_DIR" && pwd)
 OUTPUT_DIR=$(cd "$OUTPUT_DIR" && pwd)
 INFO_FILE=${INFO_FILE:-"$OUTPUT_DIR/system-information.txt"}
 
-RUN_MATS=("${REAL_MATS[@]}" "${COMPLEX_MATS[@]}")
+REAL_RUN_MATS=()
+COMPLEX_RUN_MATS=()
 if ((FIRST_N > 0 || FIRST_COMPLEX_N > 0)); then
-    RUN_MATS=()
     if ((FIRST_N > 0)); then
-        RUN_MATS+=("${REAL_MATS[@]:0:FIRST_N}")
+        REAL_RUN_MATS+=("${REAL_MATS[@]:0:FIRST_N}")
     fi
     if ((FIRST_COMPLEX_N > 0)); then
-        RUN_MATS+=("${COMPLEX_MATS[@]:0:FIRST_COMPLEX_N}")
+        COMPLEX_RUN_MATS+=("${COMPLEX_MATS[@]:0:FIRST_COMPLEX_N}")
     fi
+else
+    REAL_RUN_MATS=("${REAL_MATS[@]}")
+    COMPLEX_RUN_MATS=("${COMPLEX_MATS[@]}")
 fi
-TOTAL_MATS=${#RUN_MATS[@]}
-CURRENT_MAT=0
 
 FEATURE_ARGS=()
 if [[ -n "$FEATURES" ]]; then
@@ -306,8 +382,37 @@ time {
         if ((ALL_GENIES)); then
             echo "=== Genie: $SOLVER ===" >&2
         fi
+
+        # Select the matrices supported by this solver
+        if is_real_only "$SOLVER"; then
+            CANDIDATE_MATS=("${REAL_RUN_MATS[@]}")
+            if ((${#COMPLEX_RUN_MATS[@]} > 0)); then
+                echo "=== Skipping ${#COMPLEX_RUN_MATS[@]} complex $(matrix_word "${#COMPLEX_RUN_MATS[@]}") (solver $SOLVER) ===" >&2
+            fi
+        else
+            CANDIDATE_MATS=("${REAL_RUN_MATS[@]}" "${COMPLEX_RUN_MATS[@]}")
+        fi
+
+        SOLVER_MATS=()
+        if is_symmetric_only "$SOLVER"; then
+            SKIPPED_MATS=0
+            for name in "${CANDIDATE_MATS[@]}"; do
+                if is_symmetric "$name"; then
+                    SOLVER_MATS+=("$name")
+                else
+                    SKIPPED_MATS=$((SKIPPED_MATS + 1))
+                fi
+            done
+            if ((SKIPPED_MATS > 0)); then
+                echo "=== Skipping $SKIPPED_MATS non-symmetric $(matrix_word "$SKIPPED_MATS") (symmetric-only solver $SOLVER) ===" >&2
+            fi
+        else
+            SOLVER_MATS=("${CANDIDATE_MATS[@]}")
+        fi
+
+        TOTAL_MATS=${#SOLVER_MATS[@]}
         CURRENT_MAT=0
-        for name in "${RUN_MATS[@]}"; do
+        for name in "${SOLVER_MATS[@]}"; do
             run_matrix "$name"
         done
     done

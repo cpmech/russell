@@ -509,6 +509,11 @@ The default `OUTPUT_DIR` is `/tmp/russell_sparse/results/$SYSTEM`. Results are s
 by solver, so a MUMPS run, an UMFPACK run, and a Faer run can coexist and then be
 combined by `xtract_matrix_market`.
 
+The iterative solvers (`cg`, `bicgstab`, and `gmres`) run only on the
+real-valued matrices; the runner skips the complex matrices for them. `basiclu`
+and `qdldl` also have no complex variant, so complex matrices are skipped for
+them as well. `qdldl` additionally runs only on the known symmetric matrices.
+
 ## For developers
 
 * The `c_code` directory contains a thin wrapper to the sparse solvers (MUMPS, UMFPACK)

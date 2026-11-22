@@ -5,6 +5,23 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.5.2] - 2026-11-22
+
+### Removed (breaking)
+
+- Removed the iterative solvers (`CG`, `BiCGStab`, `GMRES`), `Genie::BasicLu`, and `Genie::Qdldl`
+  from `russell_sparse`, together with their parameter types, public solver wrappers, statistics,
+  CLI options, examples, tests, and documentation. The remaining backends are `Faer`, `MUMPS`, and
+  `UMFPACK`.
+- Removed the corresponding AMG/Krylov, QDLDL, and BasicLU modules from `algebra_linear` 4.0.0.
+- Removed `StatsLinSolIterative`, `StatsLinSol::iterative_stats`,
+  `StatsLinSolOutput::basiclu_rank`, and `StatsLinSolOutput::qdldl_positive_inertia`.
+- Removed `IterativeMethod`, `BasicLuParams`, `IterativeParams`, `Preconditioner`,
+  `AmgCoarsening`, and `AmgSmoother`.
+- Removed the tracked historical benchmark logs under `russell_sparse/data/logs/`.
+- `solve_matrix_market` now accepts only `faer`, `mumps`, and `umfpack`; the `--iter-*` and
+  `--amg-*` options are gone.
+
 ## [5.5.1] - 2026-11-19
 
 ### Added

@@ -7,7 +7,7 @@
   <a href="https://doi.org/10.1002/nme.7545"><img alt="DOI" src="https://img.shields.io/badge/DOI-10.1002%2Fnme.7545-blue"></a>
 </p>
 
-`russell_sparse` provides sparse matrix storage (COO, CSC, CSR), six solver backends,
+`russell_sparse` provides sparse matrix storage (COO, CSC, CSR), three solver backends,
 Matrix Market I/O, and the benchmark tools used to compare them. It is part of the
 [Russell - Rust Scientific Library](https://github.com/cpmech/russell).
 
@@ -31,7 +31,6 @@ Matrix Market I/O, and the benchmark tools used to compare them. It is part of t
 - [🌟 Examples](#-examples)
   - [Solve a tiny sparse linear system using the Faer solver](#solve-a-tiny-sparse-linear-system-using-the-faer-solver)
   - [Solve a complex sparse linear system using the Faer solver](#solve-a-complex-sparse-linear-system-using-the-faer-solver)
-  - [Iterative solvers](#iterative-solvers)
 - [Tools](#tools)
   - [Matrix Market assets](#matrix-market-assets)
   - [solve_matrix_market](#solve_matrix_market)
@@ -45,26 +44,15 @@ Matrix Market I/O, and the benchmark tools used to compare them. It is part of t
 
 ## Introduction
 
-This library implements tools for handling sparse matrices and functions to solve sparse linear systems with six backends:
+This library implements tools for handling sparse matrices and functions to solve sparse linear systems with three backends:
 
 ### Solver backends
 
 | Backend | Kind | Availability | Notes |
 |---|---|---|---|
 | **Faer** | Sparse LU | Pure Rust, always available | The default backend; `FaerMethod` selects simplicial or supernodal |
-| **BasicLU** | Sparse LU with rank-1 updates | Pure Rust, always available | Square general systems; written for LP bases |
-| **QDLDL** | `L D Lᵀ` factorization | Pure Rust, always available | Symmetric quasi-definite systems; upper triangle |
-| **Iterative** | Krylov + AMG | Pure Rust, always available | CG, BiCGStab, and restarted GMRES |
 | [**UMFPACK**](https://github.com/DrTimothyAldenDavis/SuiteSparse) | Unsymmetric multifrontal LU | `umfpack` feature | Recommended for general sequential use |
 | [**MUMPS**](https://mumps-solver.org) | Multifrontal LU | `mumps` feature | Very large systems; supports multithreaded execution |
-
-> **The native iterative solvers are limited.** With the default algebraic-multigrid settings they
-> reach a relative error of 1e-6 on a minority of the real SuiteSparse matrices measured in
-> [benchmark-russell](https://github.com/cpmech/benchmark-russell): BiCGStab on 12 of 33, GMRES on 7,
-> and CG on 1, since CG requires a symmetric positive definite matrix. The setup and the kernels are
-> tested — what is limited is how often the preconditioner makes the iteration converge. For
-> production work use **Faer**, **UMFPACK**, or **MUMPS**, and use the iterative path where it has
-> been measured to converge on your own matrix.
 
 Performance benchmarks and the comparison harness are available in
 [benchmark-russell](https://github.com/cpmech/benchmark-russell).
@@ -72,8 +60,6 @@ Performance benchmarks and the comparison harness are available in
 ### Complex Numbers Support
 
 This crate fully supports both real (`f64`) and complex (`Complex64`) numbers. You can use the complex variants of the data structures and solvers, such as `ComplexCooMatrix` and `ComplexSolverUMFPACK`, seamlessly.
-
-The crate also ships pure-Rust iterative solvers: preconditioned conjugate gradients (CG), BiCGStab, and restarted GMRES, with either algebraic multigrid (AMG) or identity preconditioning. They need no external library and are available in every build, but their convergence is matrix-dependent -- see the limitation above.
 
 This library implements three storage formats for sparse matrices:
 
@@ -270,56 +256,6 @@ See [russell_sparse documentation](https://docs.rs/russell_sparse) for more exam
 
 See also the folder `examples`.
 
-### Iterative solvers
-
-Select an iterative method with `Genie::Iterative(IterativeMethod::{Cg, BiCgStab, Gmres})`. All three use algebraic multigrid (AMG) preconditioning by default, or the identity preconditioner. Their parameters live in `LinSolParams::iterative`: tolerance, absolute tolerance, maximum number of iterations, GMRES restart, number of threads, AMG coarsening, smoother, coarse-enough size, and maximum number of levels.
-
-```rust
-use russell_lab::{vec_approx_eq, Vector};
-use russell_sparse::prelude::*;
-use russell_sparse::StrError;
-
-fn main() -> Result<(), StrError> {
-    // ┌             ┐
-    // │  4 -1    0  │
-    // │ -1  4   -1  │
-    // │  0 -1    4  │
-    // └             ┘
-    let ndim = 3;
-    let mut coo = CooMatrix::new(ndim, ndim, 7, Sym::YesFull)?;
-    coo.put(0, 0, 4.0)?;
-    coo.put(0, 1, -1.0)?;
-    coo.put(1, 0, -1.0)?;
-    coo.put(1, 1, 4.0)?;
-    coo.put(1, 2, -1.0)?;
-    coo.put(2, 1, -1.0)?;
-    coo.put(2, 2, 4.0)?;
-
-    // solve with conjugate gradients
-    let mut solver = SolverIterative::new(IterativeMethod::Cg)?;
-    solver.preprocess(&coo, None)?;
-    let rhs = Vector::from(&[3.0, 2.0, 3.0]);
-    let mut x = Vector::new(ndim);
-    solver.solve(&mut x, &rhs, false)?;
-    vec_approx_eq(&x, &[1.0, 1.0, 1.0], 1e-10);
-
-    // print the iterative statistics
-    let mut stats = StatsLinSol::new();
-    solver.update_stats(&mut stats);
-    let iterative = stats.iterative_stats.as_ref().expect("iterative statistics");
-    println!("method = {}", iterative.method);
-    println!("preconditioner = {}", iterative.preconditioner);
-    println!("iterations = {:?}", iterative.iterations_array);
-    println!("relative residual = {:?}", iterative.relative_residual_array);
-    println!("AMG levels = {}", iterative.amg_levels);
-    Ok(())
-}
-```
-
-If the method does not converge within the iteration limit, `solve` returns `"the iterative solver did not converge"` after storing the report in the statistics. The identity preconditioner (`params.iterative.preconditioner = Preconditioner::Identity`) is the escape hatch for nonsymmetric systems when the AMG setup is unsuitable.
-
-
-
 ## Tools
 
 The [`src/bin`](https://github.com/cpmech/russell/tree/main/russell_sparse/src/bin)
@@ -367,7 +303,7 @@ cargo run --release --bin solve_matrix_market -- --help
 ```
 
 The default backend is Faer. Use `--genie` (`-g`) to select another one:
-`faer`, `cg`, `bicgstab`, `gmres`, `basiclu`, `qdldl`, `mumps`, or `umfpack`.
+`faer`, `mumps`, or `umfpack`.
 
 ```bash
 cargo run --release --bin solve_matrix_market -- -g mumps ~/Downloads/matrix-market/bfwb62.mtx
@@ -385,206 +321,3 @@ Useful options:
 | `--information` | Read the matrix, print its metadata, and exit |
 | `--hide-json` | Suppress the JSON output |
 | `--vismatrix` | Also write a Vismatrix `.smat` file |
-
-The iterative solvers are configured with the following options, which `faer`,
-`basiclu`, `qdldl`, `mumps`, and `umfpack` ignore (`--help` prints the defaults):
-
-| Option | Meaning |
-|---|---|
-| `--iter-tol` | Relative residual tolerance |
-| `--iter-abs-tol` | Absolute residual tolerance |
-| `--iter-max` | Maximum number of Krylov iterations |
-| `--iter-precond` | Preconditioner: `amg` or `identity` |
-| `--iter-restart` | GMRES restart dimension |
-| `--iter-threads` | Threads for the Krylov and AMG kernels |
-| `--iter-min-parallel-len` | Minimum vector length before threads are used |
-| `--amg-coarsening` | `ruge-stuben`, `aggregation`, or `smoothed-aggregation` |
-| `--amg-smoother` | `gauss-seidel`, `damped-jacobi`, `ilu0`, `chebyshev`, `spai0`, or `spai1` |
-| `--amg-coarse-enough` | AMG size at which the coarsest level is solved directly |
-| `--amg-max-levels` | Maximum number of AMG levels |
-| `--amg-max-memory-mb` | Memory budget in MiB for AMG and Krylov (`0` = unlimited) |
-
-<details>
-<summary><b>Example JSON output (abridged)</b></summary>
-
-```json
-{
-  "main": {
-    "platform": "Russell",
-    "blas_lib": "OpenBLAS",
-    "solver": "MUMPS",
-    "has_mumps": true,
-    "has_umfpack": true,
-    "solved": true,
-    "stopped_by_time_guard": false,
-    "out_of_memory": false,
-    "error_from_solver": null
-  },
-  "matrix": {
-    "name": "bfwb62",
-    "nrow": 62,
-    "ncol": 62,
-    "nnz": 202,
-    "nnz_actual": 342,
-    "complex": false,
-    "symmetric": "YesLower"
-  },
-  "time_human": {
-    "read_matrix": "43.1µs",
-    "initialize": "266.6µs",
-    "preprocess": "196.8µs",
-    "solve": "166.9µs",
-    "total_ifs": "630.3µs",
-    "verify": "2.2µs"
-  }
-}
-```
-
-</details>
-
-### xtract_matrix_market
-
-`xtract_matrix_market` reads the JSON files produced by `solve_matrix_market`
-(recursively) and prints timing tables for real and complex matrices, followed
-by accuracy tables for the same groups:
-
-```bash
-cargo run --release --bin xtract_matrix_market -- [results_dir]
-```
-
-With no argument it uses `$OUTPUT_DIR` when set, otherwise
-`/tmp/russell_sparse/results/$SYSTEM` (`SYSTEM` defaults to `arch`).
-
-- Every solver column shows the median total time (initialize + preprocess +
-  solve) over the runs; no MUMPS baseline is required. The median comes from
-  `total_ifs_array`, with `total_ifs` as the fallback.
-- The relative-time tables show `median_solver_time / median_mumps_time`:
-  values below `1.00x` are faster than MUMPS, and the MUMPS column is `1.00x`.
-  Matrices without a MUMPS time have blank solver cells in these tables.
-- Failed runs appear as keys such as `stop-time`, `no-mem`, `only-sym`,
-  `only-spd`, `no-conv`, `singular`, and `not-avail`; the key descriptions are
-  printed after the tables.
-- Blank cells mean no result file was found for that matrix/solver.
-- The accuracy tables show `rel_error`, `rel_res_b`, `rel_res_ax`, and a
-  `pass`/`warn`/`fail` tier. `rel_res_b` is `max_abs_diff / ||b||∞` and
-  `rel_res_ax` is `max_abs_diff / max(max_abs_ax, ||b||∞)`, with
-  `||b||∞ = 1` for real systems and `sqrt(2)` for complex ones. `fail` means
-  `rel_res_b > 0.1`; `warn` means `rel_res_b > 1e-4` or
-  `rel_error > 2.5e-6`.
-- The accuracy columns are computed from the existing `verify` object, so no
-  rerun is needed.
-- The `sym` column uses the canonical metadata embedded from
-  `russell_sparse/data/matrix_market/matrices.json`. It provides the real/complex
-  type, symmetry, Hermitian flag, SPD flag, stored entries, and full pattern
-  entries. The JSON `requests.positive_definite` field is only a request flag,
-  not the mathematical classification.
-
-### xcompare_matrix_market
-
-`xcompare_matrix_market` compares solver times across CPU-labelled result
-directories and reports speedup statistics:
-
-```bash
-cargo run --release --bin xcompare_matrix_market -- \
-  ~/07-Storage/benchmark-sparse/arch
-```
-
-The path may be a base name (`.../arch`), one CPU directory (`.../arch-i7`), or
-a parent containing CPU directories. CPU labels are detected from trailing
-`-i<number>` suffixes, such as `arch-i7` and `arch-i9`. The lowest-numbered CPU
-is the baseline.
-
-For each target CPU, the tool prints:
-
-- an overall/by-scope table with the number of paired cells, geometric mean,
-  median, and arithmetic mean of `time_baseline / time_target`
-- a by-solver table with the same statistics
-- real/complex and `nnz >= 1M` / `nnz < 1M` strata
-
-Times are the median of `time_nanoseconds.total_ifs_array`, with
-`time_nanoseconds.total_ifs` as the fallback. Values above `1.00x` mean the
-target CPU is faster.
-
-### Matrix metadata
-
-The canonical benchmark metadata is stored at
-`russell_sparse/data/matrix_market/matrices.json` and embedded into the binaries
-at build time. It is a snapshot of
-[`cpmech/matrix-market`](https://github.com/cpmech/matrix-market) and contains 44
-entries with dimensions, stored entries, full pattern entries, real/complex type,
-symmetry, Hermitian and positive-definite flags, kind, and description.
-
-`Pattern Entries` is the full-pattern size; `Stored Entries` is the smaller count
-in the `.mtx` header when only one triangle is stored. `xtract` uses the metadata
-for its `sym`/`spd` labels instead of the per-run `requests.positive_definite`
-flag. `run_solve_matrix_market.bash` reads the same file with `jq` to build its
-real/complex, SPD, and symmetric matrix lists.
-
-### sys_info
-
-`sys_info` exports the OS, GPU, CPU, memory, and solver-library versions:
-
-```bash
-cargo run --release --bin sys_info
-cargo run --release --bin sys_info -- system-information.txt
-```
-
-With no file argument it prints to stdout. The report uses the same features as
-the build, so `--features umfpack,mumps` reports those libraries as compiled in.
-
-### Benchmark runner
-
-`run_solve_matrix_market.bash` runs the standard matrix set and stores one JSON file
-per matrix and solver under `$OUTPUT_DIR/<solver>/`. Before running, it writes the
-benchmark configuration and the `sys_info` report to
-`$OUTPUT_DIR/system-information.txt` (override with `INFO_FILE`). The provenance
-header records the date, Russell version and commit, system, features, solvers,
-`nrun`, `time_guard`, CPU pinning, input/output paths, solver arguments, selected
-matrices, SPD matrices, and the solver/matrix skip policy.
-
-```bash
-cd russell_sparse/src/bin
-export INPUT_DIR="$HOME/Downloads/matrix-market"
-
-# One solver:
-./run_solve_matrix_market.bash -s -g mumps -f 10
-
-# Every available genie, solving the systems:
-./run_solve_matrix_market.bash -s -G -f 10
-
-# Compare the results:
-cargo run --release --bin xtract_matrix_market
-```
-
-| Option | Meaning |
-|---|---|
-| `-i, --information` | Only print matrix metadata (default) |
-| `-s, --solve` | Solve the systems |
-| `-g, --genie <name>` | Run one solver |
-| `-G, --all-genies` | Run every available solver |
-| `-f, --first <n>` | First `n` real matrices |
-| `-F, --first-complex <n>` | First `n` complex matrices |
-| `-1` … `-5` | Number of runs per matrix |
-
-The runner requires `jq` and reads
-`russell_sparse/data/matrix_market/matrices.json` to build its matrix lists. Set
-`MATRICES_JSON` to use another metadata file, and set `TIME_GUARD` to override the
-per-run time guard (default `200` seconds).
-
-The default `OUTPUT_DIR` is `/tmp/russell_sparse/results/$SYSTEM`. Results are split
-by solver, so a MUMPS run, an UMFPACK run, and a Faer run can coexist and then be
-combined by `xtract_matrix_market`.
-
-The iterative solvers (`cg`, `bicgstab`, and `gmres`) run only on the
-real-valued matrices; the runner skips the complex matrices for them. `basiclu`
-and `qdldl` also have no complex variant, so complex matrices are skipped for
-them as well. `qdldl` additionally runs only on the known symmetric matrices.
-
-## For developers
-
-* The `c_code` directory contains a thin wrapper to the sparse solvers (MUMPS, UMFPACK)
-* The `build.rs` file uses the crate `cc` to build the C-wrappers
-* The `zscripts` directory also contains the following:
-    * `memcheck.bash`: Checks for memory leaks on the C-code using Valgrind
-    * `run-examples`: Runs all examples in the `examples` directory
-    * `run-solve-matrix-market.bash`: Runs the solve-matrix-market tool from the `bin` directory

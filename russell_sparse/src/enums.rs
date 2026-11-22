@@ -1,33 +1,12 @@
 use crate::StrError;
 use serde::{Deserialize, Serialize};
 
-/// Selects a Krylov method for the iterative solvers
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
-pub enum IterativeMethod {
-    /// Right-preconditioned BiCGStab, for general square systems
-    BiCgStab,
-
-    /// Preconditioned conjugate gradients, for symmetric positive-definite systems
-    Cg,
-
-    /// Right-preconditioned restarted GMRES, for general square systems
-    Gmres,
-}
-
 /// Specifies the underlying library that does all the magic
 ///
 /// `Genie` is not `#[non_exhaustive]`, so match it with a wildcard arm; a new variant is
 /// a breaking change for exhaustive matches.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub enum Genie {
-    /// Selects the pure-Rust BasicLU solver for square general systems (an LU
-    /// factorization with rank-1 updates, written for LP bases)
-    ///
-    /// Ported from: <https://github.com/ERGO-Code/HiGHS>
-    ///
-    /// Further reference: <https://github.com/cpmech/algebra_linear>
-    BasicLu,
-
     /// Selects the pure-Rust Faer LU solver
     ///
     /// Ported from: <https://codeberg.org/sarah-quinones/faer>
@@ -35,27 +14,12 @@ pub enum Genie {
     /// Further reference: <https://github.com/cpmech/algebra_linear>
     Faer,
 
-    /// Selects a pure-Rust iterative solver with algebraic multigrid preconditioning
-    ///
-    /// Ported from: <https://github.com/ddemidov/amgcl>
-    ///
-    /// Further reference: <https://github.com/cpmech/algebra_linear>
-    Iterative(IterativeMethod),
-
     /// Selects MUMPS (multi-frontal massively parallel sparse direct) solver
     ///
     /// **Note:** Requires the `mumps` feature
     ///
     /// Reference: <https://mumps-solver.org/index.php>
     Mumps,
-
-    /// Selects the pure-Rust QDLDL solver for symmetric quasi-definite systems (an
-    /// unpivoted `L D L^T` factorization of the upper triangle)
-    ///
-    /// Ported from: <https://github.com/osqp/qdldl>
-    ///
-    /// Further reference: <https://github.com/cpmech/algebra_linear>
-    Qdldl,
 
     /// Selects UMFPACK (unsymmetric multi-frontal) solver
     ///
@@ -268,33 +232,26 @@ pub enum Scaling {
 impl Genie {
     /// Returns the Genie by name
     ///
-    /// The recognized names are `faer`, `cg`, `bicgstab`, `gmres`, `basiclu`,
-    /// `qdldl`, `mumps`, and `umfpack`, compared case-insensitively. Any other
-    /// name yields an error.
+    /// The recognized names are `faer`, `mumps`, and `umfpack`, compared
+    /// case-insensitively. Any other name yields an error.
     ///
     /// # Output
     ///
     /// Returns the [`Genie`] matching `genie`, or
-    /// `"genie must be one of: FAER, CG, BICGSTAB, GMRES, BASICLU, QDLDL, MUMPS, UMFPACK"`.
+    /// `"genie must be one of: FAER, MUMPS, UMFPACK"`.
     pub fn from(genie: &str) -> Result<Self, StrError> {
         match genie {
             "FAER" => Ok(Genie::Faer),
-            "CG" => Ok(Genie::Iterative(IterativeMethod::Cg)),
-            "BICGSTAB" => Ok(Genie::Iterative(IterativeMethod::BiCgStab)),
-            "GMRES" => Ok(Genie::Iterative(IterativeMethod::Gmres)),
-            "BASICLU" => Ok(Genie::BasicLu),
-            "QDLDL" => Ok(Genie::Qdldl),
             "MUMPS" => Ok(Genie::Mumps),
             "UMFPACK" => Ok(Genie::Umfpack),
-            _ => Err("genie must be one of: FAER, CG, BICGSTAB, GMRES, BASICLU, QDLDL, MUMPS, UMFPACK"),
+            _ => Err("genie must be one of: FAER, MUMPS, UMFPACK"),
         }
     }
 
     /// Tells whether this solver is available in the current build
     ///
-    /// The Faer, Iterative, BasicLU, and QDLDL solvers are pure Rust and always
-    /// available. The other two are compiled in only when the crate feature of
-    /// the same name is enabled:
+    /// The Faer solver is pure Rust and always available. MUMPS and UMFPACK are
+    /// compiled in only when the crate feature of the same name is enabled:
     ///
     /// * `Mumps` requires the `mumps` feature
     /// * `Umfpack` requires the `umfpack` feature
@@ -305,11 +262,8 @@ impl Genie {
     pub fn is_available(&self) -> bool {
         match self {
             Genie::Faer => true,
-            Genie::Iterative(_) => true,
             Genie::Mumps => cfg!(feature = "mumps"),
             Genie::Umfpack => cfg!(feature = "umfpack"),
-            Genie::BasicLu => true,
-            Genie::Qdldl => true,
         }
     }
 
@@ -318,20 +272,12 @@ impl Genie {
         if symmetric {
             match self {
                 Genie::Faer => Sym::YesFull,
-                Genie::Iterative(_) => Sym::YesFull,
                 Genie::Mumps => Sym::YesLower,
                 Genie::Umfpack => Sym::YesFull,
-                Genie::BasicLu => Sym::YesFull,
-                Genie::Qdldl => Sym::YesUpper,
             }
         } else {
             Sym::No
         }
-    }
-
-    /// Tells whether this Genie selects an iterative solver
-    pub fn is_iterative(&self) -> bool {
-        matches!(self, Genie::Iterative(_))
     }
 }
 
@@ -339,13 +285,8 @@ impl std::fmt::Display for Genie {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Genie::Faer => write!(f, "FAER"),
-            Genie::Iterative(IterativeMethod::Cg) => write!(f, "CG"),
-            Genie::Iterative(IterativeMethod::BiCgStab) => write!(f, "BICGSTAB"),
-            Genie::Iterative(IterativeMethod::Gmres) => write!(f, "GMRES"),
             Genie::Mumps => write!(f, "MUMPS"),
             Genie::Umfpack => write!(f, "UMFPACK"),
-            Genie::BasicLu => write!(f, "BASICLU"),
-            Genie::Qdldl => write!(f, "QDLDL"),
         }
     }
 }
@@ -524,16 +465,11 @@ mod tests {
     #[test]
     fn genie_functions_work() {
         assert_eq!(Genie::from("FAER"), Ok(Genie::Faer));
-        assert_eq!(Genie::from("CG"), Ok(Genie::Iterative(IterativeMethod::Cg)));
-        assert_eq!(Genie::from("BICGSTAB"), Ok(Genie::Iterative(IterativeMethod::BiCgStab)));
-        assert_eq!(Genie::from("GMRES"), Ok(Genie::Iterative(IterativeMethod::Gmres)));
-        assert_eq!(Genie::from("BASICLU"), Ok(Genie::BasicLu));
-        assert_eq!(Genie::from("QDLDL"), Ok(Genie::Qdldl));
         assert_eq!(Genie::from("MUMPS"), Ok(Genie::Mumps));
         assert_eq!(Genie::from("UMFPACK"), Ok(Genie::Umfpack));
 
-        // unknown names (including the old "direct" name) are errors; there is no fallback and no aliases
-        let message = "genie must be one of: FAER, CG, BICGSTAB, GMRES, BASICLU, QDLDL, MUMPS, UMFPACK";
+        // unknown names are errors; there is no fallback and no aliases
+        let message = "genie must be one of: FAER, MUMPS, UMFPACK";
         assert_eq!(Genie::from("blah-blah-blah"), Err(message));
 
         let genie = Genie::Faer;
@@ -541,75 +477,23 @@ mod tests {
         assert_eq!(Genie::from(&genie.to_string()), Ok(genie));
         assert_eq!(genie.get_sym(false), Sym::No);
         assert_eq!(genie.get_sym(true), Sym::YesFull);
-        assert!(!genie.is_iterative());
-
-        let genie = Genie::Iterative(IterativeMethod::Cg);
-        assert_eq!(genie.to_string(), "CG");
-        assert_eq!(Genie::from(&genie.to_string()), Ok(genie));
-        assert_eq!(genie.get_sym(false), Sym::No);
-        assert_eq!(genie.get_sym(true), Sym::YesFull);
-        assert!(genie.is_iterative());
-
-        let genie = Genie::Iterative(IterativeMethod::BiCgStab);
-        assert_eq!(genie.to_string(), "BICGSTAB");
-        assert_eq!(Genie::from(&genie.to_string()), Ok(genie));
-        assert!(genie.is_iterative());
-
-        let genie = Genie::Iterative(IterativeMethod::Gmres);
-        assert_eq!(genie.to_string(), "GMRES");
-        assert_eq!(Genie::from(&genie.to_string()), Ok(genie));
-        assert!(genie.is_iterative());
-
-        let genie = Genie::BasicLu;
-        assert_eq!(genie.to_string(), "BASICLU");
-        assert_eq!(Genie::from(&genie.to_string()), Ok(genie));
-        assert_eq!(genie.get_sym(false), Sym::No);
-        assert_eq!(genie.get_sym(true), Sym::YesFull);
-        assert!(!genie.is_iterative());
-
-        let genie = Genie::Qdldl;
-        assert_eq!(genie.to_string(), "QDLDL");
-        assert_eq!(Genie::from(&genie.to_string()), Ok(genie));
-        assert_eq!(genie.get_sym(false), Sym::No);
-        assert_eq!(genie.get_sym(true), Sym::YesUpper);
-        assert!(!genie.is_iterative());
 
         let genie = Genie::Mumps;
         assert_eq!(genie.to_string(), "MUMPS");
         assert_eq!(Genie::from(&genie.to_string()), Ok(genie));
         assert_eq!(genie.get_sym(false), Sym::No);
         assert_eq!(genie.get_sym(true), Sym::YesLower);
-        assert!(!genie.is_iterative());
 
         let genie = Genie::Umfpack;
         assert_eq!(genie.to_string(), "UMFPACK");
         assert_eq!(Genie::from(&genie.to_string()), Ok(genie));
-        assert_eq!(genie.get_sym(false,), Sym::No);
+        assert_eq!(genie.get_sym(false), Sym::No);
         assert_eq!(genie.get_sym(true), Sym::YesFull);
-        assert!(!genie.is_iterative());
-    }
-
-    #[test]
-    fn genie_iterative_serde_round_trips() {
-        let genie = Genie::Iterative(IterativeMethod::Cg);
-        let json = serde_json::to_string(&genie).unwrap();
-        assert_eq!(json, "{\"Iterative\":\"Cg\"}");
-        let from_json: Genie = serde_json::from_str(&json).unwrap();
-        assert_eq!(from_json, genie);
-
-        // the old names are not aliases for Faer
-        assert!(serde_json::from_str::<Genie>("\"Native\"").is_err());
-        assert!(serde_json::from_str::<Genie>("\"Direct\"").is_err());
     }
 
     #[test]
     fn genie_availability_matches_the_features() {
         assert!(Genie::Faer.is_available());
-        assert!(Genie::Iterative(IterativeMethod::Cg).is_available());
-        assert!(Genie::Iterative(IterativeMethod::BiCgStab).is_available());
-        assert!(Genie::Iterative(IterativeMethod::Gmres).is_available());
-        assert!(Genie::BasicLu.is_available());
-        assert!(Genie::Qdldl.is_available());
         assert_eq!(Genie::Mumps.is_available(), cfg!(feature = "mumps"));
         assert_eq!(Genie::Umfpack.is_available(), cfg!(feature = "umfpack"));
     }

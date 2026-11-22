@@ -101,7 +101,6 @@ This project is split into the following crates:
 3. [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse) [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) — Sparse matrix structures and solvers:
     - Formats: CooMatrix, CscMatrix, CsrMatrix (both real f64 and Complex64).
     - Direct Solvers: pure-Rust Faer (`Genie::Faer`, always available), UMFPACK (SuiteSparse), and MUMPS (`mumps`).
-    - Iterative Solvers: preconditioned CG, BiCGStab, and restarted GMRES with algebraic multigrid (pure Rust, always available).
     - Utilities: Matrix Market I/O, vismatrix exporter, numerical Jacobian assembly, linear system verification.
 4. [![Crates.io](https://img.shields.io/crates/v/russell_ode.svg)](https://crates.io/crates/russell_ode) [russell_ode](https://github.com/cpmech/russell/tree/main/russell_ode) — ODE and Index-1 DAE solvers:
     - Explicit Runge-Kutta (DoPri5, DoPri8, Forward Euler) with stiffness detection and dense output.

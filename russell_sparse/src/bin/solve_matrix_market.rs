@@ -22,7 +22,7 @@ struct Options {
     #[structopt(short = "i", long)]
     information: bool,
 
-    /// Solver selection; accepted values: `FAER`, `CG`, `BICGSTAB`, `GMRES`, `BASICLU`, `QDLDL`, `MUMPS`, or `UMFPACK`
+    /// Solver selection; accepted values: `FAER`, `MUMPS`, or `UMFPACK`
     #[structopt(short = "g", long, default_value = "FAER")]
     genie: String,
 
@@ -74,10 +74,6 @@ struct Options {
     #[structopt(long)]
     faer_flop_ratio: Option<f64>,
 
-    /// Iterative solver options (ignored by `faer`, `mumps`, and `umfpack`)
-    #[structopt(flatten)]
-    iterative: IterativeOptions,
-
     /// Writes vismatrix file
     #[structopt(long)]
     vismatrix: bool,
@@ -100,58 +96,6 @@ struct Options {
     time_guard: u64,
 }
 
-// Iterative solver options (ignored by `faer`, `mumps`, and `umfpack`)
-#[derive(StructOpt, Debug)]
-struct IterativeOptions {
-    /// Relative residual tolerance (iterative solvers; ignored by `faer`, `mumps`, and `umfpack`)
-    #[structopt(long, default_value = "1e-10")]
-    iter_tol: f64,
-
-    /// Absolute residual tolerance (iterative solvers; ignored by `faer`, `mumps`, and `umfpack`)
-    #[structopt(long, default_value = "0")]
-    iter_abs_tol: f64,
-
-    /// Maximum number of Krylov iterations (ignored by `faer`, `mumps`, and `umfpack`)
-    #[structopt(long, default_value = "1000")]
-    iter_max: usize,
-
-    /// Preconditioner: `amg` or `identity` (ignored by `faer`, `mumps`, and `umfpack`)
-    #[structopt(long, default_value = "amg")]
-    iter_precond: String,
-
-    /// GMRES restart dimension (GMRES only; ignored by `faer`, `mumps`, and `umfpack`)
-    #[structopt(long, default_value = "30")]
-    iter_restart: usize,
-
-    /// Number of threads for the Krylov and AMG kernels (ignored by `faer`, `mumps`, and `umfpack`)
-    #[structopt(long, default_value = "1")]
-    iter_threads: usize,
-
-    /// Minimum vector length before threads are used (ignored by `faer`, `mumps`, and `umfpack`)
-    #[structopt(long, default_value = "1024")]
-    iter_min_parallel_len: usize,
-
-    /// AMG coarsening: `ruge-stuben`, `aggregation`, or `smoothed-aggregation` (ignored by `faer`, `mumps`, and `umfpack`)
-    #[structopt(long, default_value = "ruge-stuben")]
-    amg_coarsening: String,
-
-    /// AMG smoother: `gauss-seidel`, `damped-jacobi`, `ilu0`, `chebyshev`, `spai0`, or `spai1` (ignored by `faer`, `mumps`, and `umfpack`)
-    #[structopt(long, default_value = "gauss-seidel")]
-    amg_smoother: String,
-
-    /// AMG size at which the coarsest level is solved directly (ignored by `faer`, `mumps`, and `umfpack`)
-    #[structopt(long, default_value = "64")]
-    amg_coarse_enough: usize,
-
-    /// Maximum number of AMG levels (ignored by `faer`, `mumps`, and `umfpack`)
-    #[structopt(long, default_value = "32")]
-    amg_max_levels: usize,
-
-    /// Maximum working memory budget in MiB (`0` disables the limit; ignored by `faer`, `mumps`, and `umfpack`)
-    #[structopt(long, default_value = "0")]
-    amg_max_memory_mb: usize,
-}
-
 fn main() -> Result<(), StrError> {
     // parse options
     let opt = Options::from_args();
@@ -168,10 +112,7 @@ fn main() -> Result<(), StrError> {
     let handling = match genie {
         Genie::Mumps => MMsym::LeaveAsLower,
         Genie::Faer => MMsym::MakeItFull,
-        Genie::Iterative(_) => MMsym::MakeItFull,
         Genie::Umfpack => MMsym::MakeItFull,
-        Genie::BasicLu => MMsym::MakeItFull,
-        Genie::Qdldl => MMsym::SwapToUpper,
     };
 
     // configuration parameters
@@ -186,18 +127,6 @@ fn main() -> Result<(), StrError> {
     params.compute_error_estimates = opt.error_estimates;
     params.compute_condition_numbers = opt.condition_numbers;
     params.verbose = opt.verbose;
-    params.iterative.tolerance = opt.iterative.iter_tol;
-    params.iterative.absolute_tolerance = opt.iterative.iter_abs_tol;
-    params.iterative.max_iterations = opt.iterative.iter_max;
-    params.iterative.preconditioner = parse_preconditioner(&opt.iterative.iter_precond)?;
-    params.iterative.gmres_restart = opt.iterative.iter_restart;
-    params.iterative.num_threads = opt.iterative.iter_threads;
-    params.iterative.min_parallel_len = opt.iterative.iter_min_parallel_len;
-    params.iterative.amg_coarsening = parse_amg_coarsening(&opt.iterative.amg_coarsening)?;
-    params.iterative.amg_smoother = parse_amg_smoother(&opt.iterative.amg_smoother)?;
-    params.iterative.amg_coarse_enough = opt.iterative.amg_coarse_enough;
-    params.iterative.amg_max_levels = opt.iterative.amg_max_levels;
-    params.iterative.amg_max_memory_mb = opt.iterative.amg_max_memory_mb;
 
     // allocate stats structure
     let mut stats = StatsLinSol::new();
@@ -289,14 +218,7 @@ fn main() -> Result<(), StrError> {
 
             // check (debug)
             if stats.matrix.name == "bfwb62" {
-                let tolerance = match genie {
-                    Genie::Mumps => 1e-10,
-                    Genie::Faer => 1e-10,
-                    Genie::Iterative(_) => 1e-10,
-                    Genie::Umfpack => 1e-10,
-                    Genie::BasicLu => 1e-10,
-                    Genie::Qdldl => 1e-10,
-                };
+                let tolerance = 1e-10;
                 let correct_x = get_bfwb62_correct_x();
                 for i in 0..nrow {
                     let diff = f64::abs(x.get(i) - correct_x.get(i));
@@ -516,38 +438,6 @@ fn parse_faer_method(method: Option<&str>, flop_ratio: Option<f64>) -> Result<Fa
     }
 }
 
-/// Parses the `--iter-precond` option
-fn parse_preconditioner(value: &str) -> Result<Preconditioner, StrError> {
-    match value.to_lowercase().as_str() {
-        "amg" => Ok(Preconditioner::Amg),
-        "identity" => Ok(Preconditioner::Identity),
-        _ => Err("iter-precond must be one of: amg, identity"),
-    }
-}
-
-/// Parses the `--amg-coarsening` option
-fn parse_amg_coarsening(value: &str) -> Result<AmgCoarsening, StrError> {
-    match value.to_lowercase().as_str() {
-        "ruge-stuben" => Ok(AmgCoarsening::RugeStuben),
-        "aggregation" => Ok(AmgCoarsening::Aggregation),
-        "smoothed-aggregation" => Ok(AmgCoarsening::SmoothedAggregation),
-        _ => Err("amg-coarsening must be one of: ruge-stuben, aggregation, smoothed-aggregation"),
-    }
-}
-
-/// Parses the `--amg-smoother` option
-fn parse_amg_smoother(value: &str) -> Result<AmgSmoother, StrError> {
-    match value.to_lowercase().as_str() {
-        "gauss-seidel" => Ok(AmgSmoother::GaussSeidel),
-        "damped-jacobi" => Ok(AmgSmoother::DampedJacobi),
-        "ilu0" => Ok(AmgSmoother::Ilu0),
-        "chebyshev" => Ok(AmgSmoother::Chebyshev),
-        "spai0" => Ok(AmgSmoother::Spai0),
-        "spai1" => Ok(AmgSmoother::Spai1),
-        _ => Err("amg-smoother must be one of: gauss-seidel, damped-jacobi, ilu0, chebyshev, spai0, spai1"),
-    }
-}
-
 fn get_bfwb62_correct_x() -> Vector {
     Vector::from(&[
         -1.02570048377040759e+05,
@@ -688,7 +578,7 @@ mod tests {
     #[test]
     fn finish_on_memory_error_clears_partial_runs() {
         let mut stats = StatsLinSol::new();
-        stats.main.solver = format!("{}", Genie::Iterative(IterativeMethod::Gmres));
+        stats.main.solver = format!("{}", Genie::Faer);
         stats.main.solved = true;
         stats.output.faer_effective_method = "Supernodal".to_string();
         stats.output.faer_flop_ratio = 2.0;
@@ -707,7 +597,7 @@ mod tests {
         assert!(!stats.main.solved);
         assert!(stats.main.out_of_memory);
         assert_eq!(stats.main.error_from_solver.as_deref(), Some("not enough memory"));
-        assert_eq!(stats.main.solver, "GMRES");
+        assert_eq!(stats.main.solver, "FAER");
         assert!(stats.output.faer_effective_method.is_empty());
         assert_eq!(stats.output.faer_flop_ratio, 0.0);
         assert_eq!(stats.time_nanoseconds.total_ifs, 0);

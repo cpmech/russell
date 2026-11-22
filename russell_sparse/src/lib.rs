@@ -37,9 +37,6 @@
 //! We call the actual linear system solver implementations [Genie] because they work like "magic" after being "wrapped" via a C-interface. Note that these fantastic solvers are implemented in Fortran and C. You may easily access the linear solvers directly via the following structures:
 //!
 //! * [SolverFaer] -- pure-Rust LU factorization from `algebra_linear` (always available)
-//! * [SolverBasicLu] -- pure-Rust LU factorization with rank-1 updates for square general systems (always available)
-//! * [SolverQdldl] -- pure-Rust `L D L^T` factorization of the upper triangle for symmetric quasi-definite systems (always available)
-//! * [SolverIterative] -- pure-Rust Krylov solvers with algebraic multigrid (always available)
 //! * **SolverMUMPS** (optional) -- thin wrapper to the MUMPS solver
 //! * `SolverUMFPACK` (optional, behind the `umfpack` feature) -- thin wrapper to the UMFPACK solver
 //!
@@ -50,7 +47,7 @@
 //! * [LinSolTrait::preprocess()] -- performs the initialization of the linear solver, if needed, analysis, and symbolic and numerical factorization of the coefficient matrix A from A * x = b
 //! * [LinSolTrait::solve()] -- find x from the linear system A * x = b after completing the factorization.
 //!
-//! If the **structure** of the coefficient matrix remains constant, but its values change during a simulation, we can repeatedly call `preprocess` again to perform the factorization. However, if the structure changes, the solver must be **dropped** and another solver allocated to force the **initialization** process. This rule applies to the direct solvers; [SolverIterative] rebuilds its state on every `preprocess` and accepts a new structure.
+//! If the **structure** of the coefficient matrix remains constant, but its values change during a simulation, we can repeatedly call `preprocess` again to perform the factorization. However, if the structure changes, the solver must be **dropped** and another solver allocated to force the **initialization** process. This rule applies to the direct solvers.
 //!
 //! We call the **structure** of the coefficient matrix A from A * x = b the set with the following characteristics:
 //!
@@ -236,43 +233,6 @@
 //! }
 //! ```
 //!
-//! ## Solving a tiny sparse linear system using the iterative solver
-//!
-//! ```
-//! use russell_lab::{vec_approx_eq, Vector};
-//! use russell_sparse::prelude::*;
-//! use russell_sparse::StrError;
-//!
-//! fn main() -> Result<(), StrError> {
-//!     // ┌             ┐
-//!     // │  4 -1    0  │
-//!     // │ -1  4   -1  │
-//!     // │  0 -1    4  │
-//!     // └             ┘
-//!     let ndim = 3;
-//!     let mut coo = CooMatrix::new(ndim, ndim, 7, Sym::YesFull)?;
-//!     coo.put(0, 0, 4.0)?;
-//!     coo.put(0, 1, -1.0)?;
-//!     coo.put(1, 0, -1.0)?;
-//!     coo.put(1, 1, 4.0)?;
-//!     coo.put(1, 2, -1.0)?;
-//!     coo.put(2, 1, -1.0)?;
-//!     coo.put(2, 2, 4.0)?;
-//!
-//!     // solve with conjugate gradients
-//!     let mut solver = SolverIterative::new(IterativeMethod::Cg)?;
-//!     solver.preprocess(&coo, None)?;
-//!
-//!     let rhs = Vector::from(&[3.0, 2.0, 3.0]);
-//!     let mut x = Vector::new(ndim);
-//!     solver.solve(&mut x, &rhs, false)?;
-//!
-//!     let correct = vec![1.0, 1.0, 1.0];
-//!     vec_approx_eq(&x, &correct, 1e-10);
-//!     Ok(())
-//! }
-//! ```
-//!
 //! ## Solving a tiny complex sparse linear system using ComplexLinSolver (Faer)
 //!
 //! ```
@@ -402,10 +362,7 @@ mod numerical_jacobian;
 pub mod prelude;
 mod read_matrix_market;
 mod samples;
-mod solver_basiclu;
 mod solver_faer;
-mod solver_iterative;
-mod solver_qdldl;
 #[cfg(feature = "umfpack")]
 mod solver_umfpack;
 mod stats_lin_sol;
@@ -428,10 +385,7 @@ pub use lin_solver::*;
 pub use numerical_jacobian::*;
 pub use read_matrix_market::*;
 pub use samples::*;
-pub use solver_basiclu::*;
 pub use solver_faer::*;
-pub use solver_iterative::*;
-pub use solver_qdldl::*;
 #[cfg(feature = "umfpack")]
 pub use solver_umfpack::*;
 pub use stats_lin_sol::*;

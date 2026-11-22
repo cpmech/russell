@@ -4,7 +4,7 @@ use super::SolverMUMPS;
 #[cfg(feature = "umfpack")]
 use super::SolverUMFPACK;
 
-use super::{CooMatrix, Genie, LinSolParams, SolverBasicLu, SolverFaer, SolverIterative, SolverQdldl, StatsLinSol};
+use super::{CooMatrix, Genie, LinSolParams, SolverFaer, StatsLinSol};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -119,9 +119,6 @@ impl<'a> LinSolver<'a> {
         // per combination of features.
         let actual: Box<dyn Send + LinSolTrait> = match genie {
             Genie::Faer => Box::new(SolverFaer::new()?),
-            Genie::BasicLu => Box::new(SolverBasicLu::new()?),
-            Genie::Qdldl => Box::new(SolverQdldl::new()?),
-            Genie::Iterative(method) => Box::new(SolverIterative::new(method)?),
             #[cfg(feature = "mumps")]
             Genie::Mumps => Box::new(SolverMUMPS::new()?),
             #[cfg(not(feature = "mumps"))]
@@ -216,7 +213,7 @@ impl<'a> LinSolver<'a> {
 #[cfg(test)]
 mod tests {
     use super::LinSolver;
-    use crate::{CooMatrix, Genie, Samples, Sym};
+    use crate::{Genie, Samples};
     use russell_lab::{Vector, vec_approx_eq};
 
     #[test]
@@ -238,33 +235,6 @@ mod tests {
         LinSolver::compute(Genie::Faer, &mut x, &coo, &rhs, None).unwrap();
         let x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
         vec_approx_eq(&x, &x_correct, 1e-10);
-    }
-
-    #[test]
-    fn lin_solver_compute_works_basiclu_and_qdldl() {
-        // BasicLU: general 3x3 (the same matrix as the LinSolver doctest)
-        let mut mat = CooMatrix::new(3, 3, 5, Sym::No).unwrap();
-        mat.put(0, 0, 0.2).unwrap();
-        mat.put(0, 1, 0.2).unwrap();
-        mat.put(1, 0, 0.5).unwrap();
-        mat.put(1, 1, -0.25).unwrap();
-        mat.put(2, 2, 0.25).unwrap();
-        let rhs = Vector::from(&[1.0, 1.0, 1.0]);
-        let mut x = Vector::new(3);
-        LinSolver::compute(Genie::BasicLu, &mut x, &mat, &rhs, None).unwrap();
-        vec_approx_eq(&x, &[3.0, 2.0, 4.0], 1e-13);
-
-        // QDLDL: upper triangle of the SPD matrix [[4,1,0],[1,3,1],[0,1,2]]
-        let mut mat = CooMatrix::new(3, 3, 5, Sym::YesUpper).unwrap();
-        mat.put(0, 0, 4.0).unwrap();
-        mat.put(0, 1, 1.0).unwrap();
-        mat.put(1, 1, 3.0).unwrap();
-        mat.put(1, 2, 1.0).unwrap();
-        mat.put(2, 2, 2.0).unwrap();
-        let rhs = Vector::from(&[6.0, 10.0, 8.0]);
-        let mut x = Vector::new(3);
-        LinSolver::compute(Genie::Qdldl, &mut x, &mat, &rhs, None).unwrap();
-        vec_approx_eq(&x, &[1.0, 2.0, 3.0], 1e-13);
     }
 
     #[test]

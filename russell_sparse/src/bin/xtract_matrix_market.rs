@@ -16,17 +16,13 @@ use std::path::{Path, PathBuf};
 mod matrix_metadata;
 
 /// Preferred solver column order; columns are discovered from the result files.
-const SOLVER_ORDER: [&str; 5] = ["mumps", "umfpack", "faer", "qdldl", "basiclu"];
+const SOLVER_ORDER: [&str; 3] = ["mumps", "umfpack", "faer"];
 
 /// Descriptions of the failure keys used in the solver columns.
 const KEY_DESCRIPTIONS: &[(&str, &str)] = &[
     ("stop-time", "stopped by the time guard"),
     ("no-mem", "ran out of memory"),
-    ("only-sym", "solver requires a symmetric matrix"),
-    ("only-spd", "solver requires a symmetric positive-definite matrix"),
     ("not-pd", "input was assumed positive-definite, but it is not"),
-    ("no-conv", "iterative solver did not converge"),
-    ("breakdown", "iterative method broke down"),
     ("singular", "matrix or pivot is singular"),
     ("bad-input", "invalid matrix or input (shape, indices, NaN/inf, empty)"),
     ("not-avail", "solver is not available in this build"),
@@ -303,16 +299,8 @@ fn classify_message(message: &str) -> &'static str {
         "stop-time"
     } else if message.contains("not available") || message.contains("not compiled") || message.contains("enable the `") {
         "not-avail"
-    } else if message.contains("symmetric positive definite") {
-        "only-spd"
-    } else if message.contains("requires a symmetric") || message.contains("requires sym::") {
-        "only-sym"
     } else if message.contains("not positive definite") {
         "not-pd"
-    } else if message.contains("did not converge") {
-        "no-conv"
-    } else if message.contains("broke down") {
-        "breakdown"
     } else if message.contains("singular") {
         "singular"
     } else if message.contains("too large") {
@@ -793,11 +781,11 @@ mod tests {
 
     #[test]
     fn parse_record_keeps_failures() {
-        let mut value = sample("QDLDL", "mat1", 10, "No", false, 0);
+        let mut value = sample("Mumps", "mat1", 10, "No", false, 0);
         value["main"]["solved"] = json!(false);
-        value["main"]["error_from_solver"] = json!("QDLDL requires a symmetric matrix");
+        value["main"]["error_from_solver"] = json!("the matrix is singular");
         let data = parse_record(&value).unwrap();
-        assert_eq!(data.failures["qdldl"], "only-sym");
+        assert_eq!(data.failures["mumps"], "singular");
         assert!(data.times.is_empty());
     }
 
@@ -846,11 +834,7 @@ mod tests {
         );
         assert!(failure_key(&json!({"main": {"solved": false}})).is_none());
         for (message, key) in [
-            ("QDLDL requires a symmetric matrix", "only-sym"),
-            ("CG failed: the matrix may not be symmetric positive definite", "only-spd"),
             ("the matrix is not positive definite as assumed", "not-pd"),
-            ("the iterative solver did not converge", "no-conv"),
-            ("the iterative solver broke down", "breakdown"),
             ("the matrix is singular", "singular"),
             ("the matrix is too large for the Faer solver", "too-big"),
             ("the matrix must be square", "bad-input"),
@@ -910,11 +894,11 @@ mod tests {
     #[test]
     fn solver_columns_include_failures_and_are_ordered() {
         let mut row = MatrixData::default();
-        for solver in ["gmres", "basiclu", "faer", "mumps", "qdldl"] {
+        for solver in ["faer", "mumps"] {
             row.times.insert(solver.to_string(), 1);
         }
-        row.failures.insert("umfpack".to_string(), "only-sym");
-        assert_eq!(solver_columns(&[row]), ["mumps", "umfpack", "faer", "qdldl", "basiclu", "gmres"]);
+        row.failures.insert("umfpack".to_string(), "singular");
+        assert_eq!(solver_columns(&[row]), ["mumps", "umfpack", "faer"]);
     }
 
     #[test]
@@ -927,10 +911,10 @@ mod tests {
     #[test]
     fn used_failure_keys_are_collected() {
         let mut row = MatrixData::default();
-        row.failures.insert("faer".to_string(), "only-sym");
+        row.failures.insert("faer".to_string(), "singular");
         row.failures.insert("umfpack".to_string(), "no-mem");
         let keys = used_failure_keys(&[row]);
-        assert!(keys.contains("only-sym"));
+        assert!(keys.contains("singular"));
         assert!(keys.contains("no-mem"));
     }
 

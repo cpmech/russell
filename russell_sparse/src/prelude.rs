@@ -12,14 +12,11 @@ pub use crate::coo_matrix::NumCooMatrix;
 pub use crate::csc_matrix::NumCscMatrix;
 pub use crate::csr_matrix::NumCsrMatrix;
 pub use crate::enums::*;
-pub use crate::lin_sol_params::{AmgCoarsening, AmgSmoother, BasicLuParams, FaerMethod, IterativeParams, LinSolParams, Preconditioner};
+pub use crate::lin_sol_params::{FaerMethod, LinSolParams};
 pub use crate::lin_solver::*;
 pub use crate::numerical_jacobian::numerical_jacobian;
 pub use crate::read_matrix_market;
-pub use crate::solver_basiclu::SolverBasicLu;
 pub use crate::solver_faer::SolverFaer;
-pub use crate::solver_iterative::SolverIterative;
-pub use crate::solver_qdldl::SolverQdldl;
 #[cfg(feature = "umfpack")]
 pub use crate::solver_umfpack::SolverUMFPACK;
 pub use crate::stats_lin_sol::StatsLinSol;

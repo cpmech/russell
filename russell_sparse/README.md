@@ -517,7 +517,8 @@ symmetry, Hermitian and positive-definite flags, kind, and description.
 `Pattern Entries` is the full-pattern size; `Stored Entries` is the smaller count
 in the `.mtx` header when only one triangle is stored. `xtract` uses the metadata
 for its `sym`/`spd` labels instead of the per-run `requests.positive_definite`
-flag.
+flag. `run_solve_matrix_market.bash` reads the same file with `jq` to build its
+real/complex, SPD, and symmetric matrix lists.
 
 ### sys_info
 
@@ -565,7 +566,10 @@ cargo run --release --bin xtract_matrix_market
 | `-F, --first-complex <n>` | First `n` complex matrices |
 | `-1` … `-5` | Number of runs per matrix |
 
-Set `TIME_GUARD` to override the per-run time guard (default `200` seconds).
+The runner requires `jq` and reads
+`russell_sparse/data/matrix_market/matrices.json` to build its matrix lists. Set
+`MATRICES_JSON` to use another metadata file, and set `TIME_GUARD` to override the
+per-run time guard (default `200` seconds).
 
 The default `OUTPUT_DIR` is `/tmp/russell_sparse/results/$SYSTEM`. Results are split
 by solver, so a MUMPS run, an UMFPACK run, and a Faer run can coexist and then be

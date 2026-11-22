@@ -2,72 +2,6 @@
 
 set -euo pipefail
 
-REAL_MATS=(
-    pmsim-hex8-27
-    bwm2000
-    rdb5000
-    Goodwin_040
-    fp
-    xenon1
-    twotone
-    Raj1
-    boyd2
-    pres-cylin-3d-tet10-coarse
-    Goodwin_071
-    darcy003
-    rma10
-    helm2d03
-    stomach
-    oilpan
-    ASIC_680k
-    tmt_unsym
-    Goodwin_127
-    pre2
-    marine1
-    torso1
-    atmosmodd
-    atmosmodl
-    memchip
-    Freescale1
-    rajat31
-    Transport
-    inline_1
-    PFlow_742
-    Emilia_923
-    dielFilterV2real
-    Flan_1565
-    pres-cylin-3d-tet10-fine
-)
-
-COMPLEX_MATS=(
-    mhd1280b
-    mplate
-    RFdevice
-    vfem
-    fem_filter
-    Chevron4
-    mono_500Hz
-    kim2
-    fem_hifreq_circuit
-    dielFilterV3clx
-)
-
-# Symmetric positive-definite matrices
-#
-# Source: the Sym column of the archived arch-performance-tables.pdf (Yes*),
-# plus pres-cylin-3d-tet10-coarse, whose QDLDL positive inertia equals its
-# dimension. These get the solver option --positive-definite (-p).
-SPD_MATS=(
-    pmsim-hex8-27
-    oilpan
-    inline_1
-    PFlow_742
-    Emilia_923
-    Flan_1565
-    pres-cylin-3d-tet10-coarse
-    pres-cylin-3d-tet10-fine
-)
-
 # Returns true when the matrix is marked as symmetric positive definite
 is_spd() {
     local name=$1
@@ -79,27 +13,6 @@ is_spd() {
     done
     return 1
 }
-
-# Symmetric matrices
-#
-# Source: the Sym column of the archived arch-performance-tables.pdf.
-# QDLDL requires a symmetric matrix; the other direct solvers do not.
-SYMMETRIC_MATS=(
-    boyd2
-    darcy003
-    dielFilterV2real
-    Emilia_923
-    Flan_1565
-    helm2d03
-    inline_1
-    oilpan
-    PFlow_742
-    pmsim-hex8-27
-    pres-cylin-3d-tet10-coarse
-    pres-cylin-3d-tet10-fine
-    mplate
-    dielFilterV3clx
-)
 
 # Returns "matrix" or "matrices" for a count
 matrix_word() {
@@ -168,6 +81,7 @@ INPUT_DIR=${INPUT_DIR:-$HOME/Downloads/matrix-market}
 SYSTEM=${SYSTEM:-arch}
 OUTPUT_DIR=${OUTPUT_DIR:-/tmp/russell_sparse/results/$SYSTEM}
 FEATURES=${FEATURES-intel_mkl,umfpack,mumps}
+MATRICES_JSON=${MATRICES_JSON:-"$RUSSELL_DIR/russell_sparse/data/matrix_market/matrices.json"}
 SOLVER=FAER
 
 # Pin single-threaded solvers to the P-cores on hybrid CPUs
@@ -200,7 +114,7 @@ usage() {
     echo "  Iterative solvers and BasicLU/QDLDL skip the complex matrices."
     echo "  QDLDL also skips non-symmetric matrices."
     echo ""
-    echo "Environment: RUSSELL_DIR, INPUT_DIR, OUTPUT_DIR, INFO_FILE, SYSTEM, FEATURES, TIME_GUARD, PIN_SINGLE_THREAD, P_CORES"
+    echo "Environment: RUSSELL_DIR, INPUT_DIR, OUTPUT_DIR, INFO_FILE, MATRICES_JSON, SYSTEM, FEATURES, TIME_GUARD, PIN_SINGLE_THREAD, P_CORES"
 }
 
 INFORMATION=1
@@ -266,6 +180,43 @@ done
 
 if [[ ! "$TIME_GUARD" =~ ^[0-9]+$ ]]; then
     echo "invalid TIME_GUARD: $TIME_GUARD (expected a non-negative integer)" >&2
+    exit 1
+fi
+
+# Build the benchmark matrix lists from the canonical metadata.
+if ! command -v jq >/dev/null 2>&1; then
+    echo "jq is required to read $MATRICES_JSON" >&2
+    exit 1
+fi
+if [[ ! -f "$MATRICES_JSON" ]]; then
+    echo "matrix metadata not found: $MATRICES_JSON" >&2
+    exit 1
+fi
+
+REAL_MATS=()
+while IFS= read -r name; do
+    [[ -n "$name" ]] && REAL_MATS+=("$name")
+done < <(jq -r '.[] | select(.Type == "real") | .Name' "$MATRICES_JSON")
+
+COMPLEX_MATS=()
+while IFS= read -r name; do
+    [[ -n "$name" ]] && COMPLEX_MATS+=("$name")
+done < <(jq -r '.[] | select(.Type == "complex") | .Name' "$MATRICES_JSON")
+
+# Real symmetric positive-definite matrices get the solver option -p.
+SPD_MATS=()
+while IFS= read -r name; do
+    [[ -n "$name" ]] && SPD_MATS+=("$name")
+done < <(jq -r '.[] | select(.Type == "real" and .Symmetric == "Yes" and ."Positive Definite" == "yes") | .Name' "$MATRICES_JSON")
+
+# QDLDL requires a symmetric matrix; the other direct solvers do not.
+SYMMETRIC_MATS=()
+while IFS= read -r name; do
+    [[ -n "$name" ]] && SYMMETRIC_MATS+=("$name")
+done < <(jq -r '.[] | select(.Symmetric == "Yes") | .Name' "$MATRICES_JSON")
+
+if ((${#REAL_MATS[@]} == 0 || ${#COMPLEX_MATS[@]} == 0)); then
+    echo "matrix metadata has no real or complex matrices: $MATRICES_JSON" >&2
     exit 1
 fi
 

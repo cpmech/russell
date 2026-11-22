@@ -37,6 +37,23 @@ cpu_list_first() {
     echo "${list%%-*}"
 }
 
+# Replaces the home directory prefix with ~ for progress and provenance output
+display_path() {
+    local path=$1
+    local home=${HOME:-}
+    if [[ -n "$home" ]]; then
+        if [[ "$path" == "$home" ]]; then
+            echo "~"
+            return
+        fi
+        if [[ "$path" == "$home"/* ]]; then
+            echo "~${path#"$home"}"
+            return
+        fi
+    fi
+    echo "$path"
+}
+
 HERE=$(cd "$(dirname "$0")" && pwd)
 RUSSELL_DIR=${RUSSELL_DIR:-$(cd "$HERE/../../.." && pwd)}
 INPUT_DIR=${INPUT_DIR:-$HOME/Downloads/matrix-market}
@@ -326,8 +343,8 @@ cargo build --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
     echo "mumps_threads: $MUMPS_THREADS"
     echo "blas_threads: $BLAS_THREADS"
     echo "cpu_affinity: $CPU_AFFINITY"
-    echo "input: $INPUT_DIR"
-    echo "output: $OUTPUT_DIR"
+    echo "input: $(display_path "$INPUT_DIR")"
+    echo "output: $(display_path "$OUTPUT_DIR")"
     echo
     echo "solver arguments:"
     for solver in "${GENIES[@]}"; do
@@ -368,7 +385,7 @@ cargo build --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
     cargo run -q --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
         --package russell_sparse "${FEATURE_ARGS[@]}" --bin sys_info
 } >"$INFO_FILE"
-echo "system information written to $INFO_FILE" >&2
+echo "system information written to $(display_path "$INFO_FILE")" >&2
 
 run_matrix() {
     local name=$1

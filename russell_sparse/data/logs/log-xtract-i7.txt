@@ -1,0 +1,239 @@
+All solver columns show the median total time (initialize + preprocess + solve) over the runs.
+
+Real-valued matrices
+matrix                  nnz  sym      mumps    umfpack       faer      qdldl    basiclu   bicgstab         cg      gmres
+----------------  ---------  ---  ---------  ---------  ---------  ---------  ---------  ---------  ---------  ---------
+pmsim-hex8-27          6581  spd     4.74ms   882.48µs     1.04ms   316.61µs     2.29ms   919.72µs   772.00µs   791.38µs
+bwm2000                7996  no      5.73ms   968.57µs   714.91µs   only-sym   759.56µs    33.68ms   only-spd    no-conv
+rdb5000               29600  no     16.98ms    14.97ms    35.80ms   only-sym   182.35ms    no-conv   only-spd    29.40ms
+Goodwin_040          561677  no    123.30ms   128.44ms   519.76ms   only-sym  stop-time      1.73s   only-spd    no-conv
+fp                   848553  no    180.03ms   187.61ms      1.11s   only-sym     12.23s    no-conv    no-conv    no-conv
+xenon1              1181120  no    389.05ms   507.38ms  stop-time   only-sym  stop-time      3.19s      2.23s      3.53s
+twotone             1224224  no       1.13s   437.01ms      4.98s   only-sym  stop-time   singular   singular   singular
+Raj1                1302464  no       1.06s  stop-time  stop-time   only-sym  stop-time    no-conv   only-spd    no-conv
+boyd2               1500397  yes   888.76ms  stop-time  stop-time  stop-time  stop-time    no-conv   only-spd    no-conv
+pres-cylin-c        1584512  spd   261.25ms   435.05ms      8.88s      2.75s  stop-time      1.33s   940.20ms      3.46s
+Goodwin_071         1797934  no    313.40ms   512.27ms      4.10s   only-sym  stop-time     12.27s   only-spd    no-conv
+darcy003            2101242  yes     12.84s      1.95s     12.90s             stop-time    no-conv   only-spd    no-conv
+rma10               2374001  no    196.77ms   477.20ms      2.75s   only-sym     17.52s  bad-input  bad-input  bad-input
+helm2d03            2741935  yes      1.73s      2.01s  stop-time  stop-time  stop-time    no-conv   only-spd    no-conv
+stomach             3021648  no       2.05s      3.01s  stop-time   only-sym  stop-time  bad-input  bad-input  bad-input
+oilpan              3597188  spd   238.54ms   551.53ms  stop-time     11.42s     14.76s    no-conv    no-conv    no-conv
+ASIC_680k           3871773  no   stop-time      1.78s  stop-time   only-sym      6.89s    no-conv   only-spd    no-conv
+tmt_unsym           4584801  no       3.67s      3.89s  stop-time   only-sym  stop-time      1.71s   only-spd    no-conv
+Goodwin_127         5778545  no       1.00s      1.52s  stop-time   only-sym  stop-time    no-conv   only-spd    no-conv
+pre2                5959282  no       5.85s     no-mem  stop-time   only-sym  stop-time   singular   singular   singular
+marine1             6226538  no       7.55s     no-mem  stop-time   only-sym  stop-time  bad-input  bad-input  bad-input
+torso1              8516500  no       2.27s      1.20s  stop-time   only-sym  stop-time  stop-time   only-spd    no-conv
+atmosmodd           8814880  no   stop-time     no-mem  stop-time   only-sym  stop-time      8.57s   only-spd     16.19s
+atmosmodl          10319760  no   stop-time     no-mem  stop-time   only-sym  stop-time      6.17s   only-spd      8.80s
+memchip            14810202  no       9.23s  stop-time  stop-time   only-sym  stop-time  stop-time   only-spd      9.21s
+Freescale1         18920347  no      11.61s  stop-time  stop-time   only-sym  stop-time      8.56s      7.95s  stop-time
+rajat31            20316253  no      18.48s  stop-time  stop-time   only-sym  stop-time  stop-time   only-spd  stop-time
+Transport          23500731  no   stop-time     no-mem  stop-time   only-sym  stop-time      6.56s  stop-time      6.53s
+inline_1           36816342  spd      4.28s     no-mem  stop-time             stop-time  stop-time  stop-time  stop-time
+PFlow_742          37138461  spd     16.46s     no-mem  stop-time  stop-time  stop-time  stop-time  stop-time  stop-time
+Emilia_923         41005206  spd  stop-time     no-mem  stop-time  stop-time  stop-time  stop-time  stop-time  stop-time
+dielFilterV2real   48538952  yes     17.91s     no-mem  stop-time  stop-time  stop-time  stop-time   only-spd  stop-time
+Flan_1565         117406044  spd  stop-time     no-mem  stop-time  stop-time  stop-time  stop-time  stop-time  stop-time
+pres-cylin-f      133562188  spd  stop-time     no-mem  stop-time  stop-time  stop-time  stop-time  stop-time  stop-time
+
+Complex-valued matrices
+matrix                   nnz  sym     mumps   umfpack       faer
+------------------  --------  ---  --------  --------  ---------
+mhd1280b               12029  no     3.78ms  449.37µs   792.53µs
+mplate                142190  yes  140.55ms  729.27ms      3.30s
+RFdevice              365580  no      2.47s     6.52s  stop-time
+vfem                 1434636  no      2.09s     7.36s  stop-time
+fem_filter           1731206  no      1.43s     3.70s  stop-time
+mono_500Hz           5036288  no      9.27s    no-mem  stop-time
+Chevron4             6376412  no      3.83s     6.51s  stop-time
+kim2                11330020  no      6.11s    no-mem  stop-time
+fem_hifreq_circuit  20239237  no     15.10s    no-mem  stop-time
+dielFilterV3clx     32886208  yes     6.82s    no-mem  stop-time
+
+Relative-time columns show median solver time / median MUMPS time; rows without a MUMPS time are blank.
+
+Relative times: real-valued matrices
+matrix                  nnz  sym  mumps    umfpack       faer      qdldl    basiclu   bicgstab         cg      gmres
+----------------  ---------  ---  -----  ---------  ---------  ---------  ---------  ---------  ---------  ---------
+pmsim-hex8-27          6581  spd  1.00x      0.19x      0.22x      0.07x      0.48x      0.19x      0.16x      0.17x
+bwm2000                7996  no   1.00x      0.17x      0.12x   only-sym      0.13x      5.88x   only-spd    no-conv
+rdb5000               29600  no   1.00x      0.88x      2.11x   only-sym     10.74x    no-conv   only-spd      1.73x
+Goodwin_040          561677  no   1.00x      1.04x      4.22x   only-sym  stop-time     14.07x   only-spd    no-conv
+fp                   848553  no   1.00x      1.04x      6.15x   only-sym     67.95x    no-conv    no-conv    no-conv
+xenon1              1181120  no   1.00x      1.30x  stop-time   only-sym  stop-time      8.19x      5.73x      9.06x
+twotone             1224224  no   1.00x      0.39x      4.41x   only-sym  stop-time   singular   singular   singular
+Raj1                1302464  no   1.00x  stop-time  stop-time   only-sym  stop-time    no-conv   only-spd    no-conv
+boyd2               1500397  yes  1.00x  stop-time  stop-time  stop-time  stop-time    no-conv   only-spd    no-conv
+pres-cylin-c        1584512  spd  1.00x      1.67x     34.01x     10.51x  stop-time      5.10x      3.60x     13.24x
+Goodwin_071         1797934  no   1.00x      1.63x     13.08x   only-sym  stop-time     39.15x   only-spd    no-conv
+darcy003            2101242  yes  1.00x      0.15x      1.00x             stop-time    no-conv   only-spd    no-conv
+rma10               2374001  no   1.00x      2.43x     13.98x   only-sym     89.03x  bad-input  bad-input  bad-input
+helm2d03            2741935  yes  1.00x      1.16x  stop-time  stop-time  stop-time    no-conv   only-spd    no-conv
+stomach             3021648  no   1.00x      1.47x  stop-time   only-sym  stop-time  bad-input  bad-input  bad-input
+oilpan              3597188  spd  1.00x      2.31x  stop-time     47.86x     61.89x    no-conv    no-conv    no-conv
+ASIC_680k           3871773  no                                                                                     
+tmt_unsym           4584801  no   1.00x      1.06x  stop-time   only-sym  stop-time      0.47x   only-spd    no-conv
+Goodwin_127         5778545  no   1.00x      1.51x  stop-time   only-sym  stop-time    no-conv   only-spd    no-conv
+pre2                5959282  no   1.00x     no-mem  stop-time   only-sym  stop-time   singular   singular   singular
+marine1             6226538  no   1.00x     no-mem  stop-time   only-sym  stop-time  bad-input  bad-input  bad-input
+torso1              8516500  no   1.00x      0.53x  stop-time   only-sym  stop-time  stop-time   only-spd    no-conv
+atmosmodd           8814880  no                                                                                     
+atmosmodl          10319760  no                                                                                     
+memchip            14810202  no   1.00x  stop-time  stop-time   only-sym  stop-time  stop-time   only-spd      1.00x
+Freescale1         18920347  no   1.00x  stop-time  stop-time   only-sym  stop-time      0.74x      0.68x  stop-time
+rajat31            20316253  no   1.00x  stop-time  stop-time   only-sym  stop-time  stop-time   only-spd  stop-time
+Transport          23500731  no                                                                                     
+inline_1           36816342  spd  1.00x     no-mem  stop-time             stop-time  stop-time  stop-time  stop-time
+PFlow_742          37138461  spd  1.00x     no-mem  stop-time  stop-time  stop-time  stop-time  stop-time  stop-time
+Emilia_923         41005206  spd                                                                                    
+dielFilterV2real   48538952  yes  1.00x     no-mem  stop-time  stop-time  stop-time  stop-time   only-spd  stop-time
+Flan_1565         117406044  spd                                                                                    
+pres-cylin-f      133562188  spd                                                                                    
+
+Relative times: complex-valued matrices
+matrix                   nnz  sym  mumps  umfpack       faer
+------------------  --------  ---  -----  -------  ---------
+mhd1280b               12029  no   1.00x    0.12x      0.21x
+mplate                142190  yes  1.00x    5.19x     23.48x
+RFdevice              365580  no   1.00x    2.63x  stop-time
+vfem                 1434636  no   1.00x    3.52x  stop-time
+fem_filter           1731206  no   1.00x    2.58x  stop-time
+mono_500Hz           5036288  no   1.00x   no-mem  stop-time
+Chevron4             6376412  no   1.00x    1.70x  stop-time
+kim2                11330020  no   1.00x   no-mem  stop-time
+fem_hifreq_circuit  20239237  no   1.00x   no-mem  stop-time
+dielFilterV3clx     32886208  yes  1.00x   no-mem  stop-time
+
+
+keys:
+  stop-time  stopped by the time guard
+  no-mem     ran out of memory
+  only-sym   solver requires a symmetric matrix
+  only-spd   solver requires a symmetric positive-definite matrix
+  no-conv    iterative solver did not converge
+  singular   matrix or pivot is singular
+  bad-input  invalid matrix or input (shape, indices, NaN/inf, empty)
+
+Accuracy columns:
+  rel_error   max_abs_diff / (max_abs_a + 1)
+  rel_res_b   max_abs_diff / ||b||∞
+  rel_res_ax  max_abs_diff / max(max_abs_ax, ||b||∞)
+  ||b||∞ = 1        real
+  ||b||∞ = sqrt(2)  complex
+  tiers       fail: rel_res_b > 0.1; warn: rel_res_b > 1e-4 or rel_error > 2.5e-6
+
+Accuracy: real-valued matrices
+matrix            solver    rel_error  rel_res_b  rel_res_ax  tier
+----------------  --------  ---------  ---------  ----------  ----
+pmsim-hex8-27     mumps      5.62e-16   3.53e-13    3.53e-13  pass
+pmsim-hex8-27     umfpack    2.85e-16   1.79e-13    1.79e-13  pass
+pmsim-hex8-27     faer       8.23e-16   5.17e-13    5.17e-13  pass
+pmsim-hex8-27     qdldl      1.45e-15   9.08e-13    9.08e-13  pass
+pmsim-hex8-27     basiclu    9.85e-16   6.19e-13    6.19e-13  pass
+pmsim-hex8-27     bicgstab   8.57e-14   5.38e-11    5.38e-11  pass
+pmsim-hex8-27     cg         1.49e-13   9.38e-11    9.38e-11  pass
+pmsim-hex8-27     gmres      1.52e-13   9.57e-11    9.57e-11  pass
+bwm2000           mumps      7.50e-16   4.57e-11    4.57e-11  pass
+bwm2000           umfpack    5.30e-16   3.23e-11    3.23e-11  pass
+bwm2000           faer       1.48e-15   9.00e-11    9.00e-11  pass
+bwm2000           basiclu    4.17e-16   2.54e-11    2.54e-11  pass
+bwm2000           bicgstab   8.72e-15   5.31e-10    5.31e-10  pass
+rdb5000           mumps      7.97e-13   7.03e-11    7.03e-11  pass
+rdb5000           umfpack    1.93e-15   1.71e-13    1.71e-13  pass
+rdb5000           faer       1.01e-14   8.95e-13    8.95e-13  pass
+rdb5000           basiclu    1.30e-13   1.15e-11    1.15e-11  pass
+rdb5000           gmres      3.78e-12   3.33e-10    3.33e-10  pass
+Goodwin_040       mumps      1.43e-11   2.86e-11    2.86e-11  pass
+Goodwin_040       umfpack    7.16e-13   1.43e-12    1.43e-12  pass
+Goodwin_040       faer       9.71e-12   1.94e-11    1.94e-11  pass
+Goodwin_040       bicgstab   7.75e-10    1.55e-9     1.55e-9  pass
+fp                mumps      1.28e-20   3.64e-11    3.64e-11  pass
+fp                umfpack    3.21e-21   9.09e-12    9.09e-12  pass
+fp                faer       4.88e-20   1.38e-10    1.38e-10  pass
+fp                basiclu    6.02e-18    1.70e-8     1.70e-8  pass
+xenon1            mumps      6.65e-40   2.11e-11    2.11e-11  pass
+xenon1            umfpack    6.29e-40   1.99e-11    1.99e-11  pass
+xenon1            bicgstab   6.02e-38    1.91e-9     1.91e-9  pass
+xenon1            cg         3.99e-38    1.27e-9     1.27e-9  pass
+xenon1            gmres      1.18e-37    3.73e-9     3.73e-9  pass
+twotone           mumps      1.38e-13   8.83e-10    8.83e-10  pass
+twotone           umfpack    1.19e-14   7.64e-11    7.64e-11  pass
+twotone           faer       5.36e-15   3.44e-11    3.44e-11  pass
+Raj1              mumps      5.63e-13    5.07e-8     5.07e-8  pass
+boyd2             mumps      4.80e-11    6.12e-3     6.11e-3  warn
+pres-cylin-c      mumps      5.79e-15   1.56e-11    1.56e-11  pass
+pres-cylin-c      umfpack    3.42e-15   9.23e-12    9.23e-12  pass
+pres-cylin-c      faer       3.08e-14   8.30e-11    8.30e-11  pass
+pres-cylin-c      qdldl      2.73e-14   7.37e-11    7.37e-11  pass
+pres-cylin-c      bicgstab   2.08e-13   5.61e-10    5.61e-10  pass
+pres-cylin-c      cg         2.71e-13   7.31e-10    7.31e-10  pass
+pres-cylin-c      gmres      7.15e-13    1.93e-9     1.93e-9  pass
+Goodwin_071       mumps      6.53e-11   1.31e-10    1.31e-10  pass
+Goodwin_071       umfpack    2.61e-12   5.23e-12    5.23e-12  pass
+Goodwin_071       faer       1.05e-10   2.11e-10    2.11e-10  pass
+Goodwin_071       bicgstab    7.92e-9    1.58e-8     1.58e-8  pass
+darcy003          mumps      1.81e-10   3.78e-10    3.78e-10  pass
+darcy003          umfpack    6.95e-12   1.46e-11    1.46e-11  pass
+darcy003          faer       6.39e-10    1.34e-9     1.34e-9  pass
+rma10             mumps      1.35e-16    8.18e-9     8.18e-9  pass
+rma10             umfpack    1.73e-17    1.05e-9     1.05e-9  pass
+rma10             faer       2.33e-17    1.42e-9     1.42e-9  pass
+rma10             basiclu    3.00e-17    1.82e-9     1.82e-9  pass
+helm2d03          mumps      2.62e-10    1.51e-9     1.51e-9  pass
+helm2d03          umfpack    2.37e-13   1.36e-12    1.36e-12  pass
+stomach           mumps      1.49e-15   3.55e-15    3.55e-15  pass
+stomach           umfpack    5.13e-16   1.22e-15    1.22e-15  pass
+oilpan            mumps      1.85e-15    2.36e-8     2.36e-8  pass
+oilpan            umfpack    1.07e-15    1.36e-8     1.36e-8  pass
+oilpan            qdldl      1.43e-14    1.82e-7     1.82e-7  pass
+oilpan            basiclu    5.65e-15    7.19e-8     7.19e-8  pass
+ASIC_680k         umfpack    2.20e-11    2.20e-5     2.20e-5  pass
+ASIC_680k         basiclu    5.04e-11    5.04e-5     5.04e-5  pass
+tmt_unsym         mumps       1.61e-7    8.05e-7     8.05e-7  pass
+tmt_unsym         umfpack     5.96e-8    2.98e-7     2.98e-7  pass
+tmt_unsym         bicgstab    1.91e-7    9.54e-7     9.54e-7  pass
+Goodwin_127       mumps      3.85e-10   7.71e-10    7.71e-10  pass
+Goodwin_127       umfpack    7.20e-12   1.44e-11    1.44e-11  pass
+pre2              mumps      2.39e-14    3.53e-4     3.53e-4  warn
+marine1           mumps      6.25e-14    1.85e-8     1.85e-8  pass
+torso1            mumps       1.88e-6    1.44e-4     1.44e-4  warn
+torso1            umfpack     3.43e-8    2.62e-6     2.62e-6  pass
+atmosmodd         bicgstab   7.66e-15   7.34e-10    7.34e-10  pass
+atmosmodd         gmres      6.87e-15   6.58e-10    6.58e-10  pass
+atmosmodl         bicgstab   9.12e-16   2.83e-10    2.83e-10  pass
+atmosmodl         gmres      1.59e-15   4.94e-10    4.94e-10  pass
+memchip           mumps      3.40e-15   1.71e-12    1.71e-12  pass
+memchip           gmres      2.65e-11    1.33e-8     1.33e-8  pass
+Freescale1        mumps      7.05e-10    4.47e-8     4.47e-8  pass
+Freescale1        bicgstab    1.64e-9    1.04e-7     1.04e-7  pass
+Freescale1        cg          1.64e-9    1.04e-7     1.04e-7  pass
+rajat31           mumps      1.75e-15   2.18e-11    2.18e-11  pass
+Transport         bicgstab    1.90e-9    3.80e-9     3.80e-9  pass
+Transport         gmres      6.58e-10    1.32e-9     1.32e-9  pass
+inline_1          mumps      3.57e-15    4.09e-7     4.09e-7  pass
+PFlow_742         mumps      3.56e-11    1.33e-4     1.33e-4  warn
+dielFilterV2real  mumps      1.36e-11   8.52e-10    8.52e-10  pass
+
+Accuracy: complex-valued matrices
+matrix              solver   rel_error  rel_res_b  rel_res_ax  tier
+------------------  -------  ---------  ---------  ----------  ----
+mhd1280b            mumps     1.17e-15   4.49e-14    4.49e-14  pass
+mhd1280b            umfpack   7.41e-16   2.84e-14    2.84e-14  pass
+mhd1280b            faer      1.31e-15   5.02e-14    5.02e-14  pass
+mplate              mumps     5.40e-11    2.12e-5     2.12e-5  pass
+mplate              umfpack   1.85e-11    7.27e-6     7.27e-6  pass
+mplate              faer      4.66e-11    1.83e-5     1.83e-5  pass
+RFdevice            mumps      2.02e-7     21.419       0.987  fail
+RFdevice            umfpack   9.16e-14    9.73e-6     9.73e-6  pass
+vfem                mumps      5.73e-8    5.27e-8     5.27e-8  pass
+vfem                umfpack    3.63e-8    3.33e-8     3.33e-8  pass
+fem_filter          mumps     1.48e-10    1.29e-7     1.29e-7  pass
+fem_filter          umfpack   7.64e-11    6.62e-8     6.62e-8  pass
+mono_500Hz          mumps      8.01e-9    2.58e-8     2.58e-8  pass
+Chevron4            mumps     4.16e-11   3.79e-11    3.79e-11  pass
+Chevron4            umfpack   1.79e-11   1.63e-11    1.63e-11  pass
+kim2                mumps     2.73e-18   1.24e-12    1.24e-12  pass
+fem_hifreq_circuit  mumps     1.36e-10    8.16e-7     8.16e-7  pass
+dielFilterV3clx     mumps     1.76e-11   2.89e-10    2.89e-10  pass

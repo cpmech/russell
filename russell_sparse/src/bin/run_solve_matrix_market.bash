@@ -14,16 +14,6 @@ is_spd() {
     return 1
 }
 
-# Returns true for solvers that run single-threaded by default
-is_single_threaded() {
-    local solver
-    solver=$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')
-    case "$solver" in
-        FAER | UMFPACK) return 0 ;;
-        *) return 1 ;;
-    esac
-}
-
 HERE=$(cd "$(dirname "$0")" && pwd)
 RUSSELL_DIR=${RUSSELL_DIR:-$(cd "$HERE/../../.." && pwd)}
 INPUT_DIR=${INPUT_DIR:-$HOME/Downloads/matrix-market}
@@ -32,22 +22,6 @@ OUTPUT_DIR=${OUTPUT_DIR:-/tmp/russell_sparse/results/$SYSTEM}
 FEATURES=${FEATURES-intel_mkl,umfpack,mumps}
 MATRICES_JSON=${MATRICES_JSON:-"$RUSSELL_DIR/russell_sparse/data/matrix_market/matrices.json"}
 SOLVER=FAER
-
-# Pin single-threaded solvers to the P-cores on hybrid CPUs
-PIN_SINGLE_THREAD=${PIN_SINGLE_THREAD:-1}
-P_CORES=${P_CORES:-}
-if ((PIN_SINGLE_THREAD)); then
-    if ! command -v taskset >/dev/null 2>&1; then
-        echo "warning: taskset not found; single-threaded solvers will not be pinned" >&2
-        PIN_SINGLE_THREAD=0
-    elif [[ -z "$P_CORES" && -r /sys/devices/cpu_core/cpus ]]; then
-        P_CORES=$(cat /sys/devices/cpu_core/cpus)
-    fi
-    if [[ -z "$P_CORES" ]]; then
-        echo "warning: P-core list not found; single-threaded solvers will not be pinned" >&2
-        PIN_SINGLE_THREAD=0
-    fi
-fi
 
 usage() {
     echo "Usage: $0 [--information | --solve] [-g <name>] [-f <n>] [-F <n>] [-1..-5]"
@@ -60,7 +34,7 @@ usage() {
     echo "  -F, --first-complex <n>  only run the first <n> COMPLEX_MATS"
     echo "  -1 ... -5          number of runs (default 1)"
     echo ""
-    echo "Environment: RUSSELL_DIR, INPUT_DIR, OUTPUT_DIR, INFO_FILE, MATRICES_JSON, SYSTEM, FEATURES, TIME_GUARD, PIN_SINGLE_THREAD, P_CORES"
+    echo "Environment: RUSSELL_DIR, INPUT_DIR, OUTPUT_DIR, INFO_FILE, MATRICES_JSON, SYSTEM, FEATURES, TIME_GUARD"
 }
 
 INFORMATION=1
@@ -242,8 +216,6 @@ cargo build --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
     echo "nrun: $NRUN"
     echo "time_guard: $TIME_GUARD"
     echo "information_only: $INFORMATION"
-    echo "pin_single_thread: $PIN_SINGLE_THREAD"
-    echo "p_cores: ${P_CORES:-none}"
     echo "input: $INPUT_DIR"
     echo "output: $OUTPUT_DIR"
     echo
@@ -299,18 +271,13 @@ run_matrix() {
         run_args+=(--positive-definite)
     fi
 
-    local pin=()
-    if ((PIN_SINGLE_THREAD)) && ((!INFORMATION)) && is_single_threaded "$SOLVER"; then
-        pin=(env OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 taskset -c "$P_CORES")
-    fi
-
     if ((INFORMATION)); then
         echo "=== $CURRENT_MAT/$TOTAL_MATS $name$spd_label (information only) ===" >&2
     else
         echo "=== $CURRENT_MAT/$TOTAL_MATS $name$spd_label ===" >&2
     fi
     # A failed solve is a result, not a script failure; the JSON records it.
-    if ! "${pin[@]}" cargo run -q --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
+    if ! cargo run -q --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
         --package russell_sparse "${FEATURE_ARGS[@]}" \
         --bin solve_matrix_market -- "${run_args[@]}" "$file" >"$out"; then
         # Do not leave an empty result behind when the program failed before writing JSON.

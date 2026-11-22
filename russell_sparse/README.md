@@ -473,6 +473,11 @@ With no argument it uses `$OUTPUT_DIR` when set, otherwise
   `rel_error > 2.5e-6`.
 - The accuracy columns are computed from the existing `verify` object, so no
   rerun is needed.
+- The `sym` column uses the canonical metadata embedded from
+  `russell_sparse/data/matrix_market/matrices.json`. It provides the real/complex
+  type, symmetry, Hermitian flag, SPD flag, stored entries, and full pattern
+  entries. The JSON `requests.positive_definite` field is only a request flag,
+  not the mathematical classification.
 
 ### xcompare_matrix_market
 
@@ -499,6 +504,20 @@ For each target CPU, the tool prints:
 Times are the median of `time_nanoseconds.total_ifs_array`, with
 `time_nanoseconds.total_ifs` as the fallback. Values above `1.00x` mean the
 target CPU is faster.
+
+### Matrix metadata
+
+The canonical benchmark metadata is stored at
+`russell_sparse/data/matrix_market/matrices.json` and embedded into the binaries
+at build time. It is a snapshot of
+[`cpmech/matrix-market`](https://github.com/cpmech/matrix-market) and contains 44
+entries with dimensions, stored entries, full pattern entries, real/complex type,
+symmetry, Hermitian and positive-definite flags, kind, and description.
+
+`Pattern Entries` is the full-pattern size; `Stored Entries` is the smaller count
+in the `.mtx` header when only one triangle is stored. `xtract` uses the metadata
+for its `sym`/`spd` labels instead of the per-run `requests.positive_definite`
+flag.
 
 ### sys_info
 

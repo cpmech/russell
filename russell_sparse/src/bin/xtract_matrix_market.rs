@@ -12,6 +12,9 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+#[path = "common/matrices.rs"]
+mod matrix_metadata;
+
 /// Preferred solver column order; columns are discovered from the result files.
 const SOLVER_ORDER: [&str; 5] = ["mumps", "umfpack", "faer", "qdldl", "basiclu"];
 
@@ -105,6 +108,7 @@ fn main() -> Result<(), String> {
     if matrices.is_empty() {
         return Err("no valid solver results found".to_string());
     }
+    apply_matrix_metadata(&mut matrices);
 
     let mut rows: Vec<MatrixData> = matrices.into_values().collect();
     rows.sort_by(|aa, bb| aa.nnz.cmp(&bb.nnz).then_with(|| aa.name.cmp(&bb.name)));
@@ -329,6 +333,17 @@ fn classify_message(message: &str) -> &'static str {
         "bad-input"
     } else {
         "error"
+    }
+}
+
+/// Applies the canonical symmetry and scalar-type metadata
+fn apply_matrix_metadata(matrices: &mut HashMap<String, MatrixData>) {
+    for (name, row) in matrices.iter_mut() {
+        if let Some(info) = matrix_metadata::get(name) {
+            row.complex = info.complex();
+            row.symmetric = info.symmetric();
+            row.positive_definite = info.spd();
+        }
     }
 }
 
@@ -762,6 +777,18 @@ mod tests {
         assert_eq!(fmt_accuracy(0.006124), "6.12e-3");
         assert_eq!(fmt_accuracy(0.0), "0");
         assert_eq!(fmt_accuracy(f64::NAN), "NaN");
+    }
+
+    #[test]
+    fn metadata_overrides_requested_flags() {
+        let data = parse_record(&sample("Faer", "pmsim-hex8-27", 10, "No", false, 1234)).unwrap();
+        let mut matrices = HashMap::new();
+        matrices.insert(data.name.clone(), data);
+        apply_matrix_metadata(&mut matrices);
+        let row = &matrices["pmsim-hex8-27"];
+        assert!(row.symmetric);
+        assert!(row.positive_definite);
+        assert!(!row.complex);
     }
 
     #[test]

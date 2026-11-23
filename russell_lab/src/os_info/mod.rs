@@ -649,7 +649,9 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_arch = "wasm32"))]
     fn cpu_plan_counts_physical_cores_from_the_sibling_lists() {
+        // WASI has no host temp directory; `std::env::temp_dir` aborts there.
         let root = std::env::temp_dir().join(format!("russell_lab_os_info_siblings_{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         for (cpu, siblings) in [(0, "0-1"), (1, "0-1"), (2, "2-3"), (3, "2-3")] {
@@ -664,7 +666,9 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_arch = "wasm32"))]
     fn physical_count_falls_back_on_missing_or_malformed_siblings() {
+        // WASI has no host temp directory; `std::env::temp_dir` aborts there.
         let root = std::env::temp_dir().join(format!("russell_lab_os_info_fallback_{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
 

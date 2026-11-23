@@ -356,6 +356,7 @@ mod coo_matrix;
 mod csc_matrix;
 mod csr_matrix;
 mod enums;
+mod library_info;
 mod lin_sol_params;
 mod lin_solver;
 mod numerical_jacobian;
@@ -380,6 +381,7 @@ pub use coo_matrix::*;
 pub use csc_matrix::*;
 pub use csr_matrix::*;
 pub use enums::*;
+pub use library_info::*;
 pub use lin_sol_params::*;
 pub use lin_solver::*;
 pub use numerical_jacobian::*;
@@ -391,8 +393,6 @@ pub use solver_umfpack::*;
 pub use stats_lin_sol::*;
 pub use stats_lin_sol_mumps::*;
 pub use verify_lin_sys::*;
-mod util;
-pub use util::*;
 
 // ----- MUMPS
 

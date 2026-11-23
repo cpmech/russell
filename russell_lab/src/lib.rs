@@ -25,6 +25,7 @@
 //! * [math] (*not re-exported*) -- Mathematical "special" functions and constants
 //! * [matrix] -- Matrix struct and associated functions
 //! * [matvec] -- Functions operating on matrices and vectors
+//! * [os_info] -- Operating-system, hardware, and CPU-topology information
 //! * [small] -- Calculations with small matrices and vectors on the stack
 //! * [vector] -- Vector struct and associated functions
 //!
@@ -194,6 +195,7 @@ mod internal;
 pub mod math;
 pub mod matrix;
 pub mod matvec;
+pub mod os_info;
 pub mod small;
 pub mod vector;
 
@@ -203,6 +205,7 @@ pub use check::*;
 use internal::*;
 pub use matrix::*;
 pub use matvec::*;
+pub use os_info::*;
 pub use small::*;
 pub use vector::*;
 

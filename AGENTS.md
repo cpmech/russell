@@ -190,7 +190,7 @@ measurements taken while the two were one crate.
 | `russell_pde/src/transfinite_samples.rs`, `russell_lab/src/algo/bspline.rs` | 79, 43 | `if SAVE_FIGURE { ... }` blocks: plotting code that writes SVG to a developer's disk |
 | `russell_tensor/src/polar_higham.rs` | 67 | the `dd2 == 0` branch, which needs an isotropic spectrum, and the ill-conditioned fallbacks |
 | `russell_nonlin/src/solver.rs`, `solver_arclength.rs` | 31, 27 | scenario code: the `dlambda/ds` guard needs a turning point reached while the listed step is still legal, the precise-stop redo needs `Stop::UComp`, and the failure limits need a deliberately failing system |
-| `russell_sparse/src/util.rs` | 31 | the `nvidia-smi` probe without a GPU, the `/proc/cpuinfo` fallback that `lscpu` pre-empts, and the false arms of `cfg!(feature = ...)` in a build that has the feature |
+| `russell_lab/src/os_info/mod.rs`, `russell_sparse/src/library_info.rs` | 31 | the `nvidia-smi` probe without a GPU, the `/proc/cpuinfo` fallback that `lscpu` pre-empts, the non-Linux and sysfs-less fallbacks, and the false arms of `cfg!(feature = ...)` in a build that has the feature |
 | `russell_tensor/src/eigen_projectors.rs` | 26 | `if VERBOSE { ... }` diagnostics |
 
 The remaining ~420 lines are spread over many files, none above 25; the largest are
@@ -374,7 +374,7 @@ the Rust builds are cached with `Swatinem/rust-cache`.
   ways: default (Faer), `umfpack`, `mumps`, and both. Nightly enforces the
   coverage threshold shown above. A second job installs the packaged
   `libsuitesparse-dev` and runs `umfpack` with `RUSSELL_LOCAL_PREFIX=/nonexistent`,
-  exercising the system fallback; `src/util.rs` asserts which source was linked.
+  exercising the system fallback; `russell_sparse/src/library_info.rs` asserts which source was linked.
 - **Windows** is a matrix over two toolchains: MSYS2 with the GNU toolchain
   builds MUMPS from source and runs Faer, `umfpack`, `mumps` and both; MSVC
   takes UMFPACK from vcpkg and runs Faer and `umfpack`, because the Windows

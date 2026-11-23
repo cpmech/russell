@@ -35,6 +35,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Computing eigenvalues and eigenvectors](#computing-eigenvalues-and-eigenvectors)
   - [Cholesky factorization](#cholesky-factorization)
   - [Read a table-formatted data file](#read-a-table-formatted-data-file)
+- [OS information](#os-information)
 - [About the column major representation](#about-the-column-major-representation)
 - [Benchmarks](#benchmarks)
   - [Chebyshev polynomial evaluation](#chebyshev-polynomial-evaluation)
@@ -57,6 +58,7 @@ The code is organized in modules:
 * `math` — mathematical (specialized) functions and constants
 * `matrix` — [NumMatrix] struct and associated functions
 * `matvec` — functions operating on matrices and vectors
+* `os_info` — operating-system, hardware, and CPU-topology information
 * `vector` — [NumVector] struct and associated functions
 
 For linear algebra, the main structures are `NumVector` and `NumMatrix`, that are generic Vector and Matrix structures. The Matrix data is stored as [column-major](#about-the-column-major-representation). The `Vector` and `Matrix` are `f64` and `Complex64` aliases of `NumVector` and `NumMatrix`, respectively.
@@ -840,6 +842,18 @@ fn main() -> Result<(), StrError> {
 ```
 
 
+
+## OS information
+
+`get_os_info()` reports the Linux distribution, kernel, GPU, CPU, memory, and
+hybrid CPU topology. The `os_info` binary prints the same report, and its
+`--cpu-plan` mode prints the P/E topology and benchmark thread plan as shell
+assignments:
+
+```bash
+cargo run --release --bin os_info
+cargo run --release --bin os_info -- --cpu-plan
+```
 
 ## About the column major representation
 

@@ -20,8 +20,9 @@ pacman -S --noconfirm base-devel curl git \
 
 # The MUMPS source is the thread-safe fork: every MUMPS call is dispatched to a
 # persistent worker inside the library, so clients need no lock or worker of their own.
-MUMPS_REPO="https://github.com/cpmech/MUMPS_592.git"
-MUMPS_DIR="MUMPS_592"
+MUMPS_VERSION="5.9.2"
+MUMPS_DIR="MUMPS_${MUMPS_VERSION//./}"
+MUMPS_REPO="https://github.com/cpmech/${MUMPS_DIR}.git"
 
 cd /tmp
 rm -rf "$MUMPS_DIR"

@@ -14,29 +14,6 @@ is_spd() {
     return 1
 }
 
-# Counts the CPUs in a Linux CPU list such as 0-15 or 0-7,16-19
-cpu_list_count() {
-    local list=$1
-    local count=0
-    local part first last
-    for part in ${list//,/ }; do
-        if [[ "$part" == *-* ]]; then
-            first=${part%-*}
-            last=${part#*-}
-            count=$((count + last - first + 1))
-        else
-            count=$((count + 1))
-        fi
-    done
-    echo "$count"
-}
-
-# Returns the first CPU in a Linux CPU list
-cpu_list_first() {
-    local list=${1%%,*}
-    echo "${list%%-*}"
-}
-
 # Replaces the home directory prefix with ~ for progress and provenance output
 display_path() {
     local path=$1
@@ -63,81 +40,9 @@ FEATURES=${FEATURES-intel_mkl,umfpack,mumps}
 MATRICES_JSON=${MATRICES_JSON:-"$RUSSELL_DIR/russell_sparse/data/matrix_market/matrices.json"}
 SOLVER=FAER
 
-# Detect the CPU topology and choose representative performance settings.
-#
-# - MUMPS uses all physical cores: P-cores plus E-cores.
-# - Faer and UMFPACK run pinned to the P-core logical CPUs.
-# - Their BLAS work uses one thread per physical P-core.
-# - A non-hybrid CPU falls back to all available logical CPUs without pinning.
-P_CORES=${P_CORES:-}
-E_CORES=${E_CORES:-}
-if [[ -z "$P_CORES" && -r /sys/devices/cpu_core/cpus ]]; then
-    P_CORES=$(cat /sys/devices/cpu_core/cpus)
-fi
-if [[ -z "$E_CORES" && -r /sys/devices/cpu_atom/cpus ]]; then
-    E_CORES=$(cat /sys/devices/cpu_atom/cpus)
-fi
-
-P_LOGICAL=0
-E_LOGICAL=0
-P_PHYSICAL=0
-E_PHYSICAL=0
-if [[ -n "$P_CORES" ]]; then
-    P_LOGICAL=$(cpu_list_count "$P_CORES")
-    P_FIRST=$(cpu_list_first "$P_CORES")
-    P_SIBLINGS=""
-    if [[ -r "/sys/devices/system/cpu/cpu$P_FIRST/topology/thread_siblings_list" ]]; then
-        P_SIBLINGS=$(cat "/sys/devices/system/cpu/cpu$P_FIRST/topology/thread_siblings_list")
-    fi
-    if [[ -n "$P_SIBLINGS" ]]; then
-        P_SIBLING_COUNT=$(cpu_list_count "$P_SIBLINGS")
-        if ((P_SIBLING_COUNT > 0)); then
-            P_PHYSICAL=$((P_LOGICAL / P_SIBLING_COUNT))
-        fi
-    fi
-    if ((P_PHYSICAL == 0)); then
-        P_PHYSICAL=$P_LOGICAL
-    fi
-fi
-if [[ -n "$E_CORES" ]]; then
-    E_LOGICAL=$(cpu_list_count "$E_CORES")
-    E_FIRST=$(cpu_list_first "$E_CORES")
-    E_SIBLINGS=""
-    if [[ -r "/sys/devices/system/cpu/cpu$E_FIRST/topology/thread_siblings_list" ]]; then
-        E_SIBLINGS=$(cat "/sys/devices/system/cpu/cpu$E_FIRST/topology/thread_siblings_list")
-    fi
-    if [[ -n "$E_SIBLINGS" ]]; then
-        E_SIBLING_COUNT=$(cpu_list_count "$E_SIBLINGS")
-        if ((E_SIBLING_COUNT > 0)); then
-            E_PHYSICAL=$((E_LOGICAL / E_SIBLING_COUNT))
-        fi
-    fi
-    if ((E_PHYSICAL == 0)); then
-        E_PHYSICAL=$E_LOGICAL
-    fi
-fi
-
-MUMPS_THREADS=${MUMPS_THREADS:-0}
-BLAS_THREADS=${BLAS_THREADS:-0}
-if ((MUMPS_THREADS == 0)); then
-    MUMPS_THREADS=$((P_PHYSICAL + E_PHYSICAL))
-    if ((MUMPS_THREADS == 0)); then
-        MUMPS_THREADS=$(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN)
-    fi
-fi
-if ((BLAS_THREADS == 0)); then
-    BLAS_THREADS=$P_PHYSICAL
-    if ((BLAS_THREADS == 0)); then
-        BLAS_THREADS=$(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN)
-    fi
-fi
-
-PIN_SINGLE=()
-CPU_AFFINITY="none"
-if [[ -n "$P_CORES" ]] && command -v taskset >/dev/null 2>&1; then
-    PIN_SINGLE=(taskset -c "$P_CORES")
-    CPU_AFFINITY=$P_CORES
-fi
+# The CPU topology and the thread counts come from `machine_info --cpu-plan`
+# once the binary has been built below. The Rust plan also honors P_CORES,
+# E_CORES, MUMPS_THREADS, and BLAS_THREADS from the environment.
 CPU_MODEL=$(sed -n 's/^model name[[:space:]]*: //p' /proc/cpuinfo 2>/dev/null | head -n 1)
 CPU_MODEL=${CPU_MODEL:-unknown}
 
@@ -320,9 +225,44 @@ for name in "${REAL_RUN_MATS[@]}" "${COMPLEX_RUN_MATS[@]}"; do
     fi
 done
 
-echo "=== Building solve_matrix_market and sys_info (features: ${FEATURES:-none}) ===" >&2
+echo "=== Building solve_matrix_market and machine_info (features: ${FEATURES:-none}) ===" >&2
 cargo build --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
-    --package russell_sparse "${FEATURE_ARGS[@]}" --bin solve_matrix_market --bin sys_info
+    --package russell_sparse "${FEATURE_ARGS[@]}" --bin solve_matrix_market --bin machine_info
+
+# The CPU plan is computed by the Rust binary: P/E cores, physical counts, the
+# MUMPS/BLAS thread counts, and the P-core affinity list. The same environment
+# overrides the previous shell implementation supported are still honored.
+PLAN=$(cargo run -q --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
+    --package russell_sparse "${FEATURE_ARGS[@]}" --bin machine_info -- --cpu-plan)
+P_CORES=""
+E_CORES=""
+P_LOGICAL=0
+E_LOGICAL=0
+P_PHYSICAL=0
+E_PHYSICAL=0
+MUMPS_THREADS=0
+BLAS_THREADS=0
+CPU_AFFINITY="none"
+while IFS='=' read -r key value; do
+    case "$key" in
+        P_CORES) P_CORES=$value ;;
+        E_CORES) E_CORES=$value ;;
+        P_LOGICAL) P_LOGICAL=$value ;;
+        E_LOGICAL) E_LOGICAL=$value ;;
+        P_PHYSICAL) P_PHYSICAL=$value ;;
+        E_PHYSICAL) E_PHYSICAL=$value ;;
+        MUMPS_THREADS) MUMPS_THREADS=$value ;;
+        BLAS_THREADS) BLAS_THREADS=$value ;;
+        CPU_AFFINITY) CPU_AFFINITY=$value ;;
+    esac
+done <<<"$PLAN"
+
+PIN_SINGLE=()
+if [[ -n "$CPU_AFFINITY" && "$CPU_AFFINITY" != "none" ]] && command -v taskset >/dev/null 2>&1; then
+    PIN_SINGLE=(taskset -c "$CPU_AFFINITY")
+else
+    CPU_AFFINITY="none"
+fi
 
 {
     echo "Benchmark configuration"
@@ -338,6 +278,8 @@ cargo build --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
     echo "cpu_model: $CPU_MODEL"
     echo "p_cores: ${P_CORES:-none}"
     echo "e_cores: ${E_CORES:-none}"
+    echo "p_logical: $P_LOGICAL"
+    echo "e_logical: $E_LOGICAL"
     echo "p_physical: $P_PHYSICAL"
     echo "e_physical: $E_PHYSICAL"
     echo "mumps_threads: $MUMPS_THREADS"
@@ -383,9 +325,9 @@ cargo build --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
     fi
     echo
     cargo run -q --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
-        --package russell_sparse "${FEATURE_ARGS[@]}" --bin sys_info
+        --package russell_sparse "${FEATURE_ARGS[@]}" --bin machine_info
 } >"$INFO_FILE"
-echo "system information written to $(display_path "$INFO_FILE")" >&2
+echo "machine information written to $(display_path "$INFO_FILE")" >&2
 
 run_matrix() {
     local name=$1

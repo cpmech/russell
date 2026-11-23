@@ -37,7 +37,7 @@ Matrix Market I/O, and the benchmark tools used to compare them. It is part of t
   - [xtract_matrix_market](#xtract_matrix_market)
   - [xcompare_matrix_market](#xcompare_matrix_market)
   - [Matrix metadata](#matrix-metadata)
-  - [sys_info](#sys_info)
+  - [machine_info](#machine_info)
   - [Benchmark runner](#benchmark-runner)
 - [For developers](#for-developers)
 
@@ -403,23 +403,27 @@ for its `sym`/`spd` labels instead of the per-run `requests.positive_definite`
 flag. `run_solve_matrix_market.bash` reads the same file with `jq` to build its
 real/complex and SPD matrix lists.
 
-### sys_info
+### machine_info
 
-`sys_info` exports the OS, GPU, CPU, memory, and solver-library versions:
+`machine_info` exports the OS, GPU, CPU, CPU-topology, memory, and solver-library
+versions. The OS and hardware sections come from `russell_lab::get_os_info`; the
+solver-library versions come from `russell_sparse`, so they follow the features the
+report is built with:
 
 ```bash
-cargo run --release --bin sys_info
-cargo run --release --bin sys_info -- system-information.txt
+cargo run --release --bin machine_info
+cargo run --release --bin machine_info -- system-information.txt
 ```
 
-With no file argument it prints to stdout. The report uses the same features as
-the build, so `--features umfpack,mumps` reports those libraries as compiled in.
+With no file argument it prints to stdout. `machine_info --cpu-plan` prints the
+hybrid P/E topology and the benchmark thread plan as shell assignments; the
+benchmark runner uses that mode to configure MUMPS and the BLAS backends.
 
 ### Benchmark runner
 
 `run_solve_matrix_market.bash` runs the standard matrix set and stores one JSON file
 per matrix and solver under `$OUTPUT_DIR/<solver>/`. Before running, it writes the
-benchmark configuration and the `sys_info` report to
+benchmark configuration and the `machine_info` report to
 `$OUTPUT_DIR/system-information.txt` (override with `INFO_FILE`). The provenance
 header records the date, Russell version and commit, system, features, solvers,
 `nrun`, `time_guard`, detected CPU topology, thread settings, input/output paths,

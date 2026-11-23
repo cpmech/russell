@@ -221,7 +221,8 @@ cargo bench --features bench --bench small_mat_inv_benchmark --all-features -- '
 ## System information
 
 The benchmark results in this directory were computed on the following machine
-(output of the `get_system_info` example from `russell_sparse`, run with Intel MKL):
+(output of the `get_os_info` example from `russell_lab`, run with Intel MKL;
+the CPU-topology section is omitted from this historical capture):
 
 ```text
 --- OS ---

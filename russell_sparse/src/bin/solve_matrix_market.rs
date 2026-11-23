@@ -171,8 +171,8 @@ fn resolve_affinity(genie: Genie, opt: &Options, plan: &SparseCpuPlan, auto: boo
     match genie {
         Genie::Mumps => Ok(None),
         Genie::Faer | Genie::Umfpack => {
-            if cfg!(target_os = "linux") && !plan.affinity.is_empty() {
-                Ok(Some(plan.affinity.clone()))
+            if cfg!(target_os = "linux") && !plan.cpu.affinity().is_empty() {
+                Ok(Some(plan.cpu.affinity().to_vec()))
             } else {
                 Ok(None)
             }
@@ -608,6 +608,7 @@ fn get_bfwb62_correct_x() -> Vector {
 #[cfg(test)]
 mod tests {
     use super::{Options, SparseCpuPlan, finish_on_memory_error, finish_on_solver_error, mark_time_guard, parse_faer_method, resolve_run_config};
+    use russell_lab::CpuPlan;
     use russell_sparse::prelude::*;
 
     fn test_options() -> Options {
@@ -638,25 +639,31 @@ mod tests {
 
     fn hybrid_plan() -> SparseCpuPlan {
         SparseCpuPlan {
-            p_cores: vec![0, 1, 2, 3],
-            e_cores: vec![4, 5],
-            p_physical: 2,
-            e_physical: 2,
+            cpu: CpuPlan {
+                p_cores: vec![0, 1, 2, 3],
+                e_cores: vec![4, 5],
+                p_physical: 2,
+                e_physical: 2,
+                physical_threads: 4,
+                p_threads: 2,
+            },
             mumps_threads: 4,
             blas_threads: 2,
-            affinity: vec![0, 1, 2, 3],
         }
     }
 
     fn non_hybrid_plan() -> SparseCpuPlan {
         SparseCpuPlan {
-            p_cores: Vec::new(),
-            e_cores: Vec::new(),
-            p_physical: 0,
-            e_physical: 0,
+            cpu: CpuPlan {
+                p_cores: Vec::new(),
+                e_cores: Vec::new(),
+                p_physical: 0,
+                e_physical: 0,
+                physical_threads: 8,
+                p_threads: 8,
+            },
             mumps_threads: 8,
             blas_threads: 8,
-            affinity: Vec::new(),
         }
     }
 

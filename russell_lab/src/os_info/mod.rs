@@ -39,11 +39,14 @@ pub struct CpuPlan {
     pub physical_threads: usize,
     /// Threads for workloads using physical P-cores only
     pub p_threads: usize,
-    /// Logical P-core CPUs the P-core runs should be pinned to; empty means no pinning
-    pub affinity: Vec<usize>,
 }
 
 impl CpuPlan {
+    /// Returns the logical P-core CPUs that P-core runs should be pinned to; empty means no pinning
+    pub fn affinity(&self) -> &[usize] {
+        &self.p_cores
+    }
+
     /// Returns whether the plan has a hybrid P/E topology
     pub fn is_hybrid(&self) -> bool {
         !self.p_cores.is_empty() || !self.e_cores.is_empty()
@@ -56,10 +59,10 @@ impl CpuPlan {
     /// `CPU_AFFINITY`. An absent list is printed as an empty value, and
     /// `CPU_AFFINITY=none` means no pinning.
     pub fn to_shell(&self) -> String {
-        let affinity = if self.affinity.is_empty() {
+        let affinity = if self.affinity().is_empty() {
             "none".to_string()
         } else {
-            format_cpu_list(&self.affinity)
+            format_cpu_list(self.affinity())
         };
         format!(
             "P_CORES={}\n\
@@ -87,10 +90,10 @@ impl CpuPlan {
     pub fn summary(&self) -> String {
         let p = format_cpu_list(&self.p_cores);
         let e = format_cpu_list(&self.e_cores);
-        let affinity = if self.affinity.is_empty() {
+        let affinity = if self.affinity().is_empty() {
             "none".to_string()
         } else {
-            format_cpu_list(&self.affinity)
+            format_cpu_list(self.affinity())
         };
         format!(
             "hybrid: {}\n\
@@ -122,7 +125,6 @@ impl CpuPlan {
             e_physical: 0,
             physical_threads: threads,
             p_threads: threads,
-            affinity: Vec::new(),
         }
     }
 
@@ -150,7 +152,6 @@ impl CpuPlan {
             n => n,
         };
         Self {
-            affinity: p_cores.clone(),
             p_cores,
             e_cores,
             p_physical,
@@ -195,26 +196,13 @@ pub fn get_cpu_plan() -> CpuPlan {
 /// `P_CORES` or `E_CORES` keeps the detected value. Explicit `P_CORES` and
 /// `E_CORES` overrides are used as given and are not intersected with
 /// `Cpus_allowed_list`.
-pub fn get_cpu_plan_with_topology_overrides() -> CpuPlan {
-    let (detected_p, detected_e, cpu_root) = detected_topology();
-    cpu_plan_with_topology_overrides(detected_p, detected_e, cpu_root, |name| std::env::var(name).ok())
-}
-
-/// Returns the CPU plan with `P_CORES`, `E_CORES`, `PHYSICAL_THREADS`, and
-/// `P_THREADS` environment overrides
-///
-/// Starts from [`get_cpu_plan_with_topology_overrides`] and applies positive
-/// overrides from `PHYSICAL_THREADS` (to [`CpuPlan::physical_threads`]) and
-/// `P_THREADS` (to [`CpuPlan::p_threads`]). An empty or invalid `P_CORES` or
-/// `E_CORES`, and a thread count of zero or non-numeric value, keep the
-/// detected value. Explicit `P_CORES` and `E_CORES` overrides are used as given
-/// and are not intersected with `Cpus_allowed_list`.
 pub fn get_cpu_plan_with_overrides() -> CpuPlan {
-    apply_thread_overrides(get_cpu_plan_with_topology_overrides(), |name| std::env::var(name).ok())
+    let (detected_p, detected_e, cpu_root) = detected_topology();
+    cpu_plan_with_overrides(detected_p, detected_e, cpu_root, |name| std::env::var(name).ok())
 }
 
 /// Builds a CPU plan from detected lists and `P_CORES`/`E_CORES` overrides
-fn cpu_plan_with_topology_overrides(
+fn cpu_plan_with_overrides(
     detected_p: Vec<usize>,
     detected_e: Vec<usize>,
     cpu_root: Option<&Path>,
@@ -223,29 +211,6 @@ fn cpu_plan_with_topology_overrides(
     let p_cores = parse_env_cpu_list(get_env("P_CORES").as_deref()).unwrap_or(detected_p);
     let e_cores = parse_env_cpu_list(get_env("E_CORES").as_deref()).unwrap_or(detected_e);
     CpuPlan::from_lists(p_cores, e_cores, cpu_root)
-}
-
-/// Applies `PHYSICAL_THREADS` and `P_THREADS` overrides on top of a CPU plan
-fn apply_thread_overrides(mut plan: CpuPlan, get_env: impl Fn(&str) -> Option<String>) -> CpuPlan {
-    if let Some(n) = parse_env_threads(get_env("PHYSICAL_THREADS").as_deref()) {
-        plan.physical_threads = n;
-    }
-    if let Some(n) = parse_env_threads(get_env("P_THREADS").as_deref()) {
-        plan.p_threads = n;
-    }
-    plan
-}
-
-/// Builds a CPU plan from detected lists and topology + thread overrides
-#[cfg(test)]
-fn cpu_plan_with_overrides(
-    detected_p: Vec<usize>,
-    detected_e: Vec<usize>,
-    cpu_root: Option<&Path>,
-    get_env: impl Fn(&str) -> Option<String>,
-) -> CpuPlan {
-    let plan = cpu_plan_with_topology_overrides(detected_p, detected_e, cpu_root, &get_env);
-    apply_thread_overrides(plan, get_env)
 }
 
 /// Gathers operating-system and hardware information from the current Linux machine
@@ -265,7 +230,7 @@ fn cpu_plan_with_overrides(
 /// procfs file is absent; the CPU topology section always reports the plan, using
 /// the non-hybrid fallback when sysfs has no P/E lists.
 #[cfg(target_os = "linux")]
-pub fn get_os_info_linux() -> String {
+fn get_os_info_linux() -> String {
     let mut info = String::new();
 
     // OS info
@@ -376,18 +341,6 @@ pub fn get_os_info_linux() -> String {
     }
 
     info
-}
-
-/// Returns `"NOT AVAILABLE"` — not yet implemented for this platform
-#[cfg(target_os = "windows")]
-pub fn get_os_info_windows() -> String {
-    "NOT AVAILABLE".to_string()
-}
-
-/// Returns `"NOT AVAILABLE"` — not yet implemented for this platform
-#[cfg(target_os = "macos")]
-pub fn get_os_info_macos() -> String {
-    "NOT AVAILABLE".to_string()
 }
 
 /// Gathers operating-system and hardware information for the current platform
@@ -596,27 +549,9 @@ fn parse_env_cpu_list(value: Option<&str>) -> Option<Vec<usize>> {
     parse_cpu_list(value).filter(|cpus| !cpus.is_empty())
 }
 
-/// Parses a positive thread count from an environment variable value
-fn parse_env_threads(value: Option<&str>) -> Option<usize> {
-    let n: usize = value?.trim().parse().ok()?;
-    (n > 0).then_some(n)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    #[cfg(target_os = "windows")]
-    fn get_os_info_windows_returns_not_available() {
-        assert_eq!(get_os_info_windows(), "NOT AVAILABLE");
-    }
-
-    #[test]
-    #[cfg(target_os = "macos")]
-    fn get_os_info_macos_returns_not_available() {
-        assert_eq!(get_os_info_macos(), "NOT AVAILABLE");
-    }
 
     #[test]
     #[cfg(target_os = "linux")]
@@ -698,7 +633,7 @@ mod tests {
         assert_eq!(plan.e_physical, 4);
         assert_eq!(plan.physical_threads, 8);
         assert_eq!(plan.p_threads, 4);
-        assert_eq!(plan.affinity, vec![0, 1, 2, 3]);
+        assert_eq!(plan.affinity(), &[0, 1, 2, 3]);
     }
 
     #[test]
@@ -710,7 +645,7 @@ mod tests {
         assert_eq!(plan.e_physical, 0);
         assert_eq!(plan.physical_threads, threads);
         assert_eq!(plan.p_threads, threads);
-        assert!(plan.affinity.is_empty());
+        assert!(plan.affinity().is_empty());
     }
 
     #[test]
@@ -759,7 +694,7 @@ mod tests {
         assert_eq!(plan.e_physical, 4);
         assert_eq!(plan.physical_threads, 4);
         assert_eq!(plan.p_threads, available_threads());
-        assert!(plan.affinity.is_empty());
+        assert!(plan.affinity().is_empty());
         assert!(plan.to_shell().contains("CPU_AFFINITY=none\n"));
     }
 
@@ -786,8 +721,8 @@ mod tests {
     }
 
     #[test]
-    fn cpu_plan_topology_overrides_ignore_thread_env_vars() {
-        let plan = cpu_plan_with_topology_overrides(vec![0, 1, 2, 3], vec![4, 5], None, |name| match name {
+    fn cpu_plan_overrides_apply_topology_and_ignore_invalid_or_thread_env_vars() {
+        let plan = cpu_plan_with_overrides(vec![0, 1, 2, 3], vec![4, 5], None, |name| match name {
             "P_CORES" => Some("0-1".to_string()),
             "E_CORES" => Some("8-11".to_string()),
             "PHYSICAL_THREADS" => Some("12".to_string()),
@@ -802,42 +737,23 @@ mod tests {
         assert_eq!(plan.e_physical, 4);
         assert_eq!(plan.physical_threads, 6);
         assert_eq!(plan.p_threads, 2);
-        assert_eq!(plan.affinity, vec![0, 1]);
+        assert_eq!(plan.affinity(), &[0, 1]);
 
-        let runtime_plan = get_cpu_plan_with_topology_overrides();
-        assert!(runtime_plan.physical_threads >= 1);
-        assert!(runtime_plan.p_threads >= 1);
-    }
-
-    #[test]
-    fn cpu_plan_overrides_apply_valid_and_ignore_invalid_values() {
-        let plan = cpu_plan_with_overrides(vec![0, 1, 2, 3], vec![4, 5], None, |name| match name {
-            "P_CORES" => Some("0-1".to_string()),
-            "E_CORES" => Some("8-11".to_string()),
-            "PHYSICAL_THREADS" => Some("12".to_string()),
-            "P_THREADS" => Some("4".to_string()),
-            "MUMPS_THREADS" => Some("99".to_string()),
-            "BLAS_THREADS" => Some("77".to_string()),
-            _ => None,
-        });
-        assert_eq!(plan.p_cores, vec![0, 1]);
-        assert_eq!(plan.e_cores, vec![8, 9, 10, 11]);
-        assert_eq!(plan.physical_threads, 12);
-        assert_eq!(plan.p_threads, 4);
-        assert_eq!(plan.affinity, vec![0, 1]);
-
-        // Empty, comma-only, malformed, and zero values keep the detected plan
+        // Empty, comma-only, or malformed topology values keep the detected plan
         let plan = cpu_plan_with_overrides(vec![0, 1], vec![2, 3], None, |name| match name {
             "P_CORES" => Some(" , ".to_string()),
             "E_CORES" => Some("invalid".to_string()),
-            "PHYSICAL_THREADS" => Some("0".to_string()),
-            "P_THREADS" => Some("nope".to_string()),
             _ => None,
         });
         assert_eq!(plan.p_cores, vec![0, 1]);
         assert_eq!(plan.e_cores, vec![2, 3]);
         assert_eq!(plan.physical_threads, 4);
         assert_eq!(plan.p_threads, 2);
+        assert_eq!(plan.affinity(), &[0, 1]);
+
+        let runtime_plan = get_cpu_plan_with_overrides();
+        assert!(runtime_plan.physical_threads >= 1);
+        assert!(runtime_plan.p_threads >= 1);
     }
 
     #[test]

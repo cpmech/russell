@@ -1,6 +1,6 @@
 //! External sparse-solver library versions and sparse-benchmark CPU plan.
 
-use russell_lab::{CpuPlan, format_cpu_list, get_cpu_plan_with_topology_overrides};
+use russell_lab::{CpuPlan, format_cpu_list, get_cpu_plan_with_overrides};
 
 // Versions of external sparse solver libraries installed via the project's bash scripts
 const MUMPS_SCRIPT_VERSION: &str = "5.9.2";
@@ -40,26 +40,18 @@ pub fn get_library_versions() -> String {
 
 /// CPU topology and thread plan tailored for the sparse-solver benchmarks
 ///
-/// The topology comes from [`russell_lab::get_cpu_plan_with_topology_overrides`];
+/// The topology comes from [`russell_lab::get_cpu_plan_with_overrides`];
 /// `mumps_threads` defaults to [`CpuPlan::physical_threads`] and `blas_threads`
 /// defaults to [`CpuPlan::p_threads`], with optional `MUMPS_THREADS` and
 /// `BLAS_THREADS` environment overrides.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SparseCpuPlan {
-    /// Logical P-core CPUs, in ascending order
-    pub p_cores: Vec<usize>,
-    /// Logical E-core CPUs, in ascending order
-    pub e_cores: Vec<usize>,
-    /// Number of physical P-cores
-    pub p_physical: usize,
-    /// Number of physical E-cores
-    pub e_physical: usize,
+    /// Detected (or topology-overridden) CPU topology and generic thread counts
+    pub cpu: CpuPlan,
     /// Threads for MUMPS: one per physical core, P and E together
     pub mumps_threads: usize,
     /// Threads for the BLAS work of Faer and UMFPACK: one per physical P-core
     pub blas_threads: usize,
-    /// Logical P-core CPUs the P-core runs should be pinned to; empty means no pinning
-    pub affinity: Vec<usize>,
 }
 
 impl SparseCpuPlan {
@@ -70,10 +62,10 @@ impl SparseCpuPlan {
     /// `BLAS_THREADS`, and `CPU_AFFINITY`. An absent list is printed as an
     /// empty value, and `CPU_AFFINITY=none` means no pinning.
     pub fn to_shell(&self) -> String {
-        let affinity = if self.affinity.is_empty() {
+        let affinity = if self.cpu.affinity().is_empty() {
             "none".to_string()
         } else {
-            format_cpu_list(&self.affinity)
+            format_cpu_list(self.cpu.affinity())
         };
         format!(
             "P_CORES={}\n\
@@ -85,12 +77,12 @@ impl SparseCpuPlan {
              MUMPS_THREADS={}\n\
              BLAS_THREADS={}\n\
              CPU_AFFINITY={}\n",
-            format_cpu_list(&self.p_cores),
-            format_cpu_list(&self.e_cores),
-            self.p_cores.len(),
-            self.e_cores.len(),
-            self.p_physical,
-            self.e_physical,
+            format_cpu_list(&self.cpu.p_cores),
+            format_cpu_list(&self.cpu.e_cores),
+            self.cpu.p_cores.len(),
+            self.cpu.e_cores.len(),
+            self.cpu.p_physical,
+            self.cpu.e_physical,
             self.mumps_threads,
             self.blas_threads,
             affinity,
@@ -101,33 +93,24 @@ impl SparseCpuPlan {
 /// Returns the sparse-benchmark CPU plan with `P_CORES`, `E_CORES`,
 /// `MUMPS_THREADS`, and `BLAS_THREADS` environment overrides
 ///
-/// Starts from [`russell_lab::get_cpu_plan_with_topology_overrides`], initializes
-/// `mumps_threads = plan.physical_threads` and `blas_threads = plan.p_threads`,
+/// Starts from [`russell_lab::get_cpu_plan_with_overrides`], initializes
+/// `mumps_threads = cpu.physical_threads` and `blas_threads = cpu.p_threads`,
 /// and applies positive `MUMPS_THREADS` and `BLAS_THREADS` overrides. Empty,
 /// zero, or invalid values keep the topology-derived count.
 pub fn get_sparse_cpu_plan() -> SparseCpuPlan {
-    let plan = get_cpu_plan_with_topology_overrides();
-    sparse_cpu_plan_with_overrides(&plan, |name| std::env::var(name).ok())
+    let cpu = get_cpu_plan_with_overrides();
+    sparse_cpu_plan_with_overrides(cpu, |name| std::env::var(name).ok())
 }
 
 /// Builds a [`SparseCpuPlan`] from a [`CpuPlan`] and an environment-variable lookup
-fn sparse_cpu_plan_with_overrides(plan: &CpuPlan, get_env: impl Fn(&str) -> Option<String>) -> SparseCpuPlan {
-    let mut sparse = SparseCpuPlan {
-        p_cores: plan.p_cores.clone(),
-        e_cores: plan.e_cores.clone(),
-        p_physical: plan.p_physical,
-        e_physical: plan.e_physical,
-        mumps_threads: plan.physical_threads,
-        blas_threads: plan.p_threads,
-        affinity: plan.affinity.clone(),
-    };
-    if let Some(n) = parse_env_threads(get_env("MUMPS_THREADS").as_deref()) {
-        sparse.mumps_threads = n;
+fn sparse_cpu_plan_with_overrides(cpu: CpuPlan, get_env: impl Fn(&str) -> Option<String>) -> SparseCpuPlan {
+    let mumps_threads = parse_env_threads(get_env("MUMPS_THREADS").as_deref()).unwrap_or(cpu.physical_threads);
+    let blas_threads = parse_env_threads(get_env("BLAS_THREADS").as_deref()).unwrap_or(cpu.p_threads);
+    SparseCpuPlan {
+        cpu,
+        mumps_threads,
+        blas_threads,
     }
-    if let Some(n) = parse_env_threads(get_env("BLAS_THREADS").as_deref()) {
-        sparse.blas_threads = n;
-    }
-    sparse
 }
 
 /// Parses a positive thread count from an environment variable value
@@ -203,23 +186,18 @@ mod tests {
             e_physical: 2,
             physical_threads: 4,
             p_threads: 2,
-            affinity: vec![0, 1, 2, 3],
         };
 
-        let defaulted = sparse_cpu_plan_with_overrides(&base, |name| match name {
+        let defaulted = sparse_cpu_plan_with_overrides(base.clone(), |name| match name {
             "PHYSICAL_THREADS" => Some("99".to_string()),
             "P_THREADS" => Some("77".to_string()),
             _ => None,
         });
-        assert_eq!(defaulted.p_cores, vec![0, 1, 2, 3]);
-        assert_eq!(defaulted.e_cores, vec![4, 5]);
-        assert_eq!(defaulted.p_physical, 2);
-        assert_eq!(defaulted.e_physical, 2);
+        assert_eq!(defaulted.cpu, base);
         assert_eq!(defaulted.mumps_threads, 4);
         assert_eq!(defaulted.blas_threads, 2);
-        assert_eq!(defaulted.affinity, vec![0, 1, 2, 3]);
 
-        let overridden = sparse_cpu_plan_with_overrides(&base, |name| match name {
+        let overridden = sparse_cpu_plan_with_overrides(base.clone(), |name| match name {
             "MUMPS_THREADS" => Some("12".to_string()),
             "BLAS_THREADS" => Some("6".to_string()),
             _ => None,
@@ -227,7 +205,7 @@ mod tests {
         assert_eq!(overridden.mumps_threads, 12);
         assert_eq!(overridden.blas_threads, 6);
 
-        let ignored = sparse_cpu_plan_with_overrides(&base, |name| match name {
+        let ignored = sparse_cpu_plan_with_overrides(base.clone(), |name| match name {
             "MUMPS_THREADS" => Some("0".to_string()),
             "BLAS_THREADS" => Some("nope".to_string()),
             _ => None,
@@ -235,7 +213,7 @@ mod tests {
         assert_eq!(ignored.mumps_threads, 4);
         assert_eq!(ignored.blas_threads, 2);
 
-        let empty = sparse_cpu_plan_with_overrides(&base, |name| match name {
+        let empty = sparse_cpu_plan_with_overrides(base, |name| match name {
             "MUMPS_THREADS" => Some("  ".to_string()),
             "BLAS_THREADS" => Some(String::new()),
             _ => None,
@@ -247,13 +225,16 @@ mod tests {
     #[test]
     fn sparse_cpu_plan_shell_has_the_benchmark_keys() {
         let hybrid = SparseCpuPlan {
-            p_cores: vec![0, 1],
-            e_cores: vec![2, 3],
-            p_physical: 2,
-            e_physical: 2,
+            cpu: CpuPlan {
+                p_cores: vec![0, 1],
+                e_cores: vec![2, 3],
+                p_physical: 2,
+                e_physical: 2,
+                physical_threads: 4,
+                p_threads: 2,
+            },
             mumps_threads: 4,
             blas_threads: 2,
-            affinity: vec![0, 1],
         };
         let text = hybrid.to_shell();
         assert!(text.contains("P_CORES=0-1\n"));
@@ -267,13 +248,16 @@ mod tests {
         assert!(text.contains("CPU_AFFINITY=0-1\n"));
 
         let non_hybrid = SparseCpuPlan {
-            p_cores: Vec::new(),
-            e_cores: Vec::new(),
-            p_physical: 0,
-            e_physical: 0,
+            cpu: CpuPlan {
+                p_cores: Vec::new(),
+                e_cores: Vec::new(),
+                p_physical: 0,
+                e_physical: 0,
+                physical_threads: 8,
+                p_threads: 8,
+            },
             mumps_threads: 8,
             blas_threads: 8,
-            affinity: Vec::new(),
         };
         let text = non_hybrid.to_shell();
         assert!(text.contains("P_CORES=\n"));

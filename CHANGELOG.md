@@ -5,6 +5,29 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.6.0] - 2026-11-23
+
+### Added
+
+- `russell_lab::os_info`: `get_os_info()`, solver-neutral `CpuPlan` (`physical_threads`,
+  `p_threads`, `affinity(&self) -> &[usize]`), `get_cpu_plan()`,
+  `get_cpu_plan_with_overrides()` (`P_CORES`/`E_CORES` topology overrides), `set_cpu_affinity()`,
+  `parse_cpu_list()`, `format_cpu_list()`, the `os_info` binary (`--cpu-plan`), and
+  `examples/get_os_info.rs`.
+- `russell_sparse`: `get_library_versions()`, `SparseCpuPlan` (embedding `pub cpu: CpuPlan`),
+  `get_sparse_cpu_plan()`, the `machine_info` binary (`--cpu-plan`), and automatic hybrid-CPU
+  thread-count and Linux CPU-affinity tuning in `solve_matrix_market` (`--cpu-affinity`,
+  `--no-auto-config`, CLI > environment > detected plan precedence).
+
+### Changed (breaking)
+
+- Moved OS/hardware reporting out of `russell_sparse` into `russell_lab`, removing
+  `russell_sparse::get_system_info`, `russell_sparse/src/util.rs`, `russell_sparse/src/bin/sys_info.rs`,
+  and `russell_sparse/examples/get_system_info.rs` (shipped in minor release `5.6.0`).
+- Bumped all 7 workspace crates (`russell_lab`, `russell_sparse`, `russell_stat`,
+  `russell_tensor`, `russell_pde`, `russell_ode`, `russell_nonlin`) to `5.6.0` and raised
+  internal workspace dependency floors to `5.6`.
+
 ## [5.5.2] - 2026-11-22
 
 ### Removed (breaking)

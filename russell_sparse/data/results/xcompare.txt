@@ -11,15 +11,15 @@ Paired numeric cells: 94
 By scope
 scope      cells  geo mean  median  arithmetic
 ---------  -----  --------  ------  ----------
-Overall       94     1.23x   1.21x       1.25x
-real          74     1.22x   1.21x       1.24x
-complex       20     1.26x   1.24x       1.28x
-nnz >= 1M     70     1.26x   1.21x       1.28x
-nnz < 1M      24     1.14x   1.21x       1.16x
+Overall       94     1.22x   1.22x       1.24x
+real          74     1.21x   1.20x       1.23x
+complex       20     1.26x   1.30x       1.29x
+nnz >= 1M     70     1.25x   1.22x       1.27x
+nnz < 1M      24     1.12x   1.22x       1.16x
 
 By solver
 solver   cells  geo mean  median  arithmetic
 -------  -----  --------  ------  ----------
-umfpack     27     1.26x   1.25x       1.26x
-mumps       44     1.24x   1.21x       1.28x
-faer        23     1.16x   1.19x       1.17x
+umfpack     27     1.24x   1.24x       1.24x
+mumps       44     1.24x   1.23x       1.28x
+faer        23     1.17x   1.16x       1.17x

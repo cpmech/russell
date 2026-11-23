@@ -312,11 +312,23 @@ The default backend is Faer. Use `--genie` (`-g`) to select another one:
 cargo run --release --bin solve_matrix_market -- -g mumps ~/Downloads/matrix-market/bfwb62.mtx
 ```
 
+By default, the binary detects the hybrid CPU topology through
+`russell_lab::os_info` and applies the benchmark policy: MUMPS uses one thread per
+physical core (P + E) and is left unpinned; Faer and UMFPACK use one BLAS thread per
+physical P-core and pin to the P-core logical CPUs. Explicit flags override the
+environment (`P_CORES`, `E_CORES`, `MUMPS_THREADS`, `BLAS_THREADS`), which overrides
+the detected plan. Use `--no-auto-config` to leave the library defaults and skip
+pinning, or `--verbose` to print the effective values.
+
 Useful options:
 
 | Option | Meaning |
 |---|---|
 | `-g, --genie <name>` | Solver backend |
+| `-n, --nt <n>` | BLAS/OpenMP threads; `0` = auto |
+| `-m, --mumps-nt <n>` | MUMPS threads; `0` = auto |
+| `--cpu-affinity <list or none>` | Pin to Linux CPUs (e.g. `0-7`) or disable pinning; overrides the auto plan |
+| `--no-auto-config` | Disable automatic CPU detection and pinning |
 | `--faer-method` | Faer LU strategy: `auto`, `simplicial`, or `supernodal` |
 | `--faer-flop-ratio <f>` | Threshold for `--faer-method auto` |
 | `-r, --nrun <n>` | Number of runs; timing statistics are averaged |

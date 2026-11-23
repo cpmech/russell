@@ -13,6 +13,9 @@ use std::path::Path;
 #[cfg(target_os = "linux")]
 use std::process::Command;
 
+/// Upper bound on accepted logical CPU indices to prevent runaway allocations
+const MAX_CPU_ID: usize = 65_535;
+
 /// CPU topology and the thread counts derived from it
 ///
 /// The detection follows the Linux hybrid-CPU interface:
@@ -161,9 +164,10 @@ impl CpuPlan {
 /// Returns the CPU topology and thread plan of the current machine
 ///
 /// On Linux the P/E lists come from sysfs and are intersected with the CPUs the
-/// process is allowed to run on (`Cpus_allowed_list` in `/proc/self/status`).
-/// Everywhere else, and on a non-hybrid Linux machine, the plan falls back to all
-/// available logical CPUs with no pinning.
+/// calling thread is allowed to run on (`Cpus_allowed_list` in
+/// `/proc/thread-self/status`, falling back to `/proc/self/status`). Everywhere
+/// else, and on a non-hybrid Linux machine, the plan falls back to all available
+/// logical CPUs with no pinning.
 pub fn get_cpu_plan() -> CpuPlan {
     #[cfg(target_os = "linux")]
     {
@@ -377,6 +381,51 @@ pub fn get_os_info() -> String {
     "NOT AVAILABLE".to_string()
 }
 
+/// Pins the calling thread to the given logical CPUs
+///
+/// On Linux this calls `sched_setaffinity` with a dynamically sized bitmask, so
+/// CPU indices above `CPU_SETSIZE` are allowed. The affinity is inherited by
+/// threads created afterward, so call this before starting OpenMP, MKL, OpenBLAS,
+/// or any worker pool.
+///
+/// An empty list is rejected. On non-Linux platforms the function returns an
+/// informative error because there is no portable affinity interface.
+pub fn set_cpu_affinity(cpus: &[usize]) -> Result<(), String> {
+    if cpus.is_empty() {
+        return Err("cannot set CPU affinity to an empty CPU list".to_string());
+    }
+    if let Some(&cpu) = cpus.iter().find(|&&cpu| cpu > MAX_CPU_ID) {
+        return Err(format!("CPU index {cpu} exceeds maximum supported index {MAX_CPU_ID}"));
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let bits_per_word = usize::BITS as usize;
+        let max_cpu = *cpus.iter().max().unwrap();
+        let words = max_cpu / bits_per_word + 1;
+        let mut mask = vec![0usize; words];
+        for &cpu in cpus {
+            mask[cpu / bits_per_word] |= 1usize << (cpu % bits_per_word);
+        }
+        unsafe extern "C" {
+            fn sched_setaffinity(pid: i32, cpusetsize: usize, mask: *const usize) -> i32;
+        }
+        let size = words * std::mem::size_of::<usize>();
+        let status = unsafe { sched_setaffinity(0, size, mask.as_ptr()) };
+        if status != 0 {
+            return Err(format!(
+                "sched_setaffinity failed for CPUs {}: {}",
+                format_cpu_list(cpus),
+                std::io::Error::last_os_error()
+            ));
+        }
+        Ok(())
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        Err("CPU affinity is only supported on Linux".to_string())
+    }
+}
+
 /// Returns the number of logical CPUs available to the process
 fn available_threads() -> usize {
     std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1)
@@ -410,7 +459,10 @@ fn physical_count(cpu_root: &Path, cpus: &[usize]) -> usize {
 }
 
 /// Parses a Linux CPU list such as `0-15` or `0-7,16-23`
-fn parse_cpu_list(text: &str) -> Option<Vec<usize>> {
+///
+/// Returns `None` when the input is malformed. An empty or whitespace-only string
+/// returns an empty list.
+pub fn parse_cpu_list(text: &str) -> Option<Vec<usize>> {
     let mut cpus = Vec::new();
     for part in text.trim().split(',') {
         let part = part.trim();
@@ -421,12 +473,18 @@ fn parse_cpu_list(text: &str) -> Option<Vec<usize>> {
             Some((first, last)) => {
                 let first: usize = first.trim().parse().ok()?;
                 let last: usize = last.trim().parse().ok()?;
-                if first > last {
+                if first > last || last > MAX_CPU_ID {
                     return None;
                 }
                 cpus.extend(first..=last);
             }
-            None => cpus.push(part.parse().ok()?),
+            None => {
+                let cpu: usize = part.parse().ok()?;
+                if cpu > MAX_CPU_ID {
+                    return None;
+                }
+                cpus.push(cpu);
+            }
         }
     }
     cpus.sort_unstable();
@@ -435,7 +493,10 @@ fn parse_cpu_list(text: &str) -> Option<Vec<usize>> {
 }
 
 /// Formats a CPU list, compressing consecutive runs into ranges
-fn format_cpu_list(cpus: &[usize]) -> String {
+///
+/// For example, `[0, 1, 2, 3, 7, 9, 10]` becomes `0-3,7,9-10`. An empty list
+/// becomes an empty string.
+pub fn format_cpu_list(cpus: &[usize]) -> String {
     if cpus.is_empty() {
         return String::new();
     }
@@ -472,13 +533,19 @@ fn read_cpu_list(path: &Path) -> Vec<usize> {
         .unwrap_or_default()
 }
 
-/// Reads the CPUs the process is allowed to run on
+/// Reads the CPUs the calling thread is allowed to run on
 #[cfg(target_os = "linux")]
 fn allowed_cpu_list() -> Option<Vec<usize>> {
-    let status = std::fs::read_to_string("/proc/self/status").ok()?;
-    for line in status.lines() {
-        if let Some(rest) = line.strip_prefix("Cpus_allowed_list:") {
-            return parse_cpu_list(rest);
+    // `thread-self` is the calling thread; `self` is the thread-group leader and is
+    // the fallback on kernels older than 3.17.
+    for path in ["/proc/thread-self/status", "/proc/self/status"] {
+        let Ok(status) = std::fs::read_to_string(path) else {
+            continue;
+        };
+        for line in status.lines() {
+            if let Some(rest) = line.strip_prefix("Cpus_allowed_list:") {
+                return parse_cpu_list(rest);
+            }
         }
     }
     None
@@ -585,6 +652,8 @@ mod tests {
         assert_eq!(parse_cpu_list("3-1"), None);
         assert_eq!(parse_cpu_list("x"), None);
         assert_eq!(parse_cpu_list("1-"), None);
+        assert_eq!(parse_cpu_list("65536"), None);
+        assert_eq!(parse_cpu_list("0-65536"), None);
     }
 
     #[test]
@@ -719,6 +788,45 @@ mod tests {
         assert_eq!(intersect(vec![0, 1, 2, 3], &Some(vec![1, 3, 5])), vec![1, 3]);
         assert_eq!(intersect(vec![0, 1, 2, 3], &Some(vec![4, 5])), Vec::<usize>::new());
         assert_eq!(intersect(vec![0, 1, 2, 3], &None), vec![0, 1, 2, 3]);
+    }
+
+    #[test]
+    fn set_cpu_affinity_rejects_an_empty_list() {
+        assert!(set_cpu_affinity(&[]).is_err());
+    }
+
+    #[test]
+    fn set_cpu_affinity_rejects_huge_cpu_id() {
+        assert!(set_cpu_affinity(&[MAX_CPU_ID + 1]).is_err());
+    }
+
+    #[test]
+    #[cfg(not(target_os = "linux"))]
+    fn set_cpu_affinity_reports_the_platform() {
+        let error = set_cpu_affinity(&[0]).unwrap_err();
+        assert!(error.contains("only supported on Linux"));
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn set_cpu_affinity_round_trips_the_allowed_mask() {
+        if !Path::new("/proc/thread-self/status").exists() {
+            return;
+        }
+        let allowed = allowed_cpu_list().expect("Cpus_allowed_list");
+        if allowed.is_empty() {
+            return;
+        }
+        let first = vec![allowed[0]];
+        struct Restore(Vec<usize>);
+        impl Drop for Restore {
+            fn drop(&mut self) {
+                let _ = set_cpu_affinity(&self.0);
+            }
+        }
+        let _restore = Restore(allowed.clone());
+        set_cpu_affinity(&first).unwrap();
+        assert_eq!(allowed_cpu_list(), Some(first));
     }
 
     #[test]

@@ -1,4 +1,7 @@
-use russell_lab::{ComplexVector, Stopwatch, StrError, Vector, cpx, set_num_threads};
+use russell_lab::{
+    ComplexVector, CpuPlan, Stopwatch, StrError, Vector, cpx, format_cpu_list, get_cpu_plan_with_overrides, parse_cpu_list, set_cpu_affinity,
+    set_num_threads,
+};
 use russell_sparse::is_memory_error;
 use russell_sparse::prelude::*;
 use std::io::Write;
@@ -38,13 +41,21 @@ struct Options {
     #[structopt(short = "p", long)]
     positive_definite: bool,
 
-    /// Number of threads for MUMPS
+    /// Number of threads for MUMPS; 0 = auto
     #[structopt(short = "m", long, default_value = "0")]
     mumps_nt: u32,
 
-    /// Number of threads
+    /// Number of BLAS/OpenMP threads; 0 = auto
     #[structopt(short = "n", long, default_value = "0")]
     nt: u32,
+
+    /// Pin to a Linux CPU list such as `0-7` or `0-3,8-11`, or `none` to disable pinning
+    #[structopt(long, value_name = "LIST|none")]
+    cpu_affinity: Option<String>,
+
+    /// Disable automatic CPU detection and affinity
+    #[structopt(long)]
+    no_auto_config: bool,
 
     /// Activate verbose mode
     #[structopt(short = "v", long)]
@@ -96,17 +107,109 @@ struct Options {
     time_guard: u64,
 }
 
-fn main() -> Result<(), StrError> {
+/// Effective hardware settings for one run
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct RunConfig {
+    /// Threads for the BLAS/OpenMP layer
+    nt: usize,
+    /// Threads requested from MUMPS
+    mumps_nt: usize,
+    /// CPUs to pin to, or `None` to leave the affinity unchanged
+    affinity: Option<Vec<usize>>,
+    /// Whether automatic CPU detection is enabled
+    auto: bool,
+}
+
+/// Resolves the thread counts and affinity from the CLI, environment, and plan
+///
+/// The precedence is: explicit CLI flag, environment override, auto-detected plan.
+/// The environment overrides have already been applied to `plan` by
+/// [`get_cpu_plan_with_overrides`].
+fn resolve_run_config(genie: Genie, opt: &Options, plan: &CpuPlan) -> Result<RunConfig, String> {
+    let auto = !opt.information && !opt.no_auto_config;
+    let affinity = resolve_affinity(genie, opt, plan, auto)?;
+    let nt = if opt.nt > 0 {
+        opt.nt as usize
+    } else if auto {
+        match genie {
+            Genie::Mumps => plan.mumps_threads,
+            Genie::Faer | Genie::Umfpack => plan.blas_threads,
+        }
+    } else {
+        0
+    };
+    let mumps_nt = if opt.mumps_nt > 0 {
+        opt.mumps_nt as usize
+    } else if auto && matches!(genie, Genie::Mumps) {
+        plan.mumps_threads
+    } else {
+        0
+    };
+    Ok(RunConfig {
+        nt,
+        mumps_nt,
+        affinity,
+        auto,
+    })
+}
+
+/// Resolves the affinity list, with an explicit CLI value taking precedence
+fn resolve_affinity(genie: Genie, opt: &Options, plan: &CpuPlan, auto: bool) -> Result<Option<Vec<usize>>, String> {
+    if let Some(value) = opt.cpu_affinity.as_deref() {
+        let value = value.trim();
+        if value.eq_ignore_ascii_case("none") {
+            return Ok(None);
+        }
+        let cpus = parse_cpu_list(value)
+            .filter(|cpus| !cpus.is_empty())
+            .ok_or_else(|| format!("invalid --cpu-affinity value: {value:?}"))?;
+        if !cfg!(target_os = "linux") {
+            return Err("--cpu-affinity is only supported on Linux".to_string());
+        }
+        return Ok(Some(cpus));
+    }
+    if !auto {
+        return Ok(None);
+    }
+    match genie {
+        Genie::Mumps => Ok(None),
+        Genie::Faer | Genie::Umfpack => {
+            if cfg!(target_os = "linux") && !plan.affinity.is_empty() {
+                Ok(Some(plan.affinity.clone()))
+            } else {
+                Ok(None)
+            }
+        }
+    }
+}
+
+fn main() -> Result<(), String> {
     // parse options
     let opt = Options::from_args();
 
-    // set the number of OpenMP threads
-    if opt.nt > 0 {
-        set_num_threads(opt.nt as usize);
-    }
-
     // select linear solver
     let genie = Genie::from(&opt.genie.to_uppercase())?;
+
+    // resolve the hardware plan before any solver or BLAS thread pool starts
+    let plan = if opt.information || opt.no_auto_config {
+        CpuPlan::default()
+    } else {
+        get_cpu_plan_with_overrides()
+    };
+    let run = resolve_run_config(genie, &opt, &plan)?;
+    if opt.verbose {
+        let affinity = run.affinity.as_deref().map(format_cpu_list).unwrap_or_else(|| "none".to_string());
+        eprintln!(
+            "hardware: auto={} nt={} mumps_nt={} affinity={}",
+            run.auto, run.nt, run.mumps_nt, affinity
+        );
+    }
+    if let Some(cpus) = &run.affinity {
+        set_cpu_affinity(cpus).map_err(|e| format!("cannot set CPU affinity: {e}"))?;
+    }
+    if run.nt > 0 {
+        set_num_threads(run.nt);
+    }
 
     // select the symmetric handling option
     let handling = match genie {
@@ -121,7 +224,7 @@ fn main() -> Result<(), StrError> {
     params.scaling = Scaling::from(&opt.scaling);
     params.positive_definite = opt.positive_definite;
     params.compute_determinant = opt.determinant;
-    params.mumps_num_threads = opt.mumps_nt as usize;
+    params.mumps_num_threads = run.mumps_nt;
     params.umfpack_enforce_unsymmetric_strategy = opt.enforce_unsymmetric_strategy;
     params.faer_method = parse_faer_method(opt.faer_method.as_deref(), opt.faer_flop_ratio)?;
     params.compute_error_estimates = opt.error_estimates;
@@ -507,8 +610,189 @@ fn get_bfwb62_correct_x() -> Vector {
 
 #[cfg(test)]
 mod tests {
-    use super::{finish_on_memory_error, finish_on_solver_error, mark_time_guard, parse_faer_method};
+    use super::{CpuPlan, Options, finish_on_memory_error, finish_on_solver_error, mark_time_guard, parse_faer_method, resolve_run_config};
     use russell_sparse::prelude::*;
+
+    fn test_options() -> Options {
+        Options {
+            matrix_market_file: "matrix.mtx".to_string(),
+            information: false,
+            genie: "FAER".to_string(),
+            ordering: "Auto".to_string(),
+            scaling: "Auto".to_string(),
+            positive_definite: false,
+            mumps_nt: 0,
+            nt: 0,
+            cpu_affinity: None,
+            no_auto_config: false,
+            verbose: false,
+            determinant: false,
+            error_estimates: false,
+            condition_numbers: false,
+            enforce_unsymmetric_strategy: false,
+            faer_method: None,
+            faer_flop_ratio: None,
+            vismatrix: false,
+            hide_json: false,
+            nrun: 1,
+            time_guard: 200,
+        }
+    }
+
+    fn hybrid_plan() -> CpuPlan {
+        CpuPlan {
+            p_cores: vec![0, 1, 2, 3],
+            e_cores: vec![4, 5],
+            p_physical: 2,
+            e_physical: 2,
+            mumps_threads: 4,
+            blas_threads: 2,
+            affinity: vec![0, 1, 2, 3],
+        }
+    }
+
+    fn non_hybrid_plan() -> CpuPlan {
+        CpuPlan {
+            p_cores: Vec::new(),
+            e_cores: Vec::new(),
+            p_physical: 0,
+            e_physical: 0,
+            mumps_threads: 8,
+            blas_threads: 8,
+            affinity: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn resolve_run_config_mumps_uses_physical_cores_and_no_pinning() {
+        let run = resolve_run_config(Genie::Mumps, &test_options(), &hybrid_plan()).unwrap();
+        assert_eq!(run.nt, 4);
+        assert_eq!(run.mumps_nt, 4);
+        assert_eq!(run.affinity, None);
+        assert!(run.auto);
+
+        let run = resolve_run_config(Genie::Mumps, &test_options(), &non_hybrid_plan()).unwrap();
+        assert_eq!(run.nt, 8);
+        assert_eq!(run.mumps_nt, 8);
+        assert_eq!(run.affinity, None);
+    }
+
+    #[test]
+    fn resolve_run_config_faer_and_umfpack_use_p_cores() {
+        for genie in [Genie::Faer, Genie::Umfpack] {
+            let run = resolve_run_config(genie, &test_options(), &hybrid_plan()).unwrap();
+            assert_eq!(run.nt, 2);
+            assert_eq!(run.mumps_nt, 0);
+            #[cfg(target_os = "linux")]
+            assert_eq!(run.affinity, Some(vec![0, 1, 2, 3]));
+            #[cfg(not(target_os = "linux"))]
+            assert_eq!(run.affinity, None);
+
+            let run = resolve_run_config(genie, &test_options(), &non_hybrid_plan()).unwrap();
+            assert_eq!(run.nt, 8);
+            assert_eq!(run.mumps_nt, 0);
+            assert_eq!(run.affinity, None);
+        }
+    }
+
+    #[test]
+    fn resolve_run_config_cli_flags_override_the_plan() {
+        let mut opt = test_options();
+        opt.nt = 6;
+        opt.mumps_nt = 3;
+        let run = resolve_run_config(Genie::Mumps, &opt, &hybrid_plan()).unwrap();
+        assert_eq!(run.nt, 6);
+        assert_eq!(run.mumps_nt, 3);
+
+        let mut opt = test_options();
+        opt.nt = 6;
+        let run = resolve_run_config(Genie::Mumps, &opt, &hybrid_plan()).unwrap();
+        assert_eq!(run.nt, 6);
+        assert_eq!(run.mumps_nt, 4);
+
+        let mut opt = test_options();
+        opt.mumps_nt = 3;
+        let run = resolve_run_config(Genie::Mumps, &opt, &hybrid_plan()).unwrap();
+        assert_eq!(run.nt, 4);
+        assert_eq!(run.mumps_nt, 3);
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn resolve_run_config_affinity_cli_overrides() {
+        let mut opt = test_options();
+        opt.cpu_affinity = Some("0-1".to_string());
+        let run = resolve_run_config(Genie::Faer, &opt, &hybrid_plan()).unwrap();
+        assert_eq!(run.affinity, Some(vec![0, 1]));
+
+        let run = resolve_run_config(Genie::Mumps, &opt, &hybrid_plan()).unwrap();
+        assert_eq!(run.affinity, Some(vec![0, 1]));
+
+        opt.no_auto_config = true;
+        let run = resolve_run_config(Genie::Faer, &opt, &hybrid_plan()).unwrap();
+        assert_eq!(run.affinity, Some(vec![0, 1]));
+        assert!(!run.auto);
+
+        opt.no_auto_config = false;
+        opt.cpu_affinity = Some("none".to_string());
+        let run = resolve_run_config(Genie::Faer, &opt, &hybrid_plan()).unwrap();
+        assert_eq!(run.affinity, None);
+    }
+
+    #[test]
+    #[cfg(not(target_os = "linux"))]
+    fn resolve_run_config_rejects_an_affinity_list_off_linux() {
+        let mut opt = test_options();
+        opt.cpu_affinity = Some("0-1".to_string());
+        let error = resolve_run_config(Genie::Faer, &opt, &hybrid_plan()).unwrap_err();
+        assert!(error.contains("only supported on Linux"));
+
+        // `none` is accepted everywhere
+        opt.cpu_affinity = Some("none".to_string());
+        let run = resolve_run_config(Genie::Faer, &opt, &hybrid_plan()).unwrap();
+        assert_eq!(run.affinity, None);
+    }
+
+    #[test]
+    fn resolve_run_config_no_auto_keeps_library_defaults() {
+        let mut opt = test_options();
+        opt.no_auto_config = true;
+        let run = resolve_run_config(Genie::Faer, &opt, &hybrid_plan()).unwrap();
+        assert_eq!(run.nt, 0);
+        assert_eq!(run.mumps_nt, 0);
+        assert_eq!(run.affinity, None);
+        assert!(!run.auto);
+
+        opt.nt = 2;
+        opt.mumps_nt = 1;
+        let run = resolve_run_config(Genie::Mumps, &opt, &hybrid_plan()).unwrap();
+        assert_eq!(run.nt, 2);
+        assert_eq!(run.mumps_nt, 1);
+        assert!(!run.auto);
+    }
+
+    #[test]
+    fn resolve_run_config_information_skips_auto() {
+        let mut opt = test_options();
+        opt.information = true;
+        let run = resolve_run_config(Genie::Faer, &opt, &hybrid_plan()).unwrap();
+        assert_eq!(run.nt, 0);
+        assert_eq!(run.mumps_nt, 0);
+        assert_eq!(run.affinity, None);
+        assert!(!run.auto);
+    }
+
+    #[test]
+    fn resolve_run_config_rejects_invalid_affinity() {
+        for value in ["", "0-", "x", "-1", ","] {
+            let mut opt = test_options();
+            opt.cpu_affinity = Some(value.to_string());
+            assert!(
+                resolve_run_config(Genie::Faer, &opt, &hybrid_plan()).is_err(),
+                "expected an error for {value:?}"
+            );
+        }
+    }
 
     #[test]
     fn parse_faer_method_validates_inputs() {

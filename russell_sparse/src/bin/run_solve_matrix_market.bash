@@ -257,10 +257,7 @@ while IFS='=' read -r key value; do
     esac
 done <<<"$PLAN"
 
-PIN_SINGLE=()
-if [[ -n "$CPU_AFFINITY" && "$CPU_AFFINITY" != "none" ]] && command -v taskset >/dev/null 2>&1; then
-    PIN_SINGLE=(taskset -c "$CPU_AFFINITY")
-else
+if [[ "$(uname -s)" != "Linux" ]]; then
     CPU_AFFINITY="none"
 fi
 
@@ -352,7 +349,7 @@ run_matrix() {
         echo "=== $CURRENT_MAT/$TOTAL_MATS $name$spd_label ===" >&2
     fi
     # A failed solve is a result, not a script failure; the JSON records it.
-    if ! "${PIN[@]}" cargo run -q --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
+    if ! cargo run -q --release --manifest-path "$RUSSELL_DIR/Cargo.toml" \
         --package russell_sparse "${FEATURE_ARGS[@]}" \
         --bin solve_matrix_market -- "${run_args[@]}" "$file" >"$out"; then
         # Do not leave an empty result behind when the program failed before writing JSON.
@@ -369,10 +366,8 @@ time {
         solver_key=$(printf '%s' "$SOLVER" | tr '[:upper:]' '[:lower:]')
         if [[ "$solver_key" == "mumps" ]]; then
             ARGS+=(--nt "$MUMPS_THREADS" --mumps-nt "$MUMPS_THREADS")
-            PIN=()
         else
             ARGS+=(--nt "$BLAS_THREADS")
-            PIN=("${PIN_SINGLE[@]}")
         fi
         if ((INFORMATION)); then
             ARGS+=(--information)

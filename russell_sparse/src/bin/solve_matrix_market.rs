@@ -1,9 +1,6 @@
-use russell_lab::{
-    ComplexVector, CpuPlan, Stopwatch, StrError, Vector, cpx, format_cpu_list, get_cpu_plan_with_overrides, parse_cpu_list, set_cpu_affinity,
-    set_num_threads,
-};
-use russell_sparse::is_memory_error;
+use russell_lab::{ComplexVector, Stopwatch, StrError, Vector, cpx, format_cpu_list, parse_cpu_list, set_cpu_affinity, set_num_threads};
 use russell_sparse::prelude::*;
+use russell_sparse::{SparseCpuPlan, get_sparse_cpu_plan, is_memory_error};
 use std::io::Write;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
@@ -124,8 +121,8 @@ struct RunConfig {
 ///
 /// The precedence is: explicit CLI flag, environment override, auto-detected plan.
 /// The environment overrides have already been applied to `plan` by
-/// [`get_cpu_plan_with_overrides`].
-fn resolve_run_config(genie: Genie, opt: &Options, plan: &CpuPlan) -> Result<RunConfig, String> {
+/// [`get_sparse_cpu_plan`].
+fn resolve_run_config(genie: Genie, opt: &Options, plan: &SparseCpuPlan) -> Result<RunConfig, String> {
     let auto = !opt.information && !opt.no_auto_config;
     let affinity = resolve_affinity(genie, opt, plan, auto)?;
     let nt = if opt.nt > 0 {
@@ -154,7 +151,7 @@ fn resolve_run_config(genie: Genie, opt: &Options, plan: &CpuPlan) -> Result<Run
 }
 
 /// Resolves the affinity list, with an explicit CLI value taking precedence
-fn resolve_affinity(genie: Genie, opt: &Options, plan: &CpuPlan, auto: bool) -> Result<Option<Vec<usize>>, String> {
+fn resolve_affinity(genie: Genie, opt: &Options, plan: &SparseCpuPlan, auto: bool) -> Result<Option<Vec<usize>>, String> {
     if let Some(value) = opt.cpu_affinity.as_deref() {
         let value = value.trim();
         if value.eq_ignore_ascii_case("none") {
@@ -192,9 +189,9 @@ fn main() -> Result<(), String> {
 
     // resolve the hardware plan before any solver or BLAS thread pool starts
     let plan = if opt.information || opt.no_auto_config {
-        CpuPlan::default()
+        SparseCpuPlan::default()
     } else {
-        get_cpu_plan_with_overrides()
+        get_sparse_cpu_plan()
     };
     let run = resolve_run_config(genie, &opt, &plan)?;
     if opt.verbose {
@@ -610,7 +607,7 @@ fn get_bfwb62_correct_x() -> Vector {
 
 #[cfg(test)]
 mod tests {
-    use super::{CpuPlan, Options, finish_on_memory_error, finish_on_solver_error, mark_time_guard, parse_faer_method, resolve_run_config};
+    use super::{Options, SparseCpuPlan, finish_on_memory_error, finish_on_solver_error, mark_time_guard, parse_faer_method, resolve_run_config};
     use russell_sparse::prelude::*;
 
     fn test_options() -> Options {
@@ -639,8 +636,8 @@ mod tests {
         }
     }
 
-    fn hybrid_plan() -> CpuPlan {
-        CpuPlan {
+    fn hybrid_plan() -> SparseCpuPlan {
+        SparseCpuPlan {
             p_cores: vec![0, 1, 2, 3],
             e_cores: vec![4, 5],
             p_physical: 2,
@@ -651,8 +648,8 @@ mod tests {
         }
     }
 
-    fn non_hybrid_plan() -> CpuPlan {
-        CpuPlan {
+    fn non_hybrid_plan() -> SparseCpuPlan {
+        SparseCpuPlan {
             p_cores: Vec::new(),
             e_cores: Vec::new(),
             p_physical: 0,

@@ -2,7 +2,7 @@
 //!
 //! Usage: `cargo run --release --bin os_info [--cpu-plan] [output_file]`
 //!
-//! With `--cpu-plan`, the CPU topology and the benchmark thread plan are printed
+//! With `--cpu-plan`, the CPU topology and the thread plan are printed
 //! as shell assignments instead of the report. When `output_file` is omitted, the
 //! output is printed to stdout.
 
@@ -72,12 +72,12 @@ mod tests {
     }
 
     #[test]
-    fn cpu_plan_contains_the_benchmark_keys() {
+    fn cpu_plan_contains_the_shell_keys() {
         let plan = build_report(true);
         assert!(plan.contains("P_CORES="));
         assert!(plan.contains("E_CORES="));
-        assert!(plan.contains("MUMPS_THREADS="));
-        assert!(plan.contains("BLAS_THREADS="));
+        assert!(plan.contains("PHYSICAL_THREADS="));
+        assert!(plan.contains("P_THREADS="));
         assert!(plan.contains("CPU_AFFINITY="));
     }
 }

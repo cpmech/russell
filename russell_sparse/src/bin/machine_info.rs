@@ -40,7 +40,7 @@ fn main() -> Result<(), String> {
 /// Builds the complete report or the shell-friendly CPU plan
 fn build_report(cpu_plan: bool) -> String {
     if cpu_plan {
-        return russell_lab::get_cpu_plan_with_overrides().to_shell();
+        return russell_sparse::get_sparse_cpu_plan().to_shell();
     }
     format!(
         "Information about the OS:\n{}\n\nInformation about the libraries:\n{}\n",

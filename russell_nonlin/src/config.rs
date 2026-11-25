@@ -1,4 +1,4 @@
-use super::{Method, RdiffType, SoderlindClass};
+use super::{Method, SoderlindClass};
 use crate::StrError;
 use russell_sparse::{Genie, LinSolParams};
 
@@ -40,6 +40,9 @@ pub struct Config {
     /// Indicates whether to record the iterations residuals or not (in statistics)
     pub(crate) record_iterations_residuals: bool,
 
+    /// Indicates whether to record per-attempt step summaries in statistics
+    pub(crate) record_step_summary: bool,
+
     /// Enables the precise stop using a component of the u vector (if any)
     pub(crate) enable_precise_stop_u_comp: bool,
 
@@ -50,6 +53,9 @@ pub struct Config {
 
     /// Max number of steps
     pub(crate) n_step_max: usize,
+
+    /// Minimum stepsize allowed before aborting with `Status::SmallStepsize`
+    pub(crate) h_min: f64,
 
     /// Maximum stepsize that the automatic stepsize control may reach (infinite when unset)
     ///
@@ -171,9 +177,6 @@ pub struct Config {
     /// Beta coefficient used with the NR stepsize control
     pub(crate) nr_control_beta: f64,
 
-    /// Method for the tangent vector stepsize control
-    pub(crate) tg_control_rdiff_type: RdiffType,
-
     /// Tolerance for the tangent vector stepsize control
     pub(crate) tg_control_tol: f64,
 
@@ -251,10 +254,12 @@ impl Config {
             verbose_stats: false,
             hide_timings: false,
             record_iterations_residuals: false,
+            record_step_summary: false,
             enable_precise_stop_u_comp: false,
             // automatic stepsize
             m_failure: 0.5,
             n_step_max: 100_000,
+            h_min: CONFIG_H_MIN,
             h_max: f64::INFINITY,
             n_cont_failure_max: 5,
             n_cont_rejection_max: 5,
@@ -284,8 +289,7 @@ impl Config {
             tg_control_rho_for_tiny_rdiff: 1.2,
             nr_control_n_opt: 3,
             nr_control_beta: 0.5,
-            tg_control_rdiff_type: RdiffType::Ave,
-            tg_control_tol: 0.5,
+            tg_control_tol: 0.05,
             tg_control_beta1: b1,
             tg_control_beta2: b2,
             tg_control_beta3: b3,
@@ -443,6 +447,19 @@ impl Config {
         self
     }
 
+    /// Returns the record_step_summary flag
+    pub fn get_record_step_summary(&self) -> bool {
+        self.record_step_summary
+    }
+
+    /// Sets whether to record per-attempt step summaries in [`Stats::step_summaries`](crate::Stats::step_summaries)
+    ///
+    /// Default value: false
+    pub fn set_record_step_summary(&mut self, flag: bool) -> &mut Self {
+        self.record_step_summary = flag;
+        self
+    }
+
     /// Returns the enable_precise_stop_u_comp flag
     pub fn get_enable_precise_stop_u_comp(&self) -> bool {
         self.enable_precise_stop_u_comp
@@ -489,6 +506,23 @@ impl Config {
     /// Default value: 100_000
     pub fn set_n_step_max(&mut self, value: usize) -> &mut Self {
         self.n_step_max = value;
+        self
+    }
+
+    /// Returns the minimum allowed stepsize before aborting with `Status::SmallStepsize`
+    pub fn get_h_min(&self) -> f64 {
+        self.h_min
+    }
+
+    /// Sets the minimum allowed stepsize before aborting with `Status::SmallStepsize`
+    ///
+    /// ```text
+    /// h_min > 0 and finite
+    /// ```
+    ///
+    /// Default value: [CONFIG_H_MIN] (`1e-10`)
+    pub fn set_h_min(&mut self, value: f64) -> &mut Self {
+        self.h_min = value;
         self
     }
 
@@ -892,6 +926,8 @@ impl Config {
 
     /// Sets the rho multiplier for when the absolute value of the relative difference is "tiny" in the tangent vector stepsize control
     ///
+    /// Also acts as the upper bound on `rho` so step growth stays monotonically non-increasing across `tg_control_rdiff_min`.
+    ///
     /// Default value: 1.2
     pub fn set_tg_control_rho_for_tiny_rdiff(&mut self, value: f64) -> &mut Self {
         self.tg_control_rho_for_tiny_rdiff = value;
@@ -924,19 +960,6 @@ impl Config {
         self
     }
 
-    /// Returns the method for the tangent vector stepsize control
-    pub fn get_tg_control_rdiff_type(&self) -> RdiffType {
-        self.tg_control_rdiff_type
-    }
-
-    /// Sets the method for the tangent vector stepsize control
-    ///
-    /// Default value: [RdiffType::Ave]
-    pub fn set_tg_control_rdiff_type(&mut self, value: RdiffType) -> &mut Self {
-        self.tg_control_rdiff_type = value;
-        self
-    }
-
     /// Returns the tolerance for the tangent vector stepsize control
     pub fn get_tg_control_tol(&self) -> f64 {
         self.tg_control_tol
@@ -944,7 +967,9 @@ impl Config {
 
     /// Sets the tolerance for the tangent vector stepsize control
     ///
-    /// Default value: 0.5
+    /// In arclength mode, this bounds the unit-tangent chord norm `‖t₁ − t₀‖₂` in radians (`0.05` rad ≈ 2.9°).
+    ///
+    /// Default value: 0.05
     pub fn set_tg_control_tol(&mut self, value: f64) -> &mut Self {
         self.tg_control_tol = value;
         self
@@ -1092,7 +1117,10 @@ impl Config {
         if self.n_step_max < 1 {
             return Err("requirement: n_step_max ≥ 1");
         }
-        if self.h_max <= 0.0 {
+        if !(self.h_min > 0.0) || !self.h_min.is_finite() {
+            return Err("requirement: h_min > 0 and finite");
+        }
+        if !(self.h_max > 0.0) {
             return Err("requirement: h_max > 0");
         }
         if self.n_cont_failure_max < 1 {
@@ -1149,8 +1177,8 @@ impl Config {
 
 #[cfg(test)]
 mod tests {
-    use super::Config;
-    use crate::{Method, RdiffType, SoderlindClass};
+    use super::{CONFIG_H_MIN, Config};
+    use crate::{Method, SoderlindClass};
     use russell_sparse::{Genie, LinSolParams};
 
     #[test]
@@ -1176,11 +1204,13 @@ mod tests {
         assert_eq!(config.get_verbose_stats(), false);
         assert_eq!(config.get_hide_timings(), false);
         assert_eq!(config.get_record_iterations_residuals(), false);
+        assert_eq!(config.get_record_step_summary(), false);
         assert_eq!(config.get_enable_precise_stop_u_comp(), false);
 
         // automatic stepsize
         assert_eq!(config.get_m_failure(), 0.5);
         assert_eq!(config.get_n_step_max(), 100_000);
+        assert_eq!(config.get_h_min(), CONFIG_H_MIN);
         assert_eq!(config.get_h_max(), f64::INFINITY);
         assert_eq!(config.get_n_cont_failure_max(), 5);
         assert_eq!(config.get_n_cont_rejection_max(), 5);
@@ -1216,8 +1246,7 @@ mod tests {
         assert_eq!(config.get_tg_control_rho_for_tiny_rdiff(), 1.2);
         assert_eq!(config.get_nr_control_n_opt(), 3);
         assert_eq!(config.get_nr_control_beta(), 0.5);
-        assert_eq!(config.get_tg_control_rdiff_type(), RdiffType::Ave);
-        assert_eq!(config.get_tg_control_tol(), 0.5);
+        assert_eq!(config.get_tg_control_tol(), 0.05);
         assert_eq!(config.get_tg_control_beta1(), b1);
         assert_eq!(config.get_tg_control_beta2(), b2);
         assert_eq!(config.get_tg_control_beta3(), b3);
@@ -1271,6 +1300,11 @@ mod tests {
         config.set_record_iterations_residuals(false);
         assert_eq!(config.get_record_iterations_residuals(), false);
 
+        config.set_record_step_summary(true);
+        assert_eq!(config.get_record_step_summary(), true);
+        config.set_record_step_summary(false);
+        assert_eq!(config.get_record_step_summary(), false);
+
         config.set_enable_precise_stop_u_comp(true);
         assert_eq!(config.get_enable_precise_stop_u_comp(), true);
         config.set_enable_precise_stop_u_comp(false);
@@ -1282,6 +1316,9 @@ mod tests {
 
         config.set_n_step_max(500);
         assert_eq!(config.get_n_step_max(), 500);
+
+        config.set_h_min(1e-6);
+        assert_eq!(config.get_h_min(), 1e-6);
 
         config.set_h_max(0.02);
         assert_eq!(config.get_h_max(), 0.02);
@@ -1384,9 +1421,6 @@ mod tests {
         config.set_nr_control_beta(0.75);
         assert_eq!(config.get_nr_control_beta(), 0.75);
 
-        config.set_tg_control_rdiff_type(RdiffType::Max);
-        assert_eq!(config.get_tg_control_rdiff_type(), RdiffType::Max);
-
         config.set_tg_control_tol(0.25);
         assert_eq!(config.get_tg_control_tol(), 0.25);
 
@@ -1487,7 +1521,18 @@ mod tests {
         config.n_step_max = 0;
         assert_eq!(config.validate().err(), Some("requirement: n_step_max ≥ 1"));
         config.n_step_max = 10;
+        config.h_min = 0.0;
+        assert_eq!(config.validate().err(), Some("requirement: h_min > 0 and finite"));
+        config.h_min = -1.0;
+        assert_eq!(config.validate().err(), Some("requirement: h_min > 0 and finite"));
+        config.h_min = f64::NAN;
+        assert_eq!(config.validate().err(), Some("requirement: h_min > 0 and finite"));
+        config.h_min = f64::INFINITY;
+        assert_eq!(config.validate().err(), Some("requirement: h_min > 0 and finite"));
+        config.h_min = CONFIG_H_MIN;
         config.h_max = 0.0;
+        assert_eq!(config.validate().err(), Some("requirement: h_max > 0"));
+        config.h_max = f64::NAN;
         assert_eq!(config.validate().err(), Some("requirement: h_max > 0"));
         config.h_max = f64::INFINITY;
         config.n_cont_failure_max = 0;

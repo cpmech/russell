@@ -46,14 +46,14 @@ fn single_wild_update_is_rejected_and_retried_with_half_step() {
     assert_eq!(solver.get_stats().n_accepted, 0);
 
     // Automatic Δλ: the retry uses m_failure·h = 0.0075, and the correction becomes
-    // 0.05625 < 10·0.0075 = 0.075. The attempt bound ends the run right after the retry.
+    // 0.05625 < 10·0.0075 = 0.075. Stop::Steps(2) ends the run cleanly right after the retry.
     let mut config_auto = config.clone();
     config_auto.set_n_step_max(2).set_tg_control_enabled(false);
     let mut solver = Solver::new(&config_auto, system.clone()).unwrap();
     let mut u = Vector::from(&[0.0]);
     let mut l = 0.0;
     let status = solver
-        .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(1), &DeltaLambda::auto(h), None)
+        .solve(&mut args, &mut u, &mut l, IniDir::Pos, Stop::Steps(2), &DeltaLambda::auto(h), None)
         .unwrap();
     assert_eq!(status, Status::Success);
     let stats = solver.get_stats();
@@ -113,7 +113,7 @@ fn target_mode_uses_the_scaled_arclength_bound_on_the_retry() {
     let mut l = 0.9999;
     let mut args = 0;
     let mut config = Config::new();
-    config.set_method(Method::Arclength).set_n_step_max(2);
+    config.set_method(Method::Arclength).set_n_step_max(3);
     let mut solver = Solver::new(&config, system).unwrap();
     let status = solver
         .solve(

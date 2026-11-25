@@ -1,7 +1,41 @@
-use super::{Config, Method};
+use super::{Config, Method, Status};
 use russell_lab::{Stopwatch, format_nanoseconds};
 use russell_stat::{Histogram, Statistics};
 use std::fmt::{self, Write};
+
+/// Records summary metrics for a single step attempt
+#[derive(Clone, Debug)]
+pub struct StepSummary {
+    /// 1-based step attempt index (`Stats::n_steps`)
+    pub step_index: usize,
+
+    /// Whether this attempt was accepted
+    pub accepted: bool,
+
+    /// Outcome status of this attempt
+    pub status: Status,
+
+    /// Stepsize used on this attempt
+    pub h_used: f64,
+
+    /// Next stepsize after adaptation or cutback
+    pub h_next: f64,
+
+    /// Tangent or secant relative change `rdiff` (`0.0` on failed attempts)
+    pub rdiff: f64,
+
+    /// Number of Newton-Raphson iterations evaluated in this attempt
+    pub n_iteration: usize,
+
+    /// Maximum residual norm at iteration 0 (`NaN` if the predictor failed before iteration 0)
+    pub residual_0: f64,
+
+    /// Maximum residual norm at the last evaluated iteration (`NaN` if none)
+    pub residual_last: f64,
+
+    /// Continuation parameter `λ` after the attempt
+    pub lambda: f64,
+}
 
 /// Holds statistics and benchmarking data
 #[derive(Clone, Debug)]
@@ -16,6 +50,9 @@ pub struct Stats {
     ///
     /// Will populate `iterations_errors` with the iteration residuals
     record_iterations_residuals: bool,
+
+    /// Indicates whether to record per-attempt step summaries or not
+    record_step_summary: bool,
 
     /// Indicates automatic stepsize adjustment
     auto: bool,
@@ -59,8 +96,59 @@ pub struct Stats {
     /// `(nstep, n_iteration_in_step)`
     pub iterations_residuals: Option<Vec<Vec<f64>>>,
 
-    /// Last accepted/suggested step size h_new
+    /// Last accepted stepsize h_used
     pub h_accepted: f64,
+
+    /// Next suggested stepsize h_next
+    pub h_next: f64,
+
+    /// Number of step attempts failing with `Status::LargeDelta`
+    pub n_reject_large_delta: usize,
+
+    /// Number of step attempts failing with `Status::ContinuedResidualDivergence`
+    pub n_reject_res_div: usize,
+
+    /// Number of step attempts failing with `Status::ContinuedDeltaDivergence`
+    pub n_reject_delta_div: usize,
+
+    /// Number of step attempts failing with `Status::ReachedMaxIterations`
+    pub n_reject_max_iter: usize,
+
+    /// Number of step attempts failing with `Status::BorderingSmallDenominator`
+    pub n_reject_small_denom: usize,
+
+    /// Number of step attempts failing with `Status::SecondaryUpdateError`
+    pub n_reject_secondary: usize,
+
+    /// Number of step attempts failing with `Status::UnmetStopCriterion`
+    pub n_reject_unmet_stop: usize,
+
+    /// Number of step attempts failing with any other failure status
+    pub n_reject_other: usize,
+
+    /// Most recent rejection or failure status
+    pub last_rejection_status: Option<Status>,
+
+    /// Stepsize used on the most recent step attempt
+    pub step_h_used: f64,
+
+    /// Next stepsize computed after the most recent step attempt
+    pub step_h_next: f64,
+
+    /// Relative tangent/secant difference on the most recent step attempt
+    pub step_rdiff: f64,
+
+    /// Number of iterations on the most recent step attempt
+    pub step_n_iteration: usize,
+
+    /// Initial residual norm on the most recent step attempt
+    pub step_residual_0: f64,
+
+    /// Final residual norm on the most recent step attempt
+    pub step_residual_last: f64,
+
+    /// Optional per-attempt summary history (populated when `Config::set_record_step_summary(true)` is set)
+    pub step_summaries: Option<Vec<StepSummary>>,
 
     /// Max nanoseconds spent on steps
     pub nanos_step_max: u128,
@@ -100,6 +188,7 @@ impl Stats {
             method: config.method,
             hide_timings: config.hide_timings,
             record_iterations_residuals: config.record_iterations_residuals,
+            record_step_summary: config.record_step_summary,
             auto: false,
             num_jacobian: false,
             temporary_iterations_residuals: Vec::new(),
@@ -113,6 +202,23 @@ impl Stats {
             n_iteration_total: 0,
             iterations_residuals: None,
             h_accepted: 0.0,
+            h_next: 0.0,
+            n_reject_large_delta: 0,
+            n_reject_res_div: 0,
+            n_reject_delta_div: 0,
+            n_reject_max_iter: 0,
+            n_reject_small_denom: 0,
+            n_reject_secondary: 0,
+            n_reject_unmet_stop: 0,
+            n_reject_other: 0,
+            last_rejection_status: None,
+            step_h_used: 0.0,
+            step_h_next: 0.0,
+            step_rdiff: 0.0,
+            step_n_iteration: 0,
+            step_residual_0: 0.0,
+            step_residual_last: 0.0,
+            step_summaries: None,
             nanos_step_max: 0,
             nanos_jacobian_max: 0,
             nanos_factor_max: 0,
@@ -201,6 +307,23 @@ impl Stats {
         self.n_iteration_total = 0;
         self.iterations_residuals = None;
         self.h_accepted = 0.0;
+        self.h_next = 0.0;
+        self.n_reject_large_delta = 0;
+        self.n_reject_res_div = 0;
+        self.n_reject_delta_div = 0;
+        self.n_reject_max_iter = 0;
+        self.n_reject_small_denom = 0;
+        self.n_reject_secondary = 0;
+        self.n_reject_unmet_stop = 0;
+        self.n_reject_other = 0;
+        self.last_rejection_status = None;
+        self.step_h_used = 0.0;
+        self.step_h_next = 0.0;
+        self.step_rdiff = 0.0;
+        self.step_n_iteration = 0;
+        self.step_residual_0 = 0.0;
+        self.step_residual_last = 0.0;
+        self.step_summaries = None;
         self.nanos_step_max = 0;
         self.nanos_jacobian_max = 0;
         self.nanos_factor_max = 0;
@@ -233,6 +356,68 @@ impl Stats {
                     residuals.push(self.temporary_iterations_residuals.clone());
                 }
             }
+        }
+    }
+
+    /// Records a failed or rejected step status into the per-status counters
+    pub(crate) fn record_rejection_status(&mut self, status: &Status) {
+        match status {
+            Status::LargeDelta => self.n_reject_large_delta += 1,
+            Status::ContinuedResidualDivergence => self.n_reject_res_div += 1,
+            Status::ContinuedDeltaDivergence => self.n_reject_delta_div += 1,
+            Status::ReachedMaxIterations => self.n_reject_max_iter += 1,
+            Status::BorderingSmallDenominator => self.n_reject_small_denom += 1,
+            Status::SecondaryUpdateError(_) => self.n_reject_secondary += 1,
+            Status::UnmetStopCriterion => self.n_reject_unmet_stop += 1,
+            _ => self.n_reject_other += 1,
+        }
+        self.last_rejection_status = Some(status.clone());
+    }
+
+    /// Records the last-step telemetry scalars and optionally appends a [`StepSummary`]
+    pub(crate) fn record_step_attempt(&mut self, summary: StepSummary) {
+        self.step_h_used = summary.h_used;
+        self.step_h_next = summary.h_next;
+        self.step_rdiff = summary.rdiff;
+        self.step_n_iteration = summary.n_iteration;
+        self.step_residual_0 = summary.residual_0;
+        self.step_residual_last = summary.residual_last;
+        if self.record_step_summary {
+            self.step_summaries.get_or_insert_with(Vec::new).push(summary);
+        }
+    }
+
+    /// Returns a compact summary of step rejections by status
+    pub fn rejection_summary(&self) -> String {
+        let mut parts = Vec::new();
+        if self.n_reject_large_delta > 0 {
+            parts.push(format!("LargeDelta={}", self.n_reject_large_delta));
+        }
+        if self.n_reject_res_div > 0 {
+            parts.push(format!("ResDiv={}", self.n_reject_res_div));
+        }
+        if self.n_reject_delta_div > 0 {
+            parts.push(format!("DeltaDiv={}", self.n_reject_delta_div));
+        }
+        if self.n_reject_max_iter > 0 {
+            parts.push(format!("MaxIter={}", self.n_reject_max_iter));
+        }
+        if self.n_reject_small_denom > 0 {
+            parts.push(format!("SmallDenom={}", self.n_reject_small_denom));
+        }
+        if self.n_reject_secondary > 0 {
+            parts.push(format!("Secondary={}", self.n_reject_secondary));
+        }
+        if self.n_reject_unmet_stop > 0 {
+            parts.push(format!("UnmetStop={}", self.n_reject_unmet_stop));
+        }
+        if self.n_reject_other > 0 {
+            parts.push(format!("Other={}", self.n_reject_other));
+        }
+        let breakdown = if parts.is_empty() { "none".to_string() } else { parts.join(", ") };
+        match &self.last_rejection_status {
+            Some(status) => format!("n_rejected={}, [{}], last={:?}", self.n_rejected, breakdown, status),
+            None => format!("n_rejected={}, [{}]", self.n_rejected, breakdown),
         }
     }
 
@@ -374,8 +559,8 @@ impl fmt::Display for Stats {
 
 #[cfg(test)]
 mod tests {
-    use super::Stats;
-    use crate::{Config, Method};
+    use super::{Stats, StepSummary};
+    use crate::{Config, Method, Status};
     use russell_lab::array_approx_eq;
 
     #[test]
@@ -568,5 +753,66 @@ mod tests {
              Number of iterations (total)     = 0\n\
              Last accepted/suggested stepsize = 0"
         );
+    }
+
+    #[test]
+    fn rejection_telemetry_and_step_summary_work() {
+        let mut config = Config::new();
+        config.set_record_step_summary(true);
+        let mut stats = Stats::new(&config);
+        assert_eq!(stats.rejection_summary(), "n_rejected=0, [none]");
+
+        stats.n_rejected = 8;
+        stats.record_rejection_status(&Status::LargeDelta);
+        stats.record_rejection_status(&Status::ContinuedResidualDivergence);
+        stats.record_rejection_status(&Status::ContinuedDeltaDivergence);
+        stats.record_rejection_status(&Status::ReachedMaxIterations);
+        stats.record_rejection_status(&Status::BorderingSmallDenominator);
+        stats.record_rejection_status(&Status::SecondaryUpdateError("sup"));
+        stats.record_rejection_status(&Status::UnmetStopCriterion);
+        stats.record_rejection_status(&Status::NanOrInfResidual);
+
+        assert_eq!(stats.n_reject_large_delta, 1);
+        assert_eq!(stats.n_reject_res_div, 1);
+        assert_eq!(stats.n_reject_delta_div, 1);
+        assert_eq!(stats.n_reject_max_iter, 1);
+        assert_eq!(stats.n_reject_small_denom, 1);
+        assert_eq!(stats.n_reject_secondary, 1);
+        assert_eq!(stats.n_reject_unmet_stop, 1);
+        assert_eq!(stats.n_reject_other, 1);
+        assert_eq!(stats.last_rejection_status, Some(Status::NanOrInfResidual));
+        assert_eq!(
+            stats.rejection_summary(),
+            "n_rejected=8, [LargeDelta=1, ResDiv=1, DeltaDiv=1, MaxIter=1, SmallDenom=1, Secondary=1, UnmetStop=1, Other=1], last=NanOrInfResidual"
+        );
+
+        stats.record_step_attempt(StepSummary {
+            step_index: 1,
+            accepted: true,
+            status: Status::Success,
+            h_used: 0.25,
+            h_next: 0.3,
+            rdiff: 0.1,
+            n_iteration: 3,
+            residual_0: 1e-2,
+            residual_last: 1e-12,
+            lambda: 0.5,
+        });
+        assert_eq!(stats.step_h_used, 0.25);
+        assert_eq!(stats.step_h_next, 0.3);
+        assert_eq!(stats.step_rdiff, 0.1);
+        assert_eq!(stats.step_n_iteration, 3);
+        assert_eq!(stats.step_residual_0, 1e-2);
+        assert_eq!(stats.step_residual_last, 1e-12);
+        let summaries = stats.step_summaries.as_ref().unwrap();
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0].step_index, 1);
+        assert_eq!(summaries[0].lambda, 0.5);
+
+        stats.reset(true);
+        assert_eq!(stats.n_reject_large_delta, 0);
+        assert_eq!(stats.last_rejection_status, None);
+        assert!(stats.step_summaries.is_none());
+        assert_eq!(stats.h_next, 0.0);
     }
 }

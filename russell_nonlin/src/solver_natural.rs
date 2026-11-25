@@ -40,8 +40,11 @@ pub struct SolverNatural<'a, A> {
     /// Linear solver
     ls: LinSolver<'a>,
 
-    /// Previous u variable for the curvature estimation
+    /// Previous u variable for secant direction estimation
     u_prev: Vector,
+
+    /// Previous λ variable for secant direction estimation
+    l_prev: f64,
 }
 
 impl<'a, A> SolverNatural<'a, A> {
@@ -75,6 +78,7 @@ impl<'a, A> SolverNatural<'a, A> {
             mdu: Vector::new(ndim),
             ls: LinSolver::new(genie)?,
             u_prev: Vector::new(ndim),
+            l_prev: 0.0,
         })
     }
 
@@ -170,48 +174,43 @@ impl<'a, A> SolverNatural<'a, A> {
         Ok(Status::Success)
     }
 
-    /// Calculates the normalized change between the secant vectors passing through the previous, current, and updated points
+    /// Calculates the normalized unit-secant chord change in `(u, λ)` space
     ///
-    /// Returns `gamma` where:
-    ///
-    /// * `gamma` -- is the ratio between the norm of the difference between the secant vectors
-    ///   and the norm of the current secant vector.
-    ///
-    /// The secant vectors are:
+    /// Computes the Euclidean norm of the difference between consecutive unit secant directions:
     ///
     /// ```text
-    /// previous: s₋₁ = x₀ - x₋₁
-    /// current:  s₀  = x₁ - x₀
+    /// s₋₁ = (u₀ - u₋₁, λ₀ - λ₋₁),   s₀ = (u₁ - u₀, λ₁ - λ₀)
+    ///
+    /// ‖ s₀ / ‖s₀‖₂ - s₋₁ / ‖s₋₁‖₂ ‖₂ / tg_control_tol
     /// ```
-    ///
-    /// Thus:
-    ///
-    /// ```text
-    ///     ‖ s₀ - s₋₁ ‖∞   ‖ (x₁ - x₀) - (x₀ - x₋₁) ‖∞   ‖ x₁ - 2x₀ + x₋₁ ‖∞
-    /// γ = ————————————— = ——————————————————————————— = ———————————————————
-    ///        ‖ s₀ ‖∞              ‖ x₁ - x₀ ‖               ‖ x₁ - x₀ ‖∞
-    /// ```
-    ///
-    /// Note that `(u, l)` corresponds to the initial values `x₀ = (u₀, λ₀)`
-    /// and `work` corresponds to the updated values `x₁ = (u₁, λ₁)`.
-    fn calculate_rerr(&mut self, work: &mut Workspace, u: &Vector) -> f64 {
-        if work.stats.n_accepted > 1 {
-            let ndim = self.system.ndim;
-            let mut max_ratio = 0.0;
-            for i in 0..ndim {
-                let den = f64::abs(work.u[i] - u[i]); // u₁ - u₀
-                if den > CONFIG_H_MIN {
-                    let num = f64::abs(work.u[i] - 2.0 * u[i] + self.u_prev[i]); // u₁ - 2u₀ + u₋₁
-                    let ratio = num / den;
-                    if ratio > max_ratio {
-                        max_ratio = ratio;
-                    }
-                }
-            }
-            max_ratio / self.config.tg_control_tol
-        } else {
-            0.0
+    fn calculate_rerr(&self, work: &Workspace, u: &Vector, l: f64) -> f64 {
+        if work.stats.n_accepted <= 1 {
+            return 0.0;
         }
+        let ndim = self.system.ndim;
+        let mut n0_sq = (l - self.l_prev) * (l - self.l_prev);
+        let mut n1_sq = (work.l - l) * (work.l - l);
+        for i in 0..ndim {
+            let d0 = u[i] - self.u_prev[i];
+            let d1 = work.u[i] - u[i];
+            n0_sq += d0 * d0;
+            n1_sq += d1 * d1;
+        }
+        let n0 = f64::sqrt(n0_sq);
+        let n1 = f64::sqrt(n1_sq);
+        if n0 <= CONFIG_H_MIN || n1 <= CONFIG_H_MIN {
+            return 0.0;
+        }
+        let dl0 = (l - self.l_prev) / n0;
+        let dl1 = (work.l - l) / n1;
+        let mut sum_sq = (dl1 - dl0) * (dl1 - dl0);
+        for i in 0..ndim {
+            let t0 = (u[i] - self.u_prev[i]) / n0;
+            let t1 = (work.u[i] - u[i]) / n1;
+            let diff = t1 - t0;
+            sum_sq += diff * diff;
+        }
+        f64::sqrt(sum_sq) / self.config.tg_control_tol
     }
 }
 
@@ -220,9 +219,10 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
     ///
     /// 1. Calculates the initial stepsize
     /// 2. Determines the first tangent vector in pseudo-arclength
-    fn initialize(&mut self, work: &mut Workspace, ddl_ini: f64, _u: &Vector, _l: f64, dir: IniDir, _args: &mut A) -> Result<(), StrError> {
+    fn initialize(&mut self, work: &mut Workspace, ddl_ini: f64, _u: &Vector, l: f64, dir: IniDir, _args: &mut A) -> Result<(), StrError> {
         // set flags
         self.iter_jac_computed = false;
+        self.l_prev = l;
 
         // set the initial direction
         self.sign0 = match dir {
@@ -357,10 +357,11 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         work.backup_needed = true;
 
         // calculate the relative difference
-        let rdiff = self.calculate_rerr(work, u);
+        let rdiff = self.calculate_rerr(work, u, *l);
 
-        // save previous u
+        // save previous (u, l)
         vec_copy(&mut self.u_prev, u).unwrap();
+        self.l_prev = *l;
 
         // update the state
         vec_copy(u, &work.u).unwrap(); // u := u₁
@@ -402,7 +403,9 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Config, DeltaLambda, IniDir, Samples, Solver, Status, Stop, SupStatus};
+    use crate::{Config, DeltaLambda, IniDir, NoArgs, Samples, Solver, Status, Stop, SupStatus, System};
+    use russell_lab::Vector;
+    use russell_sparse::Sym;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     #[test]
@@ -426,5 +429,53 @@ mod tests {
         assert_eq!(stats.n_rejected, 1);
         assert_eq!(stats.n_accepted, 1);
         assert_eq!(stats.n_steps, 2);
+    }
+
+    #[test]
+    fn natural_near_zero_dof_does_not_collapse_rdiff() {
+        // u₀ = λ, u₁ = 1e-10 λ + 1e-4 λ² -> near-zero DOF u₁ must not inflate rdiff
+        let system = System::new(
+            2,
+            Some(2),
+            Sym::No,
+            |gg, l, u, _args: &mut NoArgs| {
+                gg[0] = u[0] - l;
+                gg[1] = u[1] - (1e-10 * l + 1e-4 * l * l);
+                Ok(())
+            },
+            |ggu, _ggl, _l, _u, _args: &mut NoArgs| {
+                ggu.put(0, 0, 1.0).unwrap();
+                ggu.put(1, 1, 1.0).unwrap();
+                Ok(())
+            },
+        )
+        .unwrap();
+
+        let mut config = Config::new();
+        config.set_record_step_summary(true);
+        let mut solver = Solver::new(&config, system).unwrap();
+        let mut u = Vector::from(&[0.0, 0.0]);
+        let mut l = 0.0;
+        let mut args = 0;
+        let status = solver
+            .solve(
+                &mut args,
+                &mut u,
+                &mut l,
+                IniDir::Pos,
+                Stop::MaxLambda(1.0),
+                &DeltaLambda::auto(0.1),
+                None,
+            )
+            .unwrap();
+        assert_eq!(status, Status::Success);
+        let stats = solver.get_stats();
+        assert!(stats.n_accepted < 10, "n_accepted = {}", stats.n_accepted);
+        assert_eq!(stats.n_rejected, 0);
+        let summaries = stats.step_summaries.as_ref().unwrap();
+        // Exclude the final target-truncated step, whose truncated h alters |u1 - 2*u0 + u_{-1}| / |u1 - u0|.
+        for s in &summaries[..summaries.len() - 1] {
+            assert!(s.rdiff < 0.5, "step {} rdiff = {:e}", s.step_index, s.rdiff);
+        }
     }
 }

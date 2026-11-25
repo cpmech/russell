@@ -3,40 +3,6 @@ use crate::StrError;
 use russell_lab::{Norm, Vector, vec_norm_chunk};
 use serde::{Deserialize, Serialize};
 
-/// Defines the type of the relative difference used in the stepsize control using the tangent vector
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum RdiffType {
-    /// Average relative difference
-    ///
-    /// ```text
-    /// dx/ds = {du/ds..., dλ/ds}
-    ///
-    ///        | (dx/ds₁)[i] - (dx/ds₀)[i] |
-    /// p[i] = —————————————————————————————
-    ///              | (dx/ds₀)[i] |
-    ///
-    /// q = finite(p)
-    ///
-    /// rdiff = average(q)
-    /// ```
-    Ave,
-
-    /// Maximum relative difference
-    ///
-    /// ```text
-    /// dx/ds = {du/ds..., dλ/ds}
-    ///
-    ///        | (dx/ds₁)[i] - (dx/ds₀)[i] |
-    /// p[i] = —————————————————————————————
-    ///              | (dx/ds₀)[i] |
-    ///
-    /// q = finite(p)
-    ///
-    /// rdiff = maximum(q)
-    /// ```
-    Max,
-}
-
 /// Defines the initial direction of the tangent vector for the pseudo-arclength method
 /// or the (constant) sign of Δλ for the Natural method.
 ///
@@ -376,6 +342,11 @@ pub enum Status {
     /// (must stop)
     SmallStepsize,
 
+    /// Failure: Reached the maximum number of steps without meeting the stop criterion
+    ///
+    /// (must stop)
+    ReachedMaxSteps,
+
     /// The secondary update requested termination
     ///
     /// (must stop)
@@ -430,6 +401,7 @@ impl Status {
             Status::UnmetStopCriterion => true,
             // must stop
             Status::SmallStepsize => false,
+            Status::ReachedMaxSteps => false,
             Status::SecondaryUpdateTerminate => false,
             Status::ContinuedFailure => false,
             Status::ContinuedRejection => false,
@@ -648,11 +620,13 @@ mod tests {
         // success
         assert!(Status::Success.success());
         assert!(!Status::SmallStepsize.success());
+        assert!(!Status::ReachedMaxSteps.success());
         assert!(!Status::LargeDelta.success());
 
         // failure
         assert!(!Status::Success.failure());
         assert!(Status::SmallStepsize.failure());
+        assert!(Status::ReachedMaxSteps.failure());
         assert!(Status::LargeDelta.failure());
         assert!(Status::SecondaryUpdateError("error").failure());
     }
@@ -671,6 +645,7 @@ mod tests {
 
         // must stop
         assert!(!Status::SmallStepsize.try_again());
+        assert!(!Status::ReachedMaxSteps.try_again());
         assert!(!Status::SecondaryUpdateTerminate.try_again());
         assert!(!Status::ContinuedFailure.try_again());
         assert!(!Status::ContinuedRejection.try_again());
@@ -780,23 +755,6 @@ mod tests {
         assert_eq!(b3, -5.0 / 18.0);
         assert_eq!(a2, -5.0 / 6.0);
         assert_eq!(a3, -1.0 / 6.0);
-    }
-
-    #[test]
-    fn test_rdiff_type_derives_work() {
-        let a = RdiffType::Ave;
-        let b = RdiffType::Max;
-
-        // Clone
-        let c = a;
-        assert_eq!(c, RdiffType::Ave);
-
-        // Debug
-        assert_eq!(format!("{:?}", b), "Max");
-
-        // Copy
-        let d = a;
-        assert_eq!(a, d);
     }
 
     #[test]

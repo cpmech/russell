@@ -121,9 +121,8 @@ fn test_hardening_softening_model_from_peak_backward() -> Result<(), StrError> {
         fig_width,
     )?;
 
-    // Check the solver statistics (19 steps since the stepsize control stopped shrinking on a
-    // clamped tangent error; it was 29 when every clamped error forced the maximal shrink)
-    assert_eq!(stats.n_accepted, 19);
+    // Check the solver statistics
+    assert_eq!(stats.n_accepted, 27);
     assert_eq!(stats.n_rejected, 0);
     Ok(())
 }

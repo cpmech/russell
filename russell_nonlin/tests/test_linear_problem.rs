@@ -186,7 +186,7 @@ fn test_linear_list() {
         .unwrap();
 
     // check
-    array_approx_eq(out.get_h_values(), &[0.1, 0.2, 0.4, 0.8, 0.8], 1e-15);
+    array_approx_eq(out.get_h_values(), &[0.1, 0.1, 0.2, 0.4, 0.8], 1e-15);
     array_approx_eq(out.get_l_values(), &[0.0, 0.1, 0.3, 0.7, 1.5], 1e-15);
     array_approx_eq(out.get_u_values(0), &[0.0, 0.1, 0.3, 0.7, 1.5], 1e-15);
 

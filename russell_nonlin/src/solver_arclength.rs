@@ -1,6 +1,6 @@
 use super::{CONFIG_H_MIN, Config, IniDir, Method, Status, TrialPhase};
 use super::{SolverTrait, Stop, System, Workspace};
-use crate::{RdiffType, StrError};
+use crate::StrError;
 use russell_lab::{Norm, Vector};
 use russell_lab::{vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm};
 use russell_sparse::{CooMatrix, CscMatrix, LinSolver, Sym};
@@ -886,63 +886,28 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         // update the state
         vec_copy(u, &work.u).unwrap(); // u := u₁
         *l = work.l; // λ := λ₁
-        self.target_mode = false;
+        if self.target_mode {
+            let adv = f64::abs(self.dlds_prev);
+            if adv > CONFIG_H_MIN {
+                work.h = f64::abs(work.h) / (2.0 * adv * adv);
+            }
+            self.target_mode = false;
+        }
 
         //
-        // stepsize control --- calculate the relative change in the tangent vector
+        // stepsize control --- calculate the global chord norm of the unit tangent vector change
         //
 
         let ndim = self.system.ndim;
         let tol = self.config.tg_control_tol;
-
-        // dx/ds = {du/ds..., dλ/ds}
-        //
-        //        | (dx/ds₁)[i] - (dx/ds₀)[i] |
-        // p[i] = —————————————————————————————
-        //              | (dx/ds₀)[i] |
-        //
-        // q = finite(p)
-
-        let rdiff = if self.config.tg_control_rdiff_type == RdiffType::Ave {
-            // rdiff = average(q)
-            let mut sum = 0.0;
-            let mut count = 0;
-            for i in 0..ndim {
-                let den = f64::abs(self.duds_prev[i]);
-                if den > CONFIG_H_MIN {
-                    let ratio = f64::abs(work.duds[i] - self.duds_prev[i]) / den;
-                    sum += ratio / tol;
-                    count += 1;
-                }
-            }
-            let den = f64::abs(self.dlds_prev);
-            if den > CONFIG_H_MIN {
-                let ratio = f64::abs(work.dlds - self.dlds_prev) / den;
-                sum += ratio / tol;
-                count += 1;
-            }
-            if count > 0 { sum / count as f64 } else { 0.0 }
-        } else {
-            // rdiff = maximum(q)
-            let mut max_ratio = 0.0;
-            for i in 0..ndim {
-                let den = f64::abs(self.duds_prev[i]);
-                if den > CONFIG_H_MIN {
-                    let ratio = f64::abs(work.duds[i] - self.duds_prev[i]) / den;
-                    if ratio > max_ratio {
-                        max_ratio = ratio;
-                    }
-                }
-            }
-            let den = f64::abs(self.dlds_prev);
-            if den > CONFIG_H_MIN {
-                let ratio = f64::abs(work.dlds - self.dlds_prev) / den;
-                if ratio > max_ratio {
-                    max_ratio = ratio;
-                }
-            }
-            max_ratio / tol
-        };
+        let mut sum_sq = 0.0;
+        for i in 0..ndim {
+            let d = work.duds[i] - self.duds_prev[i];
+            sum_sq += d * d;
+        }
+        let dl = work.dlds - self.dlds_prev;
+        sum_sq += dl * dl;
+        let rdiff = f64::sqrt(sum_sq) / tol;
 
         // done
         Ok(rdiff)

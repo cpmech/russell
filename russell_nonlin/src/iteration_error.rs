@@ -3,6 +3,12 @@ use russell_lab::{Norm, Vector, vec_norm};
 
 /// Calculates the iteration error
 pub(crate) struct IterationError {
+    /// Holds max(‖G‖∞,|N|) at iteration 0
+    pub(crate) residual_0: f64,
+
+    /// Indicates whether at least one finite residual was analyzed in the current step attempt
+    pub(crate) has_residual: bool,
+
     /// Holds max(‖G‖∞,|N|)
     pub(crate) residual_max: f64,
 
@@ -86,6 +92,8 @@ impl IterationError {
     /// Creates a new instance
     pub fn new(config: &Config, ndim: usize) -> Self {
         Self {
+            residual_0: 0.0,
+            has_residual: false,
             residual_max: 0.0,
             delta_max: 0.0,
             delta_l2: 0.0,
@@ -117,6 +125,8 @@ impl IterationError {
 
     /// Resets the convergence flags and divergence counter
     pub fn reset(&mut self, u: &Vector, l: f64) {
+        self.residual_0 = 0.0;
+        self.has_residual = false;
         self.residual_converged = false;
         self.residual_diverging = false;
         self.delta_converged = false;
@@ -161,6 +171,10 @@ impl IterationError {
         if !self.residual_max.is_finite() {
             return true;
         }
+        if !self.has_residual {
+            self.residual_0 = self.residual_max;
+            self.has_residual = true;
+        }
 
         // check convergence
         self.residual_converged = self.residual_max < self.tol_abs_residual;
@@ -173,9 +187,11 @@ impl IterationError {
             self.residual_max > self.residual_max_prev
         };
 
-        // increment continued divergence counter
+        // increment continued divergence counter, resetting whenever the residual stops growing
         if self.prev_residual_diverging && self.residual_diverging {
             self.n_continued_residual_divergence += 1;
+        } else if !self.residual_diverging {
+            self.n_continued_residual_divergence = 0;
         }
 
         // for subsequent iterations
@@ -237,9 +253,11 @@ impl IterationError {
         self.prev_delta_diverging = self.delta_diverging;
         self.delta_diverging = if iteration == 0 { false } else { self.delta_max > self.delta_max_prev };
 
-        // increment continued divergence counter
+        // increment continued divergence counter, resetting whenever the step update stops growing
         if self.prev_delta_diverging && self.delta_diverging {
             self.n_continued_delta_divergence += 1;
+        } else if !self.delta_diverging {
+            self.n_continued_delta_divergence = 0;
         }
 
         // for subsequent iterations
@@ -345,7 +363,7 @@ impl IterationError {
 #[cfg(test)]
 mod tests {
     use super::IterationError;
-    use crate::Config;
+    use crate::{Config, Status};
     use russell_lab::{Norm, Vector, vec_norm};
 
     /// The 2-norm the loop computes must agree with `Norm::Euc` for vectors in the normal range.
@@ -406,5 +424,72 @@ mod tests {
         let nan_or_inf = err.analyze_delta(0, &x);
         assert!(!nan_or_inf);
         assert_eq!(err.delta_l2, expected);
+    }
+
+    #[test]
+    fn consecutive_residual_divergence_resets_on_improvement() {
+        let mut config = Config::new();
+        config.set_n_cont_residual_divergence_max(3);
+        let mut err = IterationError::new(&config, 1);
+        let u = Vector::new(1);
+
+        // Repeated 3-step bumps separated by reductions must converge rather than accumulating.
+        err.reset(&u, 0.0);
+        let seq = [1.0, 2.0, 3.0, 1e-2, 2e-2, 3e-2, 1e-4, 2e-4, 3e-4, 1e-11];
+        for (k, &r) in seq.iter().enumerate() {
+            let gg = Vector::from(&[r]);
+            assert!(!err.analyze_residual(k, &gg, 0.0));
+            assert_eq!(err.capture_failures(k), Status::Success);
+        }
+        assert_eq!(err.residual_0, 1.0);
+        assert!(err.has_residual);
+        assert!(err.residual_converged);
+
+        // Truly sustained divergence still aborts with ContinuedResidualDivergence.
+        err.reset(&u, 0.0);
+        let bad = [1.0, 2.0, 3.0, 4.0, 5.0];
+        let mut captured = Status::Success;
+        for (k, &r) in bad.iter().enumerate() {
+            let gg = Vector::from(&[r]);
+            assert!(!err.analyze_residual(k, &gg, 0.0));
+            captured = err.capture_failures(k);
+            if captured.failure() {
+                assert_eq!(k, 4);
+                break;
+            }
+        }
+        assert_eq!(captured, Status::ContinuedResidualDivergence);
+    }
+
+    #[test]
+    fn consecutive_delta_divergence_resets_on_improvement() {
+        let mut config = Config::new();
+        config.set_n_cont_delta_divergence_max(1);
+        let mut err = IterationError::new(&config, 1);
+        let u = Vector::new(1);
+
+        // Single isolated increases do not trigger pair-counted max=1.
+        err.reset(&u, 0.0);
+        let ok_seq = [1.0, 2.0, 0.5, 0.6, 0.1];
+        for (k, &d) in ok_seq.iter().enumerate() {
+            let x = Vector::from(&[d, 0.0]);
+            assert!(!err.analyze_delta(k, &x));
+            assert_eq!(err.capture_failures(k), Status::Success);
+        }
+
+        // Two consecutive increases after iteration 0 still trigger max=1.
+        err.reset(&u, 0.0);
+        let bad_seq = [1.0, 2.0, 3.0];
+        let mut captured = Status::Success;
+        for (k, &d) in bad_seq.iter().enumerate() {
+            let x = Vector::from(&[d, 0.0]);
+            assert!(!err.analyze_delta(k, &x));
+            captured = err.capture_failures(k);
+            if captured.failure() {
+                assert_eq!(k, 2);
+                break;
+            }
+        }
+        assert_eq!(captured, Status::ContinuedDeltaDivergence);
     }
 }

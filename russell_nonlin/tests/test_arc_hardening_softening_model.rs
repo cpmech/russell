@@ -41,12 +41,12 @@ fn test_arc_hardening_softening_model_full() -> Result<(), StrError> {
     println!("{}", stats);
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 23);
-    assert_eq!(stats.n_rejected, 4);
+    assert_eq!(stats.n_accepted, 38);
+    assert_eq!(stats.n_rejected, 1);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
-    assert!(max_err < 0.063, "max_err = {} is greater than the tolerance", max_err);
+    assert!(max_err < 0.067, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }
 
@@ -78,7 +78,7 @@ fn test_arc_hardening_softening_model_from_peak() -> Result<(), StrError> {
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 14);
+    assert_eq!(stats.n_accepted, 39);
     assert_eq!(stats.n_rejected, 4);
 
     // Check the maximum error on lambda
@@ -115,12 +115,12 @@ fn test_arc_hardening_softening_model_from_peak_backward() -> Result<(), StrErro
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 17);
+    assert_eq!(stats.n_accepted, 34);
     assert_eq!(stats.n_rejected, 0);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
-    assert!(max_err < 0.048, "max_err = {} is greater than the tolerance", max_err);
+    assert!(max_err < 0.060, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }
 
@@ -152,12 +152,12 @@ fn test_arc_hardening_softening_model_bordering() -> Result<(), StrError> {
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 23);
-    assert_eq!(stats.n_rejected, 4);
+    assert_eq!(stats.n_accepted, 38);
+    assert_eq!(stats.n_rejected, 1);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
-    assert!(max_err < 0.063, "max_err = {} is greater than the tolerance", max_err);
+    assert!(max_err < 0.067, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }
 

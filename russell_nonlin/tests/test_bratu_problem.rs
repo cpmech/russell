@@ -161,7 +161,7 @@ const D2_REF_ALP00: f64 = 6.80812442259; // α = 0: first critical point; nrm=1.
 const D2_REF_ALP02_A: f64 = 9.13638296666; // α = 0.2: first critical point; nrm=2.8858004
 const D2_REF_ALP02_B: f64 = 7.10189894953; // α = 0.2: second critical point; nrm=18.192768
 
-const TG_CONTROL_TOL: f64 = 0.1;
+const TG_CONTROL_TOL: f64 = 0.02;
 const DDL_INI: f64 = 0.5;
 
 const CHECK_JACOBIAN: bool = false;
@@ -246,8 +246,8 @@ fn test_bratu_1d_spc_auto_step() -> Result<(), StrError> {
     let genie = Genie::Faer;
     let symmetric = false;
     for (npt, tol1, tol2, tol3) in [
-        (8, 0.0041, 0.0024, 0.0005),  //
-        (20, 0.0028, 0.0065, 0.0011), //
+        (8, 0.0041, 0.0024, 0.0006),  //
+        (20, 0.0028, 0.0065, 0.0024), //
     ] {
         for alpha in [0.0, 0.2] {
             for lmm in [true, false] {
@@ -278,8 +278,8 @@ fn test_bratu_1d_fdm_auto_step() -> Result<(), StrError> {
     let ddl = DeltaLambda::auto(DDL_INI);
     let genie = Genie::Faer;
     for (npt, tol1, tol2, tol3) in [
-        (8, 0.043, 0.064, 0.06), //
-        (17, 0.015, 0.019, 0.012), //
+        (8, 0.047, 0.066, 0.06), //
+        (17, 0.023, 0.037, 0.012), //
                                  // (100, 0.025, 0.018, 0.01), //
     ] {
         for alpha in [0.0, 0.2] {

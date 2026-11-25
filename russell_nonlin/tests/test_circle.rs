@@ -105,7 +105,7 @@ fn test_circle_min_lambda() {
 
     // check stats
     let stats = solver.get_stats();
-    assert_eq!(stats.n_accepted, 3); // was 8 before the stepsize control stopped shrinking on a clamped error
+    assert_eq!(stats.n_accepted, 4);
     assert_eq!(stats.n_rejected, 0);
 
     // plot
@@ -216,8 +216,8 @@ fn test_circle_min_u() {
 
     // check stats
     let stats = solver.get_stats();
-    assert_eq!(stats.n_accepted, 4); // was 8 before the stepsize control stopped shrinking on a clamped error
-    assert_eq!(stats.n_rejected, 1); // the control now grows until one step is rejected and halved
+    assert_eq!(stats.n_accepted, 4);
+    assert_eq!(stats.n_rejected, 0);
 
     // plot
     if SAVE_FIGURE {

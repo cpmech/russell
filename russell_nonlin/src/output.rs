@@ -185,10 +185,10 @@ impl<'a, A> Output<'a, A> {
     // internal ---------------------------------------------------------------------------------------------------------
 
     /// Executes the output at an accepted step
-    pub(crate) fn execute(&mut self, work: &Workspace, u: &Vector, l: f64, args: &mut A) -> Result<bool, StrError> {
+    pub(crate) fn execute(&mut self, work: &Workspace, u: &Vector, l: f64, h: f64, args: &mut A) -> Result<bool, StrError> {
         // callback
         if let Some(cb) = self.callback.as_ref() {
-            let stop_gracefully = cb(&work.stats, u, l, work.h, args)?;
+            let stop_gracefully = cb(&work.stats, u, l, h, args)?;
             if stop_gracefully {
                 return Ok(stop_gracefully);
             }
@@ -204,7 +204,7 @@ impl<'a, A> Output<'a, A> {
                 um.push(u[*m]);
             }
             self.l.push(l);
-            self.h.push(work.h);
+            self.h.push(h);
             if work.duds.dim() == u.dim() {
                 // only for pseudo-arclength with available du/ds and dλ/ds
                 for (m, duds_m) in self.duds.iter_mut() {

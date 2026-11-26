@@ -97,12 +97,13 @@ fn target_mode_uses_the_scaled_arclength_bound_on_the_retry() {
     )
     .unwrap();
 
-    // The first secondary update performed during an iteration (phase = Corrector) forces a
-    // retry; that first step is already in target mode because λ is within the initial step of
-    // the target.
+    // The first step is already in target mode because λ is within the initial step of the target.
+    // The retry is forced at the Predictor phase: the corrected λ-imposed predictor is exact for
+    // this linear system, so the step converges at iteration 0 and a Corrector-phase trigger would
+    // never be reached.
     let calls = AtomicUsize::new(0);
     system.set_update_secondary_state(move |phase, _, _, _, _, _| {
-        if phase == TrialPhase::Corrector && calls.fetch_add(1, Ordering::SeqCst) == 0 {
+        if phase == TrialPhase::Predictor && calls.fetch_add(1, Ordering::SeqCst) == 0 {
             Ok(russell_nonlin::SupStatus::Retry)
         } else {
             Ok(russell_nonlin::SupStatus::Continue)

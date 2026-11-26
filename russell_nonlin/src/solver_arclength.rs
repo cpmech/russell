@@ -648,6 +648,45 @@ impl<'a, A> SolverArclength<'a, A> {
         // success
         Ok(Status::Success)
     }
+
+    /// Calculates the predictor (u₁, λ₁) from the step start (u₀, λ₀)
+    ///
+    /// In normal operation (θ = 1) the predictor is the tangent line:
+    ///
+    /// ```text
+    /// λ₁ = λ₀ + (2 - θ) h dλ/ds|₀ = λ₀ + h dλ/ds|₀
+    /// u₁ = u₀ + θ h du/ds|₀       = u₀ + h du/ds|₀
+    /// ```
+    ///
+    /// In the lambda-imposed mode (θ = 0) the normalization constraint
+    ///
+    /// ```text
+    /// N = 2 (λ - λ₀) dλ/ds|₀ - h
+    /// ```
+    ///
+    /// is an equation in λ alone, so the predictor must solve it exactly:
+    /// `λ₁ = λ₀ + h / (2 dλ/ds|₀)`. The normal-mode formula would predict `λ₀ + 2 h dλ/ds|₀`, which
+    /// overshoots the constraint's own root by a factor `(2 dλ/ds|₀)²`. The u component follows the
+    /// same tangent line, `u₁ = u₀ + (λ₁ - λ₀) du/dλ`; leaving `u₁ = u₀` instead would make the
+    /// first Newton update absorb the overshoot times |du/dλ|, which is O(h) with a large constant
+    /// and can exhaust the arclength trust region even though the target is only `h / (2 dλ/ds|₀)` away.
+    #[inline]
+    fn predictor(&self, work: &mut Workspace, u: &Vector, l: f64) {
+        if self.theta > 0.0 {
+            // normal operation: λ₁ = λ₀ + (2 - θ) h dλ/ds and u₁ = u₀ + θ h du/ds
+            work.l = l + (2.0 - self.theta) * work.h * work.dlds;
+            vec_add(&mut work.u, 1.0, u, self.theta * work.h, &work.duds).unwrap();
+        } else if f64::abs(work.dlds) > CONFIG_H_MIN {
+            // lambda-imposed mode: solve N = 0 for λ and follow the tangent line in u
+            work.l = l + work.h / (2.0 * work.dlds);
+            vec_add(&mut work.u, 1.0, u, (work.l - l) / work.dlds, &work.duds).unwrap();
+        } else {
+            // |dλ/ds| is too small to solve the constraint for λ (N is then insensitive to λ):
+            // keep the previous behavior of a λ predictor and u₁ = u₀
+            work.l = l + (2.0 - self.theta) * work.h * work.dlds;
+            vec_copy(&mut work.u, u).unwrap();
+        }
+    }
 }
 
 impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
@@ -741,25 +780,16 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             self.target_mode = false;
         }
 
-        // predictor: λ₁ = λ₀ + (2 - θ) σ · dλds₀
-        work.l = l + (2.0 - self.theta) * work.h * work.dlds;
-
-        // predictor: u₁ = u₀ + θ σ · du/ds₀
-        if self.theta > 0.0 {
-            // u₁ = u₀ + θ σ · duds₀
-            vec_add(&mut work.u, 1.0, u, self.theta * work.h, &work.duds).unwrap();
-        } else {
-            // u₁ = u₀
-            vec_copy(&mut work.u, u).unwrap();
-        }
+        // predictor: (u₁, λ₁), tangent line in normal operation and the constraint's own solution
+        // in the lambda-imposed mode (θ = 0); see `predictor`
+        self.predictor(work, u, l);
 
         // recalculate the predictor by truncating the stepsize if required and possible
         if let Some((i, u1, is_min)) = stop.u_comp() {
             if (work.u[i] < u1 && is_min) || (work.u[i] > u1 && !is_min) {
                 if f64::abs(work.duds[i]) > CONFIG_H_MIN {
                     work.h = (u1 - u[i]) / work.duds[i];
-                    work.l = l + (2.0 - self.theta) * work.h * work.dlds;
-                    vec_add(&mut work.u, 1.0, u, self.theta * work.h, &work.duds).unwrap();
+                    self.predictor(work, u, l);
                 } else {
                     return Err("INTERNAL ERROR: duds[i] is too small");
                 }
@@ -946,7 +976,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::{SolverArclength, SolverTrait, Workspace};
-    use crate::{Config, DeltaLambda, IniDir, IterationError, Method, NoArgs, Samples, Solver, Status, Stop, SupStatus, System};
+    use crate::{CONFIG_H_MIN, Config, DeltaLambda, IniDir, IterationError, Method, NoArgs, Samples, Solver, Status, Stop, SupStatus, System};
     use russell_lab::Vector;
     use russell_sparse::Sym;
 
@@ -1038,14 +1068,14 @@ mod tests {
     /// covers the public behavior (the same solver is reused after the failed polish).
     #[test]
     fn failed_polish_clears_the_targeting_flags() {
-        // G(u, λ) = u - λ, except that the residual fails for λ > 0.8 while `fail` is set. The
-        // polish predictor overshoots the target (λ = 0.81), so the failure happens inside polish.
+        // G(u, λ) = u - λ, except that the residual fails for λ >= 0.8 while `fail` is set. The
+        // polish predictor lands on the target (λ = 0.8), so the failure happens inside polish.
         let system = System::new(
             1,
             Some(1),
             Sym::No,
             |gg, l, u, fail: &mut bool| {
-                if *fail && l > 0.8 {
+                if *fail && l >= 0.8 {
                     return Err("failed inside polish");
                 }
                 gg[0] = u[0] - l;
@@ -1075,5 +1105,68 @@ mod tests {
         assert_eq!(res.err(), Some("failed inside polish"));
         assert!(!solver.force_target, "force_target must be cleared when polish fails");
         assert!(!solver.target_mode, "target_mode must be cleared when polish fails");
+    }
+
+    /// A `MaxLambda` target whose remaining distance is only a little above `h_min` must be reached
+    /// exactly, in the λ-imposed mode (θ = 0), instead of ending in `SmallStepsize`.
+    ///
+    /// In that mode the constraint `N = 2 (λ - λ₀) dλ/ds - h` is solved by
+    /// `λ = λ₀ + h / (2 dλ/ds)`. The old predictor used `λ₀ + 2 h dλ/ds` and `u₁ = u₀`, so the
+    /// first Newton update had to absorb the overshoot. With `dλ/ds ≈ 1` the update is `3 Δs_eff` in
+    /// λ alone, which violates a tightened (never loosened) `delta_max_allowed_h = 1.1`; the ratio is
+    /// invariant under `h`, so every retry writes off the same fraction and the controller halves
+    /// `h` below `h_min` before reaching the target. The corrected predictor satisfies `N = 0`
+    /// exactly and the tangent line leaves only O(h²) in u, so the step converges at iteration 0.
+    ///
+    /// On the old code this test ends with `Status::SmallStepsize` after two rejected attempts.
+    #[test]
+    fn max_lambda_target_near_h_min_lands_exactly() {
+        let slope = 1.0e-6; // dλ/ds ≈ 1 while du/ds stays above CONFIG_H_MIN
+        let system = System::new(
+            1,
+            Some(1),
+            Sym::No,
+            move |gg, l, u, _args: &mut NoArgs| {
+                gg[0] = u[0] - slope * l;
+                Ok(())
+            },
+            move |ggu, ggl, _l, _u, _args: &mut NoArgs| {
+                ggu.put(0, 0, 1.0).unwrap();
+                ggl[0] = -slope;
+                Ok(())
+            },
+        )
+        .unwrap();
+
+        // the remaining distance is above the stop threshold (CONFIG_H_MIN) by only 20%
+        let l1 = 1.0;
+        let l0 = l1 - 1.2e-10;
+        let mut u = Vector::from(&[slope * l0]);
+        let mut l = l0;
+        let mut args = 0;
+
+        let mut config = Config::new();
+        config.set_method(Method::Arclength).set_delta_max_allowed_h(1.1);
+        let mut solver = Solver::new(&config, system).unwrap();
+        let status = solver
+            .solve(
+                &mut args,
+                &mut u,
+                &mut l,
+                IniDir::Pos,
+                Stop::MaxLambda(l1),
+                &DeltaLambda::auto(0.005),
+                None,
+            )
+            .unwrap();
+
+        let stats = solver.get_stats();
+        println!(
+            "max_lambda_target_near_h_min_lands_exactly: iterations = {}, steps = {}, accepted = {}, rejected = {}",
+            stats.n_iteration_total, stats.n_steps, stats.n_accepted, stats.n_rejected
+        );
+        assert_eq!(status, Status::Success);
+        assert!(f64::abs(l - l1) <= CONFIG_H_MIN, "lambda = {:.17e}, off by {:.3e}", l, f64::abs(l - l1));
+        assert!(f64::abs(u[0] - slope * l1) <= 1.0e-14);
     }
 }

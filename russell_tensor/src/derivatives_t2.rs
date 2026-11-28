@@ -234,17 +234,11 @@ pub fn deriv1_invariant_d<const N: usize>(d1: &mut Tensor2<N>, _a: &Tensor2<N>) 
 /// ```text
 /// s = deviator(a)
 ///
-/// dr     dJ2
-/// ── = A ───
-/// da      da
+/// dr      1    dJ2    dev(a)
+/// ── = ─────── ─── = ────────
+/// da   √(2 J2)  da   ‖dev(a)‖
 ///
 /// (a is symmetric)
-/// ```
-///
-/// ```text
-///        1
-/// A = ───────
-///     √(2 J2)
 /// ```
 ///
 /// # Output
@@ -669,6 +663,18 @@ mod tests {
         assert_eq!(deriv1_norm(&mut d1, &a), None);
         assert_eq!(deriv1_invariant_q(&mut d1, &a), None);
         assert_eq!(deriv1_invariant_lode(&mut d1, &a), None);
+    }
+
+    #[test]
+    fn check_deriv1_invariant_r_equivalence() {
+        let data = &SamplesTensor2::TENSOR_U;
+        let a = Tensor2::<6>::from_std_matrix(&data.matrix).unwrap();
+        let mut d1 = Tensor2::<6>::new();
+        deriv1_invariant_r(&mut d1, &a).unwrap();
+        let s = Tensor2::<6>::from_std_matrix(&data.deviator).unwrap();
+        for m in 0..6 {
+            approx_eq(d1.get(m), s.get(m) / data.norm_s, 1e-14);
+        }
     }
 
     // check assertions -----------------------------------------------------------------------------
